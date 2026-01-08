@@ -24,7 +24,7 @@ class _TranslationDialogState extends State<TranslationDialog> {
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 400),
+        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 500),
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -44,6 +44,22 @@ class _TranslationDialogState extends State<TranslationDialog> {
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(4),
+                border: Border.all(color: Colors.red),
+              ),
+              child: Text(
+                'Disclaimer : The translation is not 100% accurate',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.red,
+                ),
+              ),
             ),
             const SizedBox(height: 16),
             Container(

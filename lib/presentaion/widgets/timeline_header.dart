@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 
 class TimelineHeader extends StatelessWidget {
-  final String title;
+  final String titleKey; // localization key instead of raw text
   final String time;
   final bool isCurrent;
   final bool isLeftAligned;
@@ -11,7 +11,7 @@ class TimelineHeader extends StatelessWidget {
 
   const TimelineHeader({
     super.key,
-    required this.title,
+    required this.titleKey,
     required this.time,
     required this.isCurrent,
     required this.isLeftAligned,
@@ -24,7 +24,7 @@ class TimelineHeader extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final screenWidth = constraints.maxWidth;
-        
+
         return Container(
           color: Theme.of(context).scaffoldBackgroundColor,
           height: 80,
@@ -37,7 +37,9 @@ class TimelineHeader extends StatelessWidget {
                   height: 15,
                   child: Container(
                     width: 3,
-                    color: isCurrent ? Colors.greenAccent : Colors.grey[300],
+                    color: isCurrent
+                        ? Colors.greenAccent
+                        : Colors.blueGrey[300],
                   ),
                 ),
               Positioned(
@@ -46,7 +48,7 @@ class TimelineHeader extends StatelessWidget {
                 height: 15,
                 child: Container(
                   width: 3,
-                  color: isCurrent ? Colors.greenAccent : Colors.grey[300],
+                  color: isCurrent ? Colors.greenAccent : Colors.blueGrey[300],
                 ),
               ),
               Center(
@@ -90,7 +92,9 @@ class TimelineHeader extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.greenAccent.withOpacity(0.5 * pulseAnimation.value),
+                  color: Colors.greenAccent.withOpacity(
+                    0.5 * pulseAnimation.value,
+                  ),
                   blurRadius: 12 * pulseAnimation.value,
                   spreadRadius: 2 * pulseAnimation.value,
                 ),
@@ -109,7 +113,10 @@ class TimelineHeader extends StatelessWidget {
                 ),
                 Container(
                   margin: const EdgeInsets.only(top: 3),
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white.withOpacity(0.3),
                     borderRadius: BorderRadius.circular(8),
@@ -134,7 +141,7 @@ class TimelineHeader extends StatelessWidget {
       width: 100,
       height: 55,
       decoration: BoxDecoration(
-        color: Colors.grey[300],
+        color: Colors.blueGrey[300],
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
@@ -175,19 +182,21 @@ class TimelineHeader extends StatelessWidget {
         color: isCurrent ? null : Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isCurrent ? Colors.greenAccent : Colors.grey[300]!,
+          color: isCurrent ? Colors.greenAccent : Colors.blueGrey[300]!,
           width: isCurrent ? 2 : 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: isCurrent ? Colors.greenAccent.withOpacity(0.2) : Colors.black12,
+            color: isCurrent
+                ? Colors.greenAccent.withOpacity(0.2)
+                : Colors.black12,
             blurRadius: isCurrent ? 8 : 4,
             offset: const Offset(0, 2),
           ),
         ],
       ),
       child: Text(
-        title,
+        titleKey.tr(), // localized here
         textAlign: isLeftAligned ? TextAlign.right : TextAlign.left,
         style: Theme.of(context).textTheme.titleLarge!.copyWith(
           fontWeight: FontWeight.bold,

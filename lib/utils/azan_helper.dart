@@ -1,7 +1,7 @@
 import 'package:adhan_dart/adhan_dart.dart';
+import 'package:ella_lyaabdoon/models/azan_day_period.dart';
+import 'package:ella_lyaabdoon/models/timeline_item.dart';
 import 'package:ella_lyaabdoon/presentaion/screens/home_screen.dart';
-
-enum AzanDayPeriod { fajr, shorouq, duhr, asr, maghrib, isha, night }
 
 class AzanHelper {
   final double latitude;

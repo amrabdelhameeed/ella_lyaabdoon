@@ -38,5 +38,21 @@
   "getting_location": "Getting location",
   "location_updated": "Location updated",
   "More": "More",
-  "show_less": "Show Less"
+  "show_less": "Show Less",
+  "intro_title_1": "Daily Adhkar",
+  "intro_desc_1": "Authentic adhkar and hadiths for every part of your day, organized by prayer time.",
+  "intro_title_2": "Great Rewards",
+  "intro_desc_2": "Learn the rewards mentioned in the Sunnah for each act of worship, using only authentic hadiths.",
+  "intro_title_3": "Your Day with Allah",
+  "intro_desc_3": "Turn your entire day into worship by remembering Allah at the right times.",
+  "next": "Next",
+  "start_now": "Start Now",
+  "app_idea_video_title": "The app idea is inspired by the following video",
+  "app_idea_video_subtitle": "Tap to watch the video",
+  "location_required": "Location permission required",
+  "location_message": "We need access to your location to determine prayer times accurately.",
+  "cancel": "Cancel",
+  "sadqah_garyah": "Sadaqa Jariyah? Share now",
+  "for_suggestions_and_complaints": "For Suggestions and Complaints",
+  "list_of_contributors": "Contributors"
 }

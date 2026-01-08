@@ -20,22 +20,26 @@ class AppTheme {
   );
 
   /// LIGHT THEME
+  /// LIGHT THEME (Soft green/teal variant)
   static ThemeData lightTheme(String locale) => ThemeData(
     brightness: Brightness.light,
-    primaryColor: AppColors.greenPrimary,
-    scaffoldBackgroundColor: AppColors.lightBg,
-    cardColor: AppColors.lightSurface,
+    primaryColor: AppColors.greenPrimary, // keep your main brand color
+    scaffoldBackgroundColor: const Color(
+      0xFFE6F4F1,
+    ), // soft teal/green background
+    cardColor: const Color(0xFFFFFFFF), // slightly off-white cards for contrast
     shadowColor: Colors.black12,
 
     iconTheme: const IconThemeData(color: AppColors.greenDark),
 
     textTheme: textTheme(locale, AppColors.textDark),
 
-    appBarTheme: const AppBarTheme(
-      backgroundColor: AppColors.lightSurface,
+    appBarTheme: AppBarTheme(
+      backgroundColor: const Color(0xFFBCE0D0), // soft green app bar
       elevation: 1,
       iconTheme: IconThemeData(color: AppColors.greenDark),
       titleTextStyle: TextStyle(
+        fontFamily: font('ar'),
         color: AppColors.greenDark,
         fontWeight: FontWeight.bold,
         fontSize: 18,
@@ -44,24 +48,26 @@ class AppTheme {
 
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ButtonStyle(
-        backgroundColor: WidgetStateProperty.all(AppColors.greenPrimary),
-        foregroundColor: WidgetStateProperty.all(Colors.white),
-        textStyle: WidgetStateProperty.all(TextStyle(fontFamily: font(locale))),
+        backgroundColor: MaterialStateProperty.all(AppColors.greenPrimary),
+        foregroundColor: MaterialStateProperty.all(Colors.white),
+        textStyle: MaterialStateProperty.all(
+          TextStyle(fontFamily: font(locale)),
+        ),
       ),
     ),
 
     tabBarTheme: TabBarThemeData(
       indicatorColor: AppColors.greenPrimary,
       labelColor: AppColors.greenPrimary,
-      unselectedLabelColor: Colors.grey,
+      unselectedLabelColor: Colors.blueGrey,
       labelStyle: TextStyle(fontFamily: font(locale)),
       unselectedLabelStyle: TextStyle(fontFamily: font(locale)),
     ),
 
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-      backgroundColor: AppColors.lightSurface,
+      backgroundColor: Color(0xFFBCE0D0),
       selectedItemColor: AppColors.greenPrimary,
-      unselectedItemColor: Colors.grey,
+      unselectedItemColor: Colors.blueGrey,
     ),
   );
 
@@ -77,11 +83,12 @@ class AppTheme {
 
     textTheme: textTheme(locale, AppColors.textLight),
 
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       backgroundColor: AppColors.darkSurface,
       elevation: 1,
       iconTheme: IconThemeData(color: AppColors.greenSecondary),
       titleTextStyle: TextStyle(
+        fontFamily: font('ar'),
         color: AppColors.greenSecondary,
         fontWeight: FontWeight.bold,
         fontSize: 18,
@@ -99,7 +106,7 @@ class AppTheme {
     tabBarTheme: TabBarThemeData(
       indicatorColor: AppColors.greenSecondary,
       labelColor: AppColors.greenSecondary,
-      unselectedLabelColor: Colors.grey,
+      unselectedLabelColor: Colors.blueGrey,
       labelStyle: TextStyle(fontFamily: font(locale)),
       unselectedLabelStyle: TextStyle(fontFamily: font(locale)),
     ),
@@ -107,7 +114,7 @@ class AppTheme {
     bottomNavigationBarTheme: const BottomNavigationBarThemeData(
       backgroundColor: AppColors.darkSurface,
       selectedItemColor: AppColors.greenSecondary,
-      unselectedItemColor: Colors.grey,
+      unselectedItemColor: Colors.blueGrey,
     ),
   );
 }

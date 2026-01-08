@@ -58,7 +58,7 @@ class AppDatabaseKeys {
   static const String achievementKey = 'achievementKey';
   static const String featureViewKey = 'featureViewKey';
   static const String rememberMe = 'rememberMe';
-  static const String firstOpenKey = 'firstOpenKey';
+  static const String firstOpenKey = 'firstOpenKey1';
   static const String userNameAndPassword = 'userNameAndPassword';
 
   static const String themeKey = 'themeKey';

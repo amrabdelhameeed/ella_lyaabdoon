@@ -1,8 +1,9 @@
 ﻿import 'package:easy_localization/easy_localization.dart';
 import 'package:ella_lyaabdoon/app_router.dart';
 import 'package:ella_lyaabdoon/buissness_logic/translation/translation_cubit.dart';
+import 'package:ella_lyaabdoon/models/azan_day_period.dart';
 import 'package:ella_lyaabdoon/presentaion/widgets/timeline_header.dart';
-import 'package:ella_lyaabdoon/presentaion/widgets/timeline_description_item.dart';
+import 'package:ella_lyaabdoon/presentaion/widgets/timeline_reward_item.dart';
 import 'package:ella_lyaabdoon/presentaion/widgets/timeline_show_more_button.dart';
 import 'package:ella_lyaabdoon/presentaion/widgets/translation_dialog.dart';
 import 'package:ella_lyaabdoon/utils/azan_helper.dart';
@@ -13,18 +14,7 @@ import 'package:ella_lyaabdoon/utils/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sticky_headers/sticky_headers.dart';
-
-class TimelineItem {
-  final String title;
-  final List<String> descriptions;
-  final AzanDayPeriod period;
-
-  const TimelineItem({
-    required this.title,
-    required this.descriptions,
-    required this.period,
-  });
-}
+import 'package:ella_lyaabdoon/models/timeline_item.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -53,7 +43,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       vsync: this,
     )..repeat(reverse: true);
 
-    _pulseAnimation = Tween<double>(begin: 0.7, end: 1.0).animate(
+    _pulseAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
@@ -118,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     double position = 0;
     for (int i = 0; i < currentIndex; i++) {
       position += 80;
-      position += AppLists.timelineItems[i].descriptions.length * 80;
+      position += AppLists.timelineItems[i].rewards.length * 80;
     }
 
     _scrollController.animateTo(
@@ -138,17 +128,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
   }
 
-  List<String> _getVisibleDescriptions(
+  List<dynamic> _getVisibleRewards(
     TimelineItem item,
     AzanDayPeriod? currentPeriod,
   ) {
     // Current period OR expanded - show all
     if (item.period == currentPeriod ||
         _expandedPeriods.contains(item.period)) {
-      return item.descriptions;
+      return item.rewards;
     }
     // Not current and not expanded - show first 3
-    return item.descriptions.take(3).toList();
+    return item.rewards.take(3).toList();
   }
 
   void _showLocationDialog() {
@@ -368,6 +358,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ],
         ),
         body: ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 8),
           controller: _scrollController,
           itemCount: AppLists.timelineItems.length,
           itemBuilder: (context, index) {
@@ -378,17 +369,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             final isFirst = index == 0;
             final isLast = index == AppLists.timelineItems.length - 1;
 
-            final visibleDescriptions = _getVisibleDescriptions(
-              item,
-              _currentPeriod,
-            );
+            final visibleRewards = _getVisibleRewards(item, _currentPeriod);
             final isExpanded = _expandedPeriods.contains(item.period);
-            final hasMore = item.descriptions.length > 3;
+            final hasMore = item.rewards.length > 3;
             final showMoreButton = !isCurrent && hasMore;
 
             return StickyHeader(
               header: TimelineHeader(
-                title: item.title,
+                titleKey: item.title,
                 time: timeText,
                 isCurrent: isCurrent,
                 isLeftAligned: isLeftAligned,
@@ -397,32 +385,21 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               ),
               content: Column(
                 children: [
-                  for (int i = 0; i < visibleDescriptions.length; i++)
-                    TimelineDescriptionItem(
-                      description: visibleDescriptions[i],
+                  for (int i = 0; i < visibleRewards.length; i++)
+                    TimelineRewardItem(
+                      reward: visibleRewards[i],
                       isCurrent: isCurrent,
                       isLeftAligned: isLeftAligned,
                       isLast:
-                          i == visibleDescriptions.length - 1 &&
+                          i == visibleRewards.length - 1 &&
                           !showMoreButton &&
                           isLast,
                       pulseAnimation: _pulseAnimation,
-                      onTranslate: () {
-                        showDialog(
-                          context: context,
-                          builder: (dialogContext) => BlocProvider.value(
-                            value: context.read<TranslationCubit>(),
-                            child: TranslationDialog(
-                              arabicText: item.descriptions[i],
-                            ),
-                          ),
-                        );
-                      },
                     ),
                   if (showMoreButton)
                     TimelineShowMoreButton(
                       isExpanded: isExpanded,
-                      remainingCount: item.descriptions.length - 3,
+                      remainingCount: item.rewards.length - 3,
                       isLeftAligned: isLeftAligned,
                       isCurrent: isCurrent,
                       isLast: isLast,
