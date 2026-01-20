@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.1+8
 
 environment:
   sdk: ^3.9.0-333.2.beta
@@ -30,13 +30,17 @@ environment:
 dependencies:
   adhan_dart: ^1.2.0
   animated_text_kit: ^4.3.0
+  audioplayers: ^6.5.1
   bloc: ^9.2.0
+  cache_audio_player_plus: ^1.1.1+1
   cached_network_image: ^3.4.1
   clarity_flutter: ^1.7.0
   cloud_firestore: ^6.1.1
   cupertino_icons: ^1.0.8
   dio: ^5.4.0
+  # dotenv: ^4.2.0
   easy_localization: ^3.0.8
+  equatable: ^2.0.8
   firebase_analytics: ^12.1.0
   firebase_core: ^4.3.0
   firebase_crashlytics: ^5.0.6
@@ -44,8 +48,10 @@ dependencies:
   flutter:
     sdk: flutter
   flutter_bloc: ^9.1.1
+  flutter_dotenv: ^6.0.0
   flutter_local_notifications: ^19.5.0
-  flutter_native_splash: ^2.3.9
+  flutter_native_splash: ^2.4.7
+  flutter_timezone: ^5.0.1
   freezed_annotation: ^2.4.1
   geocoding: ^4.0.0
   geolocator: ^14.0.2
@@ -53,6 +59,8 @@ dependencies:
   go_router: ^17.0.0
   hive: ^2.2.3
   hive_flutter: ^1.1.0
+  home_widget: ^0.9.0
+  in_app_review: ^2.0.11
   intl: ^0.20.2
   json_annotation: ^4.8.1
   permission_handler: ^11.1.0
@@ -63,8 +71,10 @@ dependencies:
   shared_preferences: ^2.5.3
   showcaseview: ^3.0.0
   sticky_headers: ^0.3.0+2
+  syncfusion_flutter_calendar: ^31.1.19
   timeline_tile: ^2.0.0
-  upgrader: ^12.1.0
+  timezone: ^0.10.1
+  upgrader: ^12.4.0
   url_launcher: ^6.3.1
   youtube_player_flutter: ^9.1.3
 dev_dependencies:
@@ -84,7 +94,11 @@ flutter:
     - assets/animation_files/
     - assets/icons/
     - assets/translations/
+    - assets/fonts/
+    - assets/contributors/
+    - assets/splash/
     - shorebird.yaml
+    - .env
     # - /Users/amrabdelhamid/StudioProjects/company projects/fvm_gurow/gurow_refactored/assets/ca/lets-encrypt-r3.pem
   fonts:
     # - family: Segoe UI
@@ -114,3 +128,34 @@ flutter:
     - family: kufi
       fonts:
         - asset: assets/fonts/noto_kufi/noto_kufi.ttf
+    - family: othmani
+      fonts:
+        - asset: assets/fonts/othmani/othmani.ttf
+    - family: hamid
+      fonts:
+        - asset: assets/fonts/hamid/hamid.ttf
+flutter_native_splash:
+  # Background color - use your app's primary color
+  color: "#378654" # Green color matching your app theme
+  #color_dark: "#0D8A38"  # Darker green for dark mode (optional)
+  # Main splash image (will be used for all platforms except Android 12+)
+  # Use your highest resolution image for best quality
+  image: assets/splash/android-splash-1920x1920.png
+  #image_dark: assets/splash/android-splash-1920x1920.png  # Uncomment if you have dark version
+  # Hide notification bar for clean splash screen
+  fullscreen: true
+
+  # Android 12+ specific configuration
+  android_12:
+    # Background color for Android 12+
+    color: "#378654"
+    #color_dark: "#0D8A38"
+    # Center logo for Android 12+
+    # Android 12+ requires a square image (960x960 or 1152x1152)
+    # Your 1920x1920 image works perfectly here
+    image: assets/splash/android-splash-1920x1920.png
+    #image_dark: assets/splash/android-splash-1920x1920.png
+    # Icon background color (the circular area behind your logo)
+    # Use white or transparent to match your logo background
+    icon_background_color: "#FFFFFF"
+    #icon_background_color_dark: "#1E1E1E"

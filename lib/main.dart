@@ -1,16 +1,20 @@
 // ignore_for_file: deprecated_member_use
 
 import 'dart:io';
+import 'dart:async';
 import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:ella_lyaabdoon/app_router.dart';
-import 'package:ella_lyaabdoon/di.dart';
+import 'package:ella_lyaabdoon/core/di/di.dart';
+import 'package:ella_lyaabdoon/core/services/prayer_widget_service.dart';
+import 'package:ella_lyaabdoon/core/services/zikr_widget_service.dart';
 import 'package:ella_lyaabdoon/firebase_options.dart';
-import 'package:ella_lyaabdoon/utils/app_services_database_provider.dart';
-import 'package:ella_lyaabdoon/utils/constants/app_theme.dart';
-import 'package:ella_lyaabdoon/utils/constants/cache_helper.dart';
-import 'package:ella_lyaabdoon/utils/constants/observer.dart';
-import 'package:ella_lyaabdoon/utils/fcm_helper.dart';
+import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
+import 'package:ella_lyaabdoon/features/history/data/history_db_provider.dart';
+import 'package:ella_lyaabdoon/core/constants/app_theme.dart';
+import 'package:ella_lyaabdoon/core/services/cache_helper.dart';
+import 'package:ella_lyaabdoon/core/utils/observer.dart';
+import 'package:ella_lyaabdoon/utils/notification_helper.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -18,334 +22,542 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive/hive.dart';
-import 'package:upgrader/upgrader.dart';
-import 'package:timezone/data/latest.dart' as tz;
-import 'package:path_provider/path_provider.dart' as path;
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
+import "package:path_provider/path_provider.dart" as path;
+import 'package:flutter_timezone/flutter_timezone.dart';
+import 'package:home_widget/home_widget.dart';
 
-// Global instance for Firebase Messaging
-final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+// ============================================================
+// GLOBAL CONFIGURATION
+// ============================================================
 
-// Global Clarity configuration
+const Duration kInitTimeout = Duration(seconds: 3);
+
 ClarityConfig? _clarityConfig;
+bool _firebaseInitialized = false;
+bool _hiveInitialized = false;
+bool _allServicesReady = false;
 
-/// Background message handler for Firebase Messaging
+// ============================================================
+// WIDGET BACKGROUND CALLBACK
+// ============================================================
+
+@pragma('vm:entry-point')
+Future<void> widgetBackgroundCallback(Uri? uri) async {
+  WidgetsFlutterBinding.ensureInitialized();
+  debugPrint('🔔 Widget callback: $uri');
+
+  if (uri?.host == 'refresh') {
+    // Prayer widget refresh
+    try {
+      await _ensureHiveReady();
+      await PrayerWidgetService.updateWidget().timeout(kInitTimeout);
+    } catch (e) {
+      debugPrint('⚠️ Prayer widget refresh failed: $e');
+    }
+  } else if (uri?.host == 'reward_check') {
+    // Reward checkbox toggle
+    try {
+      await _ensureHiveReady();
+      final rewardId = uri?.queryParameters['id'];
+      if (rewardId != null) {
+        debugPrint('🔄 Toggling reward: $rewardId');
+        await RewardWidgetService.toggleReward(rewardId).timeout(kInitTimeout);
+      }
+    } catch (e) {
+      debugPrint('⚠️ Reward toggle failed: $e');
+    }
+  } else if (uri?.host == 'reward_refresh') {
+    // Reward widget refresh with new random rewards
+    try {
+      await _ensureHiveReady();
+      await RewardWidgetService.updateWidget().timeout(kInitTimeout);
+    } catch (e) {
+      debugPrint('⚠️ Reward widget refresh failed: $e');
+    }
+  }
+}
+
+/// Ensure Hive is initialized for background callbacks
+Future<void> _ensureHiveReady() async {
+  if (_hiveInitialized) return;
+
+  try {
+    final dbPath = await path.getApplicationDocumentsDirectory().timeout(
+      Duration(seconds: 3),
+    );
+    Hive.init(dbPath.path);
+
+    if (!Hive.isBoxOpen(AppDatabaseKeys.appServicesKey)) {
+      await Hive.openBox<String>(
+        AppDatabaseKeys.appServicesKey,
+      ).timeout(Duration(seconds: 3));
+    }
+
+    if (!Hive.isBoxOpen('zikrHistoryBox')) {
+      await HistoryDBProvider.init().timeout(Duration(seconds: 3));
+    }
+
+    _hiveInitialized = true;
+    debugPrint('✅ Hive ready for widget callback');
+  } catch (e) {
+    debugPrint('⚠️ Hive init in callback failed: $e');
+  }
+}
+
+// ============================================================
+// FIREBASE BACKGROUND HANDLER
+// ============================================================
+
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  debugPrint("Handling a background message: ${message.messageId}");
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-}
-
-void main() async {
-  // FORCE LAUNCH APP - No matter what errors occur, the app MUST launch
-  try {
-    // Ensure Flutter binding is initialized
-    WidgetsFlutterBinding.ensureInitialized();
-
-    // Initialize with default Clarity config first
-    _initializeDefaultClarity();
-
-    // Initialize core services
-    await _safeInitializeCoreServices();
-
-    // Initialize Firebase
-    await _safeInitializeFirebase();
-
-    // Setup error handling
-    _safeSetupErrorHandling();
-
-    // Initialize dependency injection
-    _safeInitDI();
-
-    // Setup Firebase Messaging and notifications
-    await _safeSetupFirebaseMessaging();
-
-    // Initialize local services
-    await _safeInitializeLocalServices();
-
-    // Setup UI
-    _safeSetupUI();
-  } catch (error, stackTrace) {
-    debugPrint('CRITICAL ERROR during app initialization: $error');
-    debugPrint('Stack trace: $stackTrace');
-
-    // Report to crashlytics if available, but don't let it stop the app
-    try {
-      FirebaseCrashlytics.instance.recordError(error, stackTrace, fatal: false);
-    } catch (e) {
-      debugPrint('Failed to report to crashlytics: $e');
-    }
-  } finally {
-    // ALWAYS launch the app, regardless of any errors above
-    _forceLaunchApp();
-  }
-}
-
-/// Initialize default Clarity configuration
-void _initializeDefaultClarity() {
-  try {
-    _clarityConfig = ClarityConfig(
-      projectId: "toksotegrs",
-      userId: "default_user", // Will be updated with actual token later
-      logLevel: kDebugMode ? LogLevel.Info : LogLevel.None,
-    );
-    debugPrint('Default Clarity config initialized');
-  } catch (error) {
-    debugPrint('Error initializing default Clarity config: $error');
-    // Create minimal config as fallback
-    _clarityConfig = ClarityConfig(
-      projectId: "toksotegrs",
-      userId: "fallback_user",
-      logLevel: kDebugMode ? LogLevel.Info : LogLevel.None,
-    );
-  }
-}
-
-/// Safely initialize core services that don't depend on Firebase
-Future<void> _safeInitializeCoreServices() async {
-  try {
-    await EasyLocalization.ensureInitialized();
-    debugPrint('EasyLocalization initialized successfully');
-  } catch (error) {
-    debugPrint('Error initializing EasyLocalization: $error');
-  }
-
-  try {
-    tz.initializeTimeZones();
-    debugPrint('Timezone initialized successfully');
-  } catch (error) {
-    debugPrint('Error initializing timezone: $error');
-  }
-
-  try {
-    await CacheHelper.init();
-    debugPrint('CacheHelper initialized successfully');
-  } catch (error) {
-    debugPrint('Error initializing CacheHelper: $error');
-  }
-}
-
-/// Safely initialize Firebase with proper configuration
-Future<void> _safeInitializeFirebase() async {
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
-    );
-    debugPrint('Firebase initialized successfully');
+    ).timeout(Duration(seconds: 5));
 
-    // Setup Firebase emulators in debug mode
-    if (kDebugMode) {
-      await _safeSetupFirebaseEmulators();
-    }
-  } catch (error) {
-    debugPrint('CRITICAL: Failed to initialize Firebase: $error');
-    // Continue without Firebase - app should still work
-  }
-}
-
-/// Safely setup Firebase emulators for development
-Future<void> _safeSetupFirebaseEmulators() async {
-  try {
-    // Uncomment and configure as needed
-    // firebaseFirestoreInstance.useFirestoreEmulator('localhost', 8080);
-    // await firebaseAuthInstance.useAuthEmulator('localhost', 9099);
-    debugPrint('Firebase emulators setup completed');
+    await NotificationHelper.firebaseBackgroundHandler(message);
   } catch (e) {
-    debugPrint('Failed to setup Firebase emulators: $e');
+    debugPrint("Background handler error: $e");
   }
 }
 
-/// Safely setup global error handling
-void _safeSetupErrorHandling() {
-  try {
-    // Handle Flutter errors
-    FlutterError.onError = (errorDetails) {
-      try {
-        FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
-      } catch (e) {
-        debugPrint('Failed to record Flutter error to crashlytics: $e');
-      }
-    };
+// ============================================================
+// MAIN FUNCTION - PROPER INITIALIZATION ORDER
+// ============================================================
 
-    // Handle platform errors
-    PlatformDispatcher.instance.onError = (error, stack) {
-      try {
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: false);
-      } catch (e) {
-        debugPrint('Failed to record platform error to crashlytics: $e');
-      }
-      return true; // Continue execution
-    };
-    debugPrint('Error handling setup successfully');
-  } catch (error) {
-    debugPrint('Failed to setup error handling: $error');
-  }
-}
+void main() {
+  runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
 
-/// Safely initialize dependency injection
-void _safeInitDI() {
-  try {
-    initDI();
-    debugPrint('Dependency injection initialized successfully');
-  } catch (error) {
-    debugPrint('Error initializing dependency injection: $error');
-  }
-}
+      debugPrint('🚀 Starting app initialization...');
 
-/// Safely setup Firebase Messaging with proper APNS handling
-Future<void> _safeSetupFirebaseMessaging() async {
-  try {
-    // Enable auto initialization
-    await _messaging.setAutoInitEnabled(true);
-    debugPrint('Firebase Messaging auto-init enabled');
-
-    // Get FCM token with proper APNS handling - using new workaround
-    await _handleTokenWithWorkaround();
-
-    // Setup background message handler
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-    debugPrint('Background message handler setup');
-
-    // Initialize basic notification settings
-    await _safeInitializeNotifications();
-
-    // Handle APNS token for iOS and subscribe to topics
-    await _safeHandleAPNSAndSubscription();
-  } catch (error) {
-    debugPrint('Error setting up Firebase Messaging: $error');
-    // Continue without messaging - app should still work
-  }
-}
-
-/// Temporary workaround for token handling
-Future<void> _handleTokenWithWorkaround() async {
-  try {
-    // Try to get token immediately but don't block
-    String? token;
-    try {
-      token = await _messaging.getToken().timeout(
-        const Duration(seconds: 2),
-        onTimeout: () {
-          debugPrint('Token request timed out, proceeding without token');
-          return null;
-        },
+      // Initialize default clarity
+      _clarityConfig = ClarityConfig(
+        projectId: "toksotegrs",
+        userId: "default_${DateTime.now().millisecondsSinceEpoch}",
+        logLevel: kDebugMode ? LogLevel.Info : LogLevel.None,
       );
-    } catch (e) {
-      debugPrint('Error getting initial token: $e');
+
+      // STEP 1: Initialize Firebase FIRST (many services depend on it)
+      await _initFirebaseFirst();
+
+      // STEP 2: Initialize Hive (UI depends on it)
+      await _initHiveCritical();
+
+      // STEP 3: Initialize EasyLocalization (UI depends on it)
+      await _initEasyLocalization();
+
+      // STEP 4: Initialize Timezone
+      await _initTimezone();
+
+      // STEP 5: Initialize CacheHelper
+      await _initCacheHelper();
+
+      // STEP 6: Initialize DI (NOW Firebase is ready if needed)
+      await _initDI();
+
+      // STEP 7: Setup BLoC observer
+      _initBlocObserver();
+
+      // Mark all critical services as ready
+      _allServicesReady = true;
+      debugPrint('✅ All critical services initialized');
+      await dotenv.load(fileName: ".env");
+      // 🎯 NOW launch app - everything is ready!
+      runApp(ClarityWidget(app: const MyApp(), clarityConfig: _clarityConfig!));
+
+      debugPrint('✅ App launched successfully');
+
+      // ✅ Continue with optional initialization in background
+      _initializeInBackground();
+    },
+    (error, stack) {
+      debugPrint('❌ FATAL ERROR: $error');
+      debugPrint('Stack: $stack');
+
+      // Emergency launch
+      // runApp(
+      //   MaterialApp(
+      //     home: Scaffold(
+      //       backgroundColor: Colors.white,
+      //       body: Center(
+      //         child: Padding(
+      //           padding: const EdgeInsets.all(20),
+      //           child: Column(
+      //             mainAxisAlignment: MainAxisAlignment.center,
+      //             children: [
+      //               const Icon(
+      //                 Icons.error_outline,
+      //                 size: 64,
+      //                 color: Colors.red,
+      //               ),
+      //               const SizedBox(height: 20),
+      //               const Text(
+      //                 'خطأ في التحميل',
+      //                 style: TextStyle(
+      //                   fontSize: 24,
+      //                   fontWeight: FontWeight.bold,
+      //                 ),
+      //               ),
+      //               const SizedBox(height: 10),
+      //               const Text(
+      //                 'Error loading app',
+      //                 style: TextStyle(fontSize: 16, color: Colors.grey),
+      //               ),
+      //               const SizedBox(height: 20),
+      //               Text(
+      //                 error.toString(),
+      //                 style: const TextStyle(fontSize: 12, color: Colors.red),
+      //                 textAlign: TextAlign.center,
+      //               ),
+      //               const SizedBox(height: 20),
+      //               ElevatedButton(
+      //                 onPressed: () {
+      //                   // Restart app
+      //                   runApp(const MyApp());
+      //                 },
+      //                 child: const Text('إعادة المحاولة / Retry'),
+      //               ),
+      //             ],
+      //           ),
+      //         ),
+      //       ),
+      //     ),
+      //   ),
+      // );
+    },
+  );
+}
+
+// ============================================================
+// STEP 1: INITIALIZE FIREBASE FIRST
+// ============================================================
+
+Future<void> _initFirebaseFirst() async {
+  try {
+    debugPrint('🔧 [1/7] Initializing Firebase...');
+
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    ).timeout(Duration(seconds: 10));
+
+    _firebaseInitialized = true;
+    debugPrint('✅ Firebase initialized (online mode)');
+  } catch (e) {
+    _firebaseInitialized = false;
+    debugPrint('⚠️ Firebase NOT initialized (offline mode): $e');
+    debugPrint('📱 App will work without Firebase services');
+  }
+}
+
+// ============================================================
+// STEP 2: INITIALIZE HIVE
+// ============================================================
+
+Future<void> _initHiveCritical() async {
+  try {
+    debugPrint('🔧 [2/7] Initializing Hive...');
+
+    final dbPath = await path.getApplicationDocumentsDirectory().timeout(
+      Duration(seconds: 5),
+    );
+
+    Hive.init(dbPath.path);
+
+    // Open app services box
+    await Hive.openBox<String>(
+      AppDatabaseKeys.appServicesKey,
+    ).timeout(Duration(seconds: 5));
+
+    // Initialize history DB
+    await HistoryDBProvider.init().timeout(Duration(seconds: 5));
+
+    // Set defaults
+    await _setDefaultPreferences();
+
+    _hiveInitialized = true;
+    debugPrint('✅ Hive initialized');
+  } catch (e) {
+    debugPrint('❌ Hive error: $e');
+
+    // Try in-memory fallback
+    try {
+      debugPrint('⚠️ Trying in-memory Hive...');
+      await Hive.openBox<String>(AppDatabaseKeys.appServicesKey, path: null);
+      _hiveInitialized = true;
+      debugPrint('✅ Using in-memory Hive');
+    } catch (e2) {
+      debugPrint('❌ FATAL: Cannot initialize Hive: $e2');
+      rethrow;
+    }
+  }
+}
+
+// ============================================================
+// STEP 3: INITIALIZE EASYLOCALIZATION
+// ============================================================
+
+Future<void> _initEasyLocalization() async {
+  try {
+    debugPrint('🔧 [3/7] Initializing EasyLocalization...');
+    await EasyLocalization.ensureInitialized().timeout(Duration(seconds: 5));
+    debugPrint('✅ EasyLocalization initialized');
+  } catch (e) {
+    debugPrint('⚠️ EasyLocalization failed: $e');
+  }
+}
+
+// ============================================================
+// STEP 4: INITIALIZE TIMEZONE
+// ============================================================
+
+Future<void> _initTimezone() async {
+  try {
+    debugPrint('🔧 [4/7] Initializing Timezone...');
+    tz.initializeTimeZones();
+
+    final tzName = await FlutterTimezone.getLocalTimezone().timeout(
+      kInitTimeout,
+    );
+    tz.setLocalLocation(tz.getLocation(tzName.identifier));
+
+    debugPrint('✅ Timezone: ${tzName.identifier}');
+  } catch (e) {
+    debugPrint('⚠️ Timezone failed, using UTC: $e');
+    tz.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('UTC'));
+  }
+}
+
+// ============================================================
+// STEP 5: INITIALIZE CACHEHELPER
+// ============================================================
+
+Future<void> _initCacheHelper() async {
+  try {
+    debugPrint('🔧 [5/7] Initializing CacheHelper...');
+    await CacheHelper.init().timeout(kInitTimeout);
+    debugPrint('✅ CacheHelper initialized');
+  } catch (e) {
+    debugPrint('⚠️ CacheHelper failed: $e');
+  }
+}
+
+// ============================================================
+// STEP 6: INITIALIZE DI (after Firebase)
+// ============================================================
+
+Future<void> _initDI() async {
+  try {
+    debugPrint('🔧 [6/7] Initializing Dependency Injection...');
+
+    // Wrap in Future to ensure it doesn't block
+    await Future.microtask(() {
+      initDI();
+    }).timeout(Duration(seconds: 5));
+
+    debugPrint('✅ DI initialized');
+  } catch (e) {
+    debugPrint('⚠️ DI failed: $e');
+    debugPrint('⚠️ Some features may not work properly');
+  }
+}
+
+// ============================================================
+// STEP 7: INITIALIZE BLOC OBSERVER
+// ============================================================
+
+void _initBlocObserver() {
+  try {
+    debugPrint('🔧 [7/7] Setting up BLoC observer...');
+    Bloc.observer = MyBlocObserver();
+    debugPrint('✅ BLoC observer setup');
+  } catch (e) {
+    debugPrint('⚠️ BLoC observer failed: $e');
+  }
+}
+
+// ============================================================
+// DEFAULT PREFERENCES
+// ============================================================
+
+Future<void> _setDefaultPreferences() async {
+  try {
+    if (!_hiveInitialized) return;
+
+    final box = Hive.box<String>(AppDatabaseKeys.appServicesKey);
+
+    // Locale
+    if (!box.containsKey(AppDatabaseKeys.localeKey)) {
+      try {
+        final deviceLocale = Platform.localeName.substring(0, 2);
+        const supported = ['ar', 'en'];
+        final locale = supported.contains(deviceLocale) ? deviceLocale : 'ar';
+        await box.put(AppDatabaseKeys.localeKey, locale);
+      } catch (e) {
+        await box.put(AppDatabaseKeys.localeKey, 'ar');
+      }
     }
 
-    // Update with whatever we got (even if null)
-    await _updateClarityWithToken(
-      token ?? 'temp_token_${DateTime.now().millisecondsSinceEpoch}',
-    );
-
-    // Listen for token updates in the background
-    _messaging.onTokenRefresh.listen((newToken) async {
-      debugPrint('Token refreshed: $newToken');
-      await _updateClarityWithToken(newToken);
-      // Here you can also update your server with the new token
-    });
-  } catch (error) {
-    debugPrint('Error in token workaround: $error');
-  }
-}
-
-/// Update Clarity configuration with actual token
-Future<void> _updateClarityWithToken(String token) async {
-  try {
-    _clarityConfig = ClarityConfig(
-      projectId: "toksotegrs",
-      userId: token,
-      logLevel: kDebugMode ? LogLevel.Info : LogLevel.None,
-    );
-    debugPrint('Clarity config updated with token');
-  } catch (error) {
-    debugPrint('Error updating Clarity config: $error');
-  }
-}
-
-/// Safely initialize notifications
-Future<void> _safeInitializeNotifications() async {
-  try {
-    await NotificationHelper.initializeBasic();
-    debugPrint('Notifications initialized successfully');
-  } catch (error) {
-    debugPrint('Error initializing notifications: $error');
-  }
-}
-
-/// Safely handle APNS token and topic subscription with proper iOS handling
-Future<void> _safeHandleAPNSAndSubscription() async {
-  try {
-    if (Platform.isIOS) {
-      // Fix for APNS token issue on iOS
-      String? apnsToken = await _messaging.getAPNSToken();
-      debugPrint('Initial APNS Token: $apnsToken');
-
-      // If APNS token is not available, wait and try again
-      if (apnsToken == null) {
-        debugPrint('APNS token not available, waiting...');
-        await Future.delayed(const Duration(seconds: 2));
-        apnsToken = await _messaging.getAPNSToken();
-        debugPrint('APNS Token after delay: $apnsToken');
-      }
-
-      // Only subscribe to topics after APNS token is available
-      if (apnsToken != null) {
-        await _safeSubscribeToTopics();
-      } else {
-        debugPrint(
-          'Warning: APNS token still not available, skipping topic subscription',
+    // Theme
+    if (!box.containsKey(AppDatabaseKeys.themeKey)) {
+      try {
+        final brightness = PlatformDispatcher.instance.platformBrightness;
+        await box.put(
+          AppDatabaseKeys.themeKey,
+          brightness == Brightness.dark ? "1" : "0",
         );
+      } catch (e) {
+        await box.put(AppDatabaseKeys.themeKey, "0");
+      }
+    }
+
+    // Reciter
+    try {
+      if (AppServicesDBprovider.getAyahReciter().isEmpty &&
+          !AppServicesDBprovider.isOpenedBefore()) {
+        AppServicesDBprovider.setAyahReciter('ar.muhammadayyoub');
+      }
+    } catch (e) {
+      debugPrint('⚠️ Could not set reciter: $e');
+    }
+  } catch (e) {
+    debugPrint('⚠️ Error setting defaults: $e');
+  }
+}
+
+// ============================================================
+// BACKGROUND INITIALIZATION - OPTIONAL SERVICES
+// ============================================================
+
+Future<void> _initializeInBackground() async {
+  debugPrint('🔧 Starting optional services...');
+
+  // Widget setup
+  _initWidget();
+
+  // Error handling (only if Firebase available)
+  if (_firebaseInitialized) {
+    _setupErrorHandling();
+  }
+
+  // Firebase Messaging (only if Firebase available)
+  if (_firebaseInitialized) {
+    await _initMessaging();
+  }
+
+  // UI setup
+  _setupUI();
+
+  debugPrint('✅ Optional services complete');
+}
+
+void _initWidget() {
+  try {
+    HomeWidget.registerInteractivityCallback(widgetBackgroundCallback);
+    HomeWidget.setAppGroupId('group.com.amrabdelhameed.ella_lyaabdoon')
+        .timeout(kInitTimeout)
+        .catchError((e) => debugPrint('⚠️ Widget setup: $e'));
+
+    // Update both widgets
+    PrayerWidgetService.updateWidget()
+        .timeout(kInitTimeout)
+        .catchError((e) => null);
+
+    RewardWidgetService.updateWidget()
+        .timeout(kInitTimeout)
+        .catchError((e) => null);
+
+    debugPrint('✅ Widget setup');
+  } catch (e) {
+    debugPrint('⚠️ Widget failed: $e');
+  }
+}
+
+void _setupErrorHandling() {
+  try {
+    FlutterError.onError = (details) {
+      FirebaseCrashlytics.instance
+          .recordFlutterFatalError(details)
+          .catchError((_) => null);
+    };
+
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance
+          .recordError(error, stack, fatal: false)
+          .catchError((_) => null);
+      return true;
+    };
+
+    debugPrint('✅ Error handling');
+  } catch (e) {
+    debugPrint('⚠️ Error handling failed: $e');
+  }
+}
+
+Future<void> _initMessaging() async {
+  try {
+    debugPrint('🔧 Initializing messaging...');
+    final messaging = FirebaseMessaging.instance;
+
+    await messaging
+        .setAutoInitEnabled(true)
+        .timeout(kInitTimeout)
+        .catchError((_) => null);
+
+    messaging
+        .getToken()
+        .timeout(Duration(seconds: 5))
+        .then((token) {
+          if (token != null) {
+            _clarityConfig = ClarityConfig(
+              projectId: "toksotegrs",
+              userId: token,
+              logLevel: kDebugMode ? LogLevel.Info : LogLevel.None,
+            );
+            debugPrint('✅ FCM token');
+          }
+        })
+        .catchError((e) => debugPrint('⚠️ Token failed: $e'));
+
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    FirebaseMessaging.onMessage.listen(
+      NotificationHelper.handleForegroundMessage,
+    );
+
+    await NotificationHelper.initialize()
+        .timeout(Duration(seconds: 5))
+        .catchError((_) => null);
+
+    if (Platform.isIOS) {
+      final apnsToken = await messaging
+          .getAPNSToken()
+          .timeout(Duration(seconds: 3))
+          .catchError((_) => null);
+
+      if (apnsToken != null) {
+        NotificationHelper.subscribeToTopic(
+          'ALL',
+        ).timeout(kInitTimeout).catchError((_) => null);
       }
     } else {
-      // For Android, we can subscribe immediately
-      await _safeSubscribeToTopics();
+      NotificationHelper.subscribeToTopic(
+        'ALL',
+      ).timeout(kInitTimeout).catchError((_) => null);
     }
-  } catch (error) {
-    debugPrint('Error handling APNS and subscription: $error');
+
+    debugPrint('✅ Messaging');
+  } catch (e) {
+    debugPrint('⚠️ Messaging failed: $e');
   }
 }
 
-/// Safely subscribe to notification topics
-Future<void> _safeSubscribeToTopics() async {
-  try {
-    // await NotificationHelper.subscribeToTopic('all');
-    // debugPrint('Successfully subscribed to topics');
-  } catch (error) {
-    debugPrint('Error subscribing to topics: $error');
-  }
-}
-
-/// Safely initialize local services
-Future<void> _safeInitializeLocalServices() async {
-  try {
-    // Setup BLoC observer
-    Bloc.observer = MyBlocObserver();
-    debugPrint('BLoC observer setup successfully');
-  } catch (error) {
-    debugPrint('Error setting up BLoC observer: $error');
-  }
-
-  try {
-    // Initialize Hive databases
-    await _initHiveBoxes();
-    debugPrint('Hive boxes initialized successfully');
-  } catch (error) {
-    debugPrint('Error initializing Hive boxes: $error');
-  }
-
-  try {
-    // Clear upgrader settings
-    Upgrader.clearSavedSettings();
-    debugPrint('Upgrader settings cleared successfully');
-  } catch (error) {
-    debugPrint('Error clearing upgrader settings: $error');
-  }
-}
-
-/// Safely setup UI configurations
-void _safeSetupUI() {
+void _setupUI() {
   try {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
@@ -353,147 +565,80 @@ void _safeSetupUI() {
         statusBarIconBrightness: Brightness.dark,
       ),
     );
-    debugPrint('UI setup completed successfully');
-  } catch (error) {
-    debugPrint('Error setting up UI: $error');
+    debugPrint('✅ UI setup');
+  } catch (e) {
+    debugPrint('⚠️ UI setup failed: $e');
   }
 }
 
-/// Force launch the application - this will ALWAYS run
-void _forceLaunchApp() {
-  try {
-    debugPrint('FORCE LAUNCHING APP...');
-
-    // Ensure we have a valid Clarity config
-    _clarityConfig ??= ClarityConfig(
-      projectId: "toksotegrs",
-      userId: "emergency_fallback_${DateTime.now().millisecondsSinceEpoch}",
-      logLevel: LogLevel.None,
-    );
-
-    runApp(ClarityWidget(app: MyApp(), clarityConfig: _clarityConfig!));
-
-    debugPrint('APP LAUNCHED SUCCESSFULLY!');
-  } catch (error, stackTrace) {
-    debugPrint('CRITICAL ERROR in force launch: $error');
-    debugPrint('Stack trace: $stackTrace');
-
-    // Last resort - launch without Clarity
-    try {
-      runApp(const MyApp());
-      debugPrint('APP LAUNCHED WITHOUT CLARITY!');
-    } catch (finalError) {
-      debugPrint('FINAL CRITICAL ERROR: $finalError');
-      // At this point, create the most basic app possible
-      runApp(
-        MaterialApp(
-          home: Scaffold(
-            appBar: AppBar(title: const Text('GuROW')),
-            body: const Center(child: Text('App launched in emergency mode')),
-          ),
-        ),
-      );
-    }
-  }
-}
-
-/// Initialize Hive database boxes
-Future<void> _initHiveBoxes() async {
-  try {
-    final dbPath = await path.getApplicationDocumentsDirectory();
-    Hive.init(dbPath.path);
-
-    // Initialize app services box
-    await _initAppServicesBox();
-  } catch (error) {
-    debugPrint('Error initializing Hive boxes: $error');
-  }
-}
-
-/// Initialize app services Hive box with default values
-Future<void> _initAppServicesBox() async {
-  try {
-    final box = await Hive.openBox<String>(AppDatabaseKeys.appServicesKey);
-
-    // Check for existing token
-    if (box.get(AppDatabaseKeys.tokenKey) != null) {
-      debugPrint('Existing token found');
-      // Handle existing token logic here
-    }
-
-    // Set default locale if not exists
-    if (!box.containsKey(AppDatabaseKeys.localeKey)) {
-      final deviceLocale = Platform.localeName.substring(0, 2);
-
-      // List of supported locales
-      const supportedLocales = ['ar', 'en'];
-
-      // Use device locale if supported, otherwise default to 'en'
-      final defaultLocale = supportedLocales.contains(deviceLocale)
-          ? deviceLocale
-          : 'en';
-
-      box.put(AppDatabaseKeys.localeKey, defaultLocale);
-      debugPrint(
-        'Set default locale: $defaultLocale (device locale: $deviceLocale)',
-      );
-    }
-
-    // Set default theme if not exists
-    if (!box.containsKey(AppDatabaseKeys.themeKey)) {
-      box.put(AppDatabaseKeys.themeKey, "0"); // Default to light theme
-      debugPrint('Set default theme: light');
-    }
-  } catch (error) {
-    debugPrint('Error initializing app services box: $error');
-  }
-}
+// ============================================================
+// APP WIDGET
+// ============================================================
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
+    // Safety check
+    if (!_hiveInitialized || !_allServicesReady) {
+      return MaterialApp(
+        home: Scaffold(
+          backgroundColor: Colors.white,
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 20),
+                const Text(
+                  'جاري التحميل...',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  _firebaseInitialized ? 'متصل بالإنترنت' : 'وضع عدم الاتصال',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: _firebaseInitialized ? Colors.green : Colors.orange,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return StreamBuilder<BoxEvent>(
       stream: AppServicesDBprovider.listenable(),
       builder: (context, snapshot) {
+        final currentLocale = AppServicesDBprovider.currentLocale();
+        final isDark = AppServicesDBprovider.isDark();
+
         return EasyLocalization(
           supportedLocales: const [Locale('en'), Locale('ar')],
           path: 'assets/translations',
-          fallbackLocale: const Locale('en'),
-          startLocale: Locale(AppServicesDBprovider.currentLocale()),
+          fallbackLocale: const Locale('ar'),
+          startLocale: Locale(currentLocale),
           useOnlyLangCode: true,
-          child: MyMaterialApp(),
+          child: Builder(
+            builder: (context) {
+              return MaterialApp.router(
+                debugShowCheckedModeBanner: false,
+                title: 'الإ ليعبدون',
+                supportedLocales: context.supportedLocales,
+                localizationsDelegates: context.localizationDelegates,
+                locale: context.locale,
+                themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+                theme: AppTheme.lightTheme(currentLocale),
+                darkTheme: AppTheme.darkTheme(currentLocale),
+                routerConfig: AppRouter.router,
+              );
+            },
+          ),
         );
       },
-    );
-  }
-}
-
-class MyMaterialApp extends StatefulWidget {
-  const MyMaterialApp({super.key});
-
-  @override
-  State<MyMaterialApp> createState() => _MyMaterialAppState();
-}
-
-class _MyMaterialAppState extends State<MyMaterialApp> {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp.router(
-      debugShowCheckedModeBanner: false,
-      title: 'الإ ليعبدون',
-      supportedLocales: context.supportedLocales,
-      localizationsDelegates: context.localizationDelegates,
-      locale: context.locale,
-      themeMode: AppServicesDBprovider.isDark()
-          ? ThemeMode.dark
-          : ThemeMode.light,
-      theme: AppServicesDBprovider.isDark()
-          ? AppTheme.darkTheme(AppServicesDBprovider.currentLocale())
-          : AppTheme.lightTheme(AppServicesDBprovider.currentLocale()),
-      routerConfig: AppRouter.router,
     );
   }
 }

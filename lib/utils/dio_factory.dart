@@ -14,8 +14,8 @@ class DioFactory {
       final dio = Dio();
 
       dio.options
-        ..connectTimeout = const Duration(seconds: 30)
-        ..receiveTimeout = const Duration(seconds: 30);
+        ..connectTimeout = const Duration(seconds: 3)
+        ..receiveTimeout = const Duration(seconds: 3);
 
       // Allow bad certificates on Android for dev/debug purposes only
       if (Platform.isAndroid) {
