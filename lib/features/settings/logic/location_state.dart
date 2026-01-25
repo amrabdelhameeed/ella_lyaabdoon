@@ -1,6 +1,14 @@
 ﻿import 'package:equatable/equatable.dart';
 
-enum LocationStatus { initial, loading, loaded, error }
+enum LocationStatus {
+  initial,
+  loading,
+  loaded,
+  error,
+  permissionDenied,
+  permissionPermanentlyDenied,
+  servicesDisabled,
+}
 
 class LocationState extends Equatable {
   final LocationStatus status;
@@ -34,6 +42,11 @@ class LocationState extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [status, currentCity, latitude, longitude, errorMessage];
+  List<Object?> get props => [
+    status,
+    currentCity,
+    latitude,
+    longitude,
+    errorMessage,
+  ];
 }

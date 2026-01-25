@@ -29,9 +29,9 @@ class PrayerWidgetService {
 
       final periodName = _getArabicPeriodName(currentPeriod);
 
-      debugPrint('📊 Widget Data:');
-      debugPrint('   Period: $periodName');
-      debugPrint('   Title: ${randomReward?.title ?? "No reward"}');
+      // debugPrint('📊 Widget Data:');
+      // debugPrint('   Period: $periodName');
+      // debugPrint('   Title: ${randomReward?.title ?? "No reward"}');
 
       await HomeWidget.saveWidgetData<String>('current_period', periodName);
 

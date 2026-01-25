@@ -7,13 +7,13 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:ella_lyaabdoon/app_router.dart';
 import 'package:ella_lyaabdoon/core/di/di.dart';
 import 'package:ella_lyaabdoon/core/services/prayer_widget_service.dart';
-import 'package:ella_lyaabdoon/core/services/zikr_widget_service.dart';
 import 'package:ella_lyaabdoon/firebase_options.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
 import 'package:ella_lyaabdoon/features/history/data/history_db_provider.dart';
 import 'package:ella_lyaabdoon/core/constants/app_theme.dart';
 import 'package:ella_lyaabdoon/core/services/cache_helper.dart';
 import 'package:ella_lyaabdoon/core/utils/observer.dart';
+import 'package:ella_lyaabdoon/core/services/strike_service.dart';
 import 'package:ella_lyaabdoon/utils/notification_helper.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -58,26 +58,6 @@ Future<void> widgetBackgroundCallback(Uri? uri) async {
     } catch (e) {
       debugPrint('⚠️ Prayer widget refresh failed: $e');
     }
-  } else if (uri?.host == 'reward_check') {
-    // Reward checkbox toggle
-    try {
-      await _ensureHiveReady();
-      final rewardId = uri?.queryParameters['id'];
-      if (rewardId != null) {
-        debugPrint('🔄 Toggling reward: $rewardId');
-        await RewardWidgetService.toggleReward(rewardId).timeout(kInitTimeout);
-      }
-    } catch (e) {
-      debugPrint('⚠️ Reward toggle failed: $e');
-    }
-  } else if (uri?.host == 'reward_refresh') {
-    // Reward widget refresh with new random rewards
-    try {
-      await _ensureHiveReady();
-      await RewardWidgetService.updateWidget().timeout(kInitTimeout);
-    } catch (e) {
-      debugPrint('⚠️ Reward widget refresh failed: $e');
-    }
   }
 }
 
@@ -109,27 +89,10 @@ Future<void> _ensureHiveReady() async {
 }
 
 // ============================================================
-// FIREBASE BACKGROUND HANDLER
-// ============================================================
-
-@pragma('vm:entry-point')
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    ).timeout(Duration(seconds: 5));
-
-    await NotificationHelper.firebaseBackgroundHandler(message);
-  } catch (e) {
-    debugPrint("Background handler error: $e");
-  }
-}
-
-// ============================================================
 // MAIN FUNCTION - PROPER INITIALIZATION ORDER
 // ============================================================
 
-void main() {
+void main() async {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
@@ -147,7 +110,8 @@ void main() {
       await _initFirebaseFirst();
 
       // STEP 2: Initialize Hive (UI depends on it)
-      await _initHiveCritical();
+      // await _initHiveCritical();
+      await initHiveAndDefaults();
 
       // STEP 3: Initialize EasyLocalization (UI depends on it)
       await _initEasyLocalization();
@@ -179,57 +143,6 @@ void main() {
     (error, stack) {
       debugPrint('❌ FATAL ERROR: $error');
       debugPrint('Stack: $stack');
-
-      // Emergency launch
-      // runApp(
-      //   MaterialApp(
-      //     home: Scaffold(
-      //       backgroundColor: Colors.white,
-      //       body: Center(
-      //         child: Padding(
-      //           padding: const EdgeInsets.all(20),
-      //           child: Column(
-      //             mainAxisAlignment: MainAxisAlignment.center,
-      //             children: [
-      //               const Icon(
-      //                 Icons.error_outline,
-      //                 size: 64,
-      //                 color: Colors.red,
-      //               ),
-      //               const SizedBox(height: 20),
-      //               const Text(
-      //                 'خطأ في التحميل',
-      //                 style: TextStyle(
-      //                   fontSize: 24,
-      //                   fontWeight: FontWeight.bold,
-      //                 ),
-      //               ),
-      //               const SizedBox(height: 10),
-      //               const Text(
-      //                 'Error loading app',
-      //                 style: TextStyle(fontSize: 16, color: Colors.grey),
-      //               ),
-      //               const SizedBox(height: 20),
-      //               Text(
-      //                 error.toString(),
-      //                 style: const TextStyle(fontSize: 12, color: Colors.red),
-      //                 textAlign: TextAlign.center,
-      //               ),
-      //               const SizedBox(height: 20),
-      //               ElevatedButton(
-      //                 onPressed: () {
-      //                   // Restart app
-      //                   runApp(const MyApp());
-      //                 },
-      //                 child: const Text('إعادة المحاولة / Retry'),
-      //               ),
-      //             ],
-      //           ),
-      //         ),
-      //       ),
-      //     ),
-      //   ),
-      // );
     },
   );
 }
@@ -256,43 +169,88 @@ Future<void> _initFirebaseFirst() async {
 }
 
 // ============================================================
-// STEP 2: INITIALIZE HIVE
+// STEP 2: INITIALIZE HIVE AND DEFAULTS
+// DEVICE THEME RETRIEVAL FIXED
 // ============================================================
+Future<void> initHiveAndDefaults() async {
+  debugPrint('🔧 Starting Hive + defaults initialization...');
 
-Future<void> _initHiveCritical() async {
   try {
-    debugPrint('🔧 [2/7] Initializing Hive...');
-
+    // Step 1: Get app documents directory
+    debugPrint('📂 Getting application documents directory...');
     final dbPath = await path.getApplicationDocumentsDirectory().timeout(
-      Duration(seconds: 5),
+      const Duration(seconds: 5),
     );
+    debugPrint('✅ Directory found: ${dbPath.path}');
 
+    // Step 2: Initialize Hive
+    debugPrint('🗄 Initializing Hive...');
     Hive.init(dbPath.path);
+    _hiveInitialized = true; // mark Hive ready BEFORE setting defaults
+    debugPrint('✅ v');
 
-    // Open app services box
+    // Step 3: Open app services box
+    debugPrint('📦 Opening App Services box...');
     await Hive.openBox<String>(
       AppDatabaseKeys.appServicesKey,
-    ).timeout(Duration(seconds: 5));
+    ).timeout(const Duration(seconds: 5));
+    debugPrint('✅ App Services box opened');
 
-    // Initialize history DB
-    await HistoryDBProvider.init().timeout(Duration(seconds: 5));
+    // Step 4: Initialize history DB
+    debugPrint('📝 Initializing HistoryDBProvider...');
+    await HistoryDBProvider.init().timeout(const Duration(seconds: 5));
+    debugPrint('✅ HistoryDBProvider initialized');
 
-    // Set defaults
-    await _setDefaultPreferences();
+    // Step 5: Set default preferences
+    debugPrint('⚙️ Setting default preferences...');
+    final box = Hive.box<String>(AppDatabaseKeys.appServicesKey);
 
-    _hiveInitialized = true;
-    debugPrint('✅ Hive initialized');
+    // Theme: read system brightness once
+    if (!box.containsKey(AppDatabaseKeys.themeKey)) {
+      await Future.delayed(
+        const Duration(milliseconds: 100),
+      ); // ensure platform ready
+      final brightness =
+          WidgetsBinding.instance.platformDispatcher.platformBrightness;
+      debugPrint('💡 Detected system brightness: $brightness');
+
+      await box.put(
+        AppDatabaseKeys.themeKey,
+        brightness == Brightness.dark ? "1" : "0",
+      );
+      debugPrint('✅ Theme saved in Hive');
+    } else {
+      debugPrint('ℹ️ Theme already set in Hive, skipping');
+    }
+
+    // Locale: detect and set if missing
+    if (!box.containsKey(AppDatabaseKeys.localeKey)) {
+      try {
+        final deviceLocale = Platform.localeName.substring(0, 2);
+        const supported = ['ar', 'en'];
+        final locale = supported.contains(deviceLocale) ? deviceLocale : 'ar';
+        await box.put(AppDatabaseKeys.localeKey, locale);
+        debugPrint('✅ Locale set to $locale');
+      } catch (e) {
+        await box.put(AppDatabaseKeys.localeKey, 'ar');
+        debugPrint('⚠️ Locale fallback to ar');
+      }
+    } else {
+      debugPrint('ℹ️ Locale already set in Hive, skipping');
+    }
+
+    debugPrint('🎉 Hive + default preferences initialization COMPLETE');
   } catch (e) {
-    debugPrint('❌ Hive error: $e');
+    debugPrint('❌ Hive initialization FAILED: $e');
 
-    // Try in-memory fallback
+    // fallback to in-memory Hive
     try {
       debugPrint('⚠️ Trying in-memory Hive...');
       await Hive.openBox<String>(AppDatabaseKeys.appServicesKey, path: null);
       _hiveInitialized = true;
       debugPrint('✅ Using in-memory Hive');
     } catch (e2) {
-      debugPrint('❌ FATAL: Cannot initialize Hive: $e2');
+      debugPrint('❌ FATAL: Cannot initialize Hive even in-memory: $e2');
       rethrow;
     }
   }
@@ -383,55 +341,6 @@ void _initBlocObserver() {
 }
 
 // ============================================================
-// DEFAULT PREFERENCES
-// ============================================================
-
-Future<void> _setDefaultPreferences() async {
-  try {
-    if (!_hiveInitialized) return;
-
-    final box = Hive.box<String>(AppDatabaseKeys.appServicesKey);
-
-    // Locale
-    if (!box.containsKey(AppDatabaseKeys.localeKey)) {
-      try {
-        final deviceLocale = Platform.localeName.substring(0, 2);
-        const supported = ['ar', 'en'];
-        final locale = supported.contains(deviceLocale) ? deviceLocale : 'ar';
-        await box.put(AppDatabaseKeys.localeKey, locale);
-      } catch (e) {
-        await box.put(AppDatabaseKeys.localeKey, 'ar');
-      }
-    }
-
-    // Theme
-    if (!box.containsKey(AppDatabaseKeys.themeKey)) {
-      try {
-        final brightness = PlatformDispatcher.instance.platformBrightness;
-        await box.put(
-          AppDatabaseKeys.themeKey,
-          brightness == Brightness.dark ? "1" : "0",
-        );
-      } catch (e) {
-        await box.put(AppDatabaseKeys.themeKey, "0");
-      }
-    }
-
-    // Reciter
-    try {
-      if (AppServicesDBprovider.getAyahReciter().isEmpty &&
-          !AppServicesDBprovider.isOpenedBefore()) {
-        AppServicesDBprovider.setAyahReciter('ar.muhammadayyoub');
-      }
-    } catch (e) {
-      debugPrint('⚠️ Could not set reciter: $e');
-    }
-  } catch (e) {
-    debugPrint('⚠️ Error setting defaults: $e');
-  }
-}
-
-// ============================================================
 // BACKGROUND INITIALIZATION - OPTIONAL SERVICES
 // ============================================================
 
@@ -454,6 +363,9 @@ Future<void> _initializeInBackground() async {
   // UI setup
   _setupUI();
 
+  // Strike feature
+  await StrikeService.handleAppOpen();
+
   debugPrint('✅ Optional services complete');
 }
 
@@ -466,10 +378,6 @@ void _initWidget() {
 
     // Update both widgets
     PrayerWidgetService.updateWidget()
-        .timeout(kInitTimeout)
-        .catchError((e) => null);
-
-    RewardWidgetService.updateWidget()
         .timeout(kInitTimeout)
         .catchError((e) => null);
 
@@ -500,6 +408,10 @@ void _setupErrorHandling() {
   }
 }
 
+// ============================================================
+// UPDATED MESSAGING INITIALIZATION SECTION
+// ============================================================
+
 Future<void> _initMessaging() async {
   try {
     debugPrint('🔧 Initializing messaging...');
@@ -520,16 +432,25 @@ Future<void> _initMessaging() async {
               userId: token,
               logLevel: kDebugMode ? LogLevel.Info : LogLevel.None,
             );
-            debugPrint('✅ FCM token');
+            debugPrint('✅ FCM token: ${token.substring(0, 20)}...');
           }
         })
         .catchError((e) => debugPrint('⚠️ Token failed: $e'));
 
-    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    // ⚠️ CRITICAL: Set background handler FIRST (before foreground)
+    FirebaseMessaging.onBackgroundMessage(
+      NotificationHelper.firebaseBackgroundHandler,
+    );
+
+    debugPrint('✅ Background message handler set');
+
+    // ⚠️ CRITICAL: Setup foreground handler
     FirebaseMessaging.onMessage.listen(
       NotificationHelper.handleForegroundMessage,
     );
+    debugPrint('✅ Foreground message handler set');
 
+    // Initialize notification helper
     await NotificationHelper.initialize()
         .timeout(Duration(seconds: 5))
         .catchError((_) => null);
@@ -542,16 +463,18 @@ Future<void> _initMessaging() async {
 
       if (apnsToken != null) {
         NotificationHelper.subscribeToTopic(
-          'ALL',
+          kDebugMode ? 'TEST' : 'ALL',
+          // 'TEST',
         ).timeout(kInitTimeout).catchError((_) => null);
       }
     } else {
       NotificationHelper.subscribeToTopic(
-        'ALL',
+        kDebugMode ? 'TEST' : 'ALL',
+        // 'TEST',
       ).timeout(kInitTimeout).catchError((_) => null);
     }
 
-    debugPrint('✅ Messaging');
+    debugPrint('✅ Messaging setup complete');
   } catch (e) {
     debugPrint('⚠️ Messaging failed: $e');
   }

@@ -1,6 +1,8 @@
 import 'package:bloc/bloc.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:ella_lyaabdoon/core/services/prayer_widget_service.dart';
+import 'package:flutter/material.dart';
+import 'package:home_widget/home_widget.dart';
 
 part 'settings_state.dart';
 
@@ -10,9 +12,12 @@ class SettingsCubit extends Cubit<SettingsState> {
         SettingsState(
           isDarkMode: AppServicesDBprovider.isDark(),
           isEnglish: AppServicesDBprovider.currentLocale() == 'en',
+          isWidgetInstalled: true,
           playAyahReciter: AppServicesDBprovider.getAyahReciter(),
         ),
-      );
+      ) {
+    checkWidgetStatus();
+  }
 
   void toggleTheme(bool value) {
     AppServicesDBprovider.switchTheme();
@@ -35,5 +40,40 @@ class SettingsCubit extends Cubit<SettingsState> {
         playAyahReciter: valueToSave, // empty string means OFF
       ),
     );
+  }
+
+  Future<void> checkWidgetStatus() async {
+    try {
+      final installedWidgets = await HomeWidget.getInstalledWidgets();
+      // Check if either of our widgets is installed
+      final isInstalled = installedWidgets.any(
+        (w) => w.androidClassName == 'PrayerRewardWidgetProvider',
+      );
+      emit(state.copyWith(isWidgetInstalled: isInstalled));
+    } catch (e) {
+      // If check fails, assume not installed or keep current state
+      emit(state.copyWith(isWidgetInstalled: false));
+    }
+  }
+
+  Future<void> requestPinWidget() async {
+    try {
+      // Update widget BEFORE pinning
+      await PrayerWidgetService.updateWidget();
+      await Future.delayed(Duration(milliseconds: 800));
+
+      // Pin widget
+      await HomeWidget.requestPinWidget(
+        androidName: 'PrayerRewardWidgetProvider',
+      );
+
+      // Update AFTER pinning
+      await Future.delayed(Duration(milliseconds: 500));
+      await PrayerWidgetService.updateWidget();
+
+      await checkWidgetStatus();
+    } catch (e) {
+      debugPrint('Error: $e');
+    }
   }
 }

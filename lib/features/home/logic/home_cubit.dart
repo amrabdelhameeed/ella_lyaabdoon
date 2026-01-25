@@ -12,9 +12,7 @@ class HomeCubit extends Cubit<HomeState> {
   AzanHelper? _azanHelper;
   StreamSubscription<ServiceStatus>? _serviceStatusStreamSubscription;
 
-  HomeCubit() : super(const HomeState()) {
-    init();
-  }
+  HomeCubit() : super(const HomeState());
 
   @override
   Future<void> close() {
@@ -22,48 +20,40 @@ class HomeCubit extends Cubit<HomeState> {
     return super.close();
   }
 
-  Future<void> init() async {
+  Future<void> initialize() async {
     emit(state.copyWith(status: HomeStatus.loading));
     try {
-      // Load saved city
-      final savedCity = await LocationStorage.getLat().then((lat) async {
-        if (lat == null) return null;
-        final lng = await LocationStorage.getLng();
-        if (lng == null) return null;
-        return await LocationService.getCity(lat, lng);
-      });
-
       final lat = await LocationStorage.getLat();
       final lng = await LocationStorage.getLng();
 
       if (lat != null && lng != null) {
         _azanHelper = AzanHelper(latitude: lat, longitude: lng);
+
+        final city = await LocationService.getCity(lat, lng);
+
+        emit(state.copyWith(currentCity: city ?? "Unknown"));
+
         _updateTime();
-      }
-
-      // If no location saved, force update
-      if (lat == null) {
-        await updateLocation();
       } else {
-        emit(
-          state.copyWith(
-            status: HomeStatus.loaded,
-            currentCity: savedCity ?? state.currentCity,
-          ),
-        );
+        emit(state.copyWith(status: HomeStatus.loaded));
       }
 
-      _serviceStatusStreamSubscription = Geolocator.getServiceStatusStream()
-          .listen((status) {
-            if (status == ServiceStatus.enabled) {
-              updateLocation();
-            }
-          });
+      // _serviceStatusStreamSubscription = Geolocator.getServiceStatusStream()
+      //     .listen((status) {
+      //       // if (status == ServiceStatus.enabled) {
+      //       // }
+      //     });
     } catch (e) {
       emit(
         state.copyWith(status: HomeStatus.error, errorMessage: e.toString()),
       );
     }
+  }
+
+  void updateWithLocation(double lat, double lng, String city) {
+    _azanHelper = AzanHelper(latitude: lat, longitude: lng);
+    emit(state.copyWith(currentCity: city));
+    _updateTime();
   }
 
   void _updateTime() {
@@ -106,29 +96,6 @@ class HomeCubit extends Cubit<HomeState> {
         status: HomeStatus.loaded,
       ),
     );
-  }
-
-  Future<void> updateLocation() async {
-    try {
-      final position = await LocationService.determinePosition();
-
-      _azanHelper = AzanHelper(
-        latitude: position.latitude,
-        longitude: position.longitude,
-      );
-
-      final city = await LocationService.getCity(
-        position.latitude,
-        position.longitude,
-      );
-
-      await LocationStorage.saveLocation(position.latitude, position.longitude);
-
-      emit(state.copyWith(currentCity: city ?? "Unknown"));
-      _updateTime();
-    } catch (e) {
-      emit(state.copyWith(errorMessage: e.toString()));
-    }
   }
 
   void toggleExpansion(AzanDayPeriod period) {

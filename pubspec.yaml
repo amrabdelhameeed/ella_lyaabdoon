@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.1+8
+version: 1.1.0+9
 
 environment:
   sdk: ^3.9.0-333.2.beta
@@ -38,7 +38,6 @@ dependencies:
   cloud_firestore: ^6.1.1
   cupertino_icons: ^1.0.8
   dio: ^5.4.0
-  # dotenv: ^4.2.0
   easy_localization: ^3.0.8
   equatable: ^2.0.8
   firebase_analytics: ^12.1.0
@@ -67,6 +66,7 @@ dependencies:
   pretty_dio_logger: ^1.3.1
   rate_my_app: ^2.0.0
   redacted: ^1.0.11
+  screenshot: ^3.0.0
   share_plus: ^12.0.1
   shared_preferences: ^2.5.3
   showcaseview: ^3.0.0
@@ -99,6 +99,7 @@ flutter:
     - assets/splash/
     - shorebird.yaml
     - .env
+    - assets/playstore.png
     # - /Users/amrabdelhamid/StudioProjects/company projects/fvm_gurow/gurow_refactored/assets/ca/lets-encrypt-r3.pem
   fonts:
     # - family: Segoe UI
@@ -149,7 +150,8 @@ flutter_native_splash:
   android_12:
     # Background color for Android 12+
     color: "#378654"
-    #color_dark: "#0D8A38"
+
+    color_dark: "#378654"
     # Center logo for Android 12+
     # Android 12+ requires a square image (960x960 or 1152x1152)
     # Your 1920x1920 image works perfectly here

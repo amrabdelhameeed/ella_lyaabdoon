@@ -1,6 +1,7 @@
 class AppRoutes {
   AppRoutes._();
   static const splash = '/splash';
+  static const locationPermission = '/locationPermission';
 
   static const packages = '/packages';
   static const chooseLang = '/chooseLang';

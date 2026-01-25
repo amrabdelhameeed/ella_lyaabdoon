@@ -1,117 +1,237 @@
 package com.amrabdelhameed.ella_lyaabdoon
 
-import android.appwidget.AppWidgetManager
-import android.appwidget.AppWidgetProvider
 import android.content.Context
-import android.widget.RemoteViews
-import android.app.PendingIntent
-import android.content.Intent
 import android.net.Uri
-import android.util.Log
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.glance.*
+import androidx.glance.action.ActionParameters
+import androidx.glance.action.clickable
+import androidx.glance.action.actionStartActivity
+import androidx.glance.appwidget.GlanceAppWidget
+import androidx.glance.appwidget.action.ActionCallback
+import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.provideContent
+import androidx.glance.appwidget.cornerRadius
+import androidx.glance.layout.*
+import androidx.glance.text.*
+import androidx.glance.unit.ColorProvider
+import androidx.glance.state.GlanceStateDefinition
+import es.antonborri.home_widget.HomeWidgetGlanceState
+import es.antonborri.home_widget.HomeWidgetGlanceStateDefinition
 import es.antonborri.home_widget.HomeWidgetBackgroundIntent
+import es.antonborri.home_widget.HomeWidgetGlanceWidgetReceiver
 
-class PrayerRewardWidgetProvider : AppWidgetProvider() {
+class PrayerRewardGlanceWidget : GlanceAppWidget() {
 
-    companion object {
-        private const val ACTION_REFRESH = "com.amrabdelhameed.ella_lyaabdoon.ACTION_REFRESH"
+    override val stateDefinition: GlanceStateDefinition<*>?
+        get() = HomeWidgetGlanceStateDefinition()
+
+    override suspend fun provideGlance(context: Context, id: GlanceId) {
+        provideContent {
+            val state = currentState<HomeWidgetGlanceState>()
+            val prefs = state.preferences
+
+            val period = prefs.getString("current_period", null) ?: "إلا ليعبدون"
+            val title = prefs.getString("reward_title", null) ?: "افتح التطبيق"
+            val desc = prefs.getString("reward_description", null) ?: "اضغط للتحديث"
+            val time = prefs.getString("update_time", null) ?: "..."
+
+            CompactWidgetContent(period, title, desc, time)
+        }
     }
+}
 
-    override fun onUpdate(
-        context: Context,
-        appWidgetManager: AppWidgetManager,
-        appWidgetIds: IntArray
+@Composable
+private fun CompactWidgetContent(period: String, title: String, desc: String, time: String) {
+    val primaryGreen = Color(0xFF2D5F3F)
+    val accentGreen = Color(0xFF4A9B6A)
+    val surfaceGreen = Color(0xFF1C4430)
+
+    val white = ColorProvider(Color.White)
+    val whiteAlpha90 = ColorProvider(Color(0xE6FFFFFF))
+    val whiteAlpha70 = ColorProvider(Color(0xB3FFFFFF))
+    val whiteAlpha30 = ColorProvider(Color(0x4DFFFFFF))
+    val goldAccent = ColorProvider(Color(0xFFFFD700))
+
+    Box(
+        modifier = GlanceModifier
+            .fillMaxSize()
+            .background(primaryGreen)
     ) {
-        Log.d("PRAYER_WIDGET", "onUpdate called for ${appWidgetIds.size} widgets")
+        Column(
+            modifier = GlanceModifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalAlignment = Alignment.Top
+        ) {
 
-        for (appWidgetId in appWidgetIds) {
-            updateAppWidget(context, appWidgetManager, appWidgetId)
+            Spacer(
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .height(2.dp)
+                    .background(goldAccent)
+            )
+
+            Column(
+                modifier = GlanceModifier
+                    .fillMaxSize()
+                    .padding(10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalAlignment = Alignment.Top
+            ) {
+
+                // HEADER
+                Row(
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .background(surfaceGreen)
+                        .cornerRadius(12.dp)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text("🕌", style = TextStyle(fontSize = 20.sp))
+                    Spacer(modifier = GlanceModifier.width(8.dp))
+                    Text(
+                        text = period,
+                        style = TextStyle(
+                            color = goldAccent,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                    )
+                }
+
+                Spacer(modifier = GlanceModifier.height(10.dp))
+
+                // CLICKABLE CONTENT AREA (OPAQUE FIX)
+                Box(
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .defaultWeight()
+                        .background(ColorProvider(Color(0x01000000))) // invisible hit-layer
+                        .cornerRadius(14.dp)
+                        .clickable(actionStartActivity<MainActivity>())
+                        .padding(8.dp)
+                ) {
+
+                    // Visual card
+                    Box(
+                        modifier = GlanceModifier
+                            .fillMaxSize()
+                            .background(ColorProvider(Color(0x1AFFFFFF)))
+                            .cornerRadius(14.dp)
+                            .padding(12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+
+                        Column(
+                            modifier = GlanceModifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalAlignment = Alignment.Top
+                        ) {
+
+                            Text(
+                                text = title,
+                                style = TextStyle(
+                                    color = white,
+                                    fontSize = 17.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    textAlign = TextAlign.Center
+                                )
+                            )
+
+                            Spacer(modifier = GlanceModifier.height(6.dp))
+
+                            Spacer(
+                                modifier = GlanceModifier
+                                    .width(60.dp)
+                                    .height(1.5.dp)
+                                    .background(whiteAlpha30)
+                            )
+
+                            Spacer(modifier = GlanceModifier.height(6.dp))
+
+                            Text(
+                                text = desc,
+                                style = TextStyle(
+                                    color = whiteAlpha90,
+                                    fontSize = 14.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = GlanceModifier.height(8.dp))
+
+                // FOOTER
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+
+                    Text(
+                        text = "⏰ $time",
+                        style = TextStyle(
+                            color = whiteAlpha70,
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
+
+                    Spacer(modifier = GlanceModifier.defaultWeight())
+
+                    Box(
+                        modifier = GlanceModifier
+                            .height(34.dp)
+                            .background(accentGreen)
+                            .cornerRadius(17.dp)
+                            .clickable(actionRunCallback<RefreshActionCallback>())
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("🔄", style = TextStyle(fontSize = 12.sp))
+                            Spacer(modifier = GlanceModifier.width(4.dp))
+                            Text(
+                                text = "تحديث",
+                                style = TextStyle(
+                                    color = white,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
+}
 
-    override fun onReceive(context: Context, intent: Intent) {
-        super.onReceive(context, intent)
-        
-        if (intent.action == ACTION_REFRESH) {
-            Log.d("PRAYER_WIDGET", "Refresh button clicked!")
-            
-            // Trigger Flutter background callback
-            val backgroundIntent = HomeWidgetBackgroundIntent.getBroadcast(
-                context, 
-                Uri.parse("homeWidget://refresh")
-            )
-            backgroundIntent.send()
-            
-            // Immediately update all widgets
-            val appWidgetManager = AppWidgetManager.getInstance(context)
-            val appWidgetIds = appWidgetManager.getAppWidgetIds(
-                android.content.ComponentName(context, PrayerRewardWidgetProvider::class.java)
-            )
-            onUpdate(context, appWidgetManager, appWidgetIds)
-        }
-    }
-
-    private fun updateAppWidget(
+class RefreshActionCallback : ActionCallback {
+    override suspend fun onAction(
         context: Context,
-        appWidgetManager: AppWidgetManager,
-        appWidgetId: Int
+        glanceId: GlanceId,
+        parameters: ActionParameters
     ) {
-        try {
-            val prefs = context.getSharedPreferences("HomeWidgetPreferences", Context.MODE_PRIVATE)
-            
-            val period = prefs.getString("current_period", null)
-            val title = prefs.getString("reward_title", null)
-            val description = prefs.getString("reward_description", null)
-            val updateTime = prefs.getString("update_time", null)
-            
-            Log.d("PRAYER_WIDGET", "Widget data: period=$period, title=$title")
-            
-            val displayPeriod = period ?: "إلا ليعبدون"
-            val displayTitle = title ?: "افتح التطبيق للتحديث"
-            val displayDesc = description ?: "اضغط على زر التحديث لعرض فضيلة جديدة"
-            val displayTime = if (!updateTime.isNullOrEmpty()) {
-                "آخر تحديث: $updateTime"
-            } else {
-                "انتظار التحديث..."
-            }
-            
-            val views = RemoteViews(context.packageName, R.layout.prayer_reward_widget)
-            
-            views.setTextViewText(R.id.widget_period_name, displayPeriod)
-            views.setTextViewText(R.id.widget_reward_title, displayTitle)
-            views.setTextViewText(R.id.widget_reward_description, displayDesc)
-            views.setTextViewText(R.id.widget_update_time, displayTime)
-            
-            // Refresh button click intent
-            val refreshIntent = Intent(context, PrayerRewardWidgetProvider::class.java).apply {
-                action = ACTION_REFRESH
-                putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, intArrayOf(appWidgetId))
-            }
-            val refreshPendingIntent = PendingIntent.getBroadcast(
-                context,
-                appWidgetId * 100, // Unique request code
-                refreshIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-            )
-            views.setOnClickPendingIntent(R.id.widget_refresh_button, refreshPendingIntent)
-            
-            // Main widget click to open app
-            val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
-            if (launchIntent != null) {
-                launchIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                val pendingIntent = PendingIntent.getActivity(
-                    context,
-                    appWidgetId,
-                    launchIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                )
-                views.setOnClickPendingIntent(R.id.widget_content, pendingIntent)
-            }
-            
-            appWidgetManager.updateAppWidget(appWidgetId, views)
-            Log.d("PRAYER_WIDGET", "✅ Widget $appWidgetId updated successfully")
-            
-        } catch (e: Exception) {
-            Log.e("PRAYER_WIDGET", "❌ Error updating widget: ${e.message}", e)
-        }
+        val backgroundIntent = HomeWidgetBackgroundIntent.getBroadcast(
+            context,
+            Uri.parse("homeWidget://refresh")
+        )
+        backgroundIntent.send()
     }
+}
+
+class PrayerRewardWidgetProvider :
+    HomeWidgetGlanceWidgetReceiver<PrayerRewardGlanceWidget>() {
+    override val glanceAppWidget = PrayerRewardGlanceWidget()
 }

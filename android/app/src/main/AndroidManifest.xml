@@ -28,6 +28,8 @@
     </queries>
 
     <application
+        android:supportsRtl="true"
+
         android:label="الإ ليعبدون"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
@@ -50,7 +52,9 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
-
+            <intent-filter>
+                <action android:name="es.antonborri.home_widget.action.LAUNCH" />
+            </intent-filter>
         </activity>
 
         <!-- Flutter notifications -->
@@ -70,7 +74,7 @@
         </receiver>
 
         <!-- Prayer Widget (XML-based) -->
-        <receiver 
+        <!-- <receiver 
             android:name=".PrayerRewardWidgetProvider"
             android:exported="true">
             <intent-filter>
@@ -79,8 +83,20 @@
             <meta-data 
                 android:name="android.appwidget.provider"
                 android:resource="@xml/prayer_reward_widget_info"/>
+        </receiver> -->
+        <receiver
+            android:name=".PrayerRewardWidgetProvider"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/prayer_reward_info" />
         </receiver>
 
+        
         <!-- Background receiver for widget refresh button -->
         <receiver 
             android:name="es.antonborri.home_widget.HomeWidgetBackgroundReceiver"
@@ -89,6 +105,18 @@
                 <action android:name="es.antonborri.home_widget.action.BACKGROUND" />
             </intent-filter>
         </receiver>
+
+
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/notification_icon"/>
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/launcher_icon_background"/>
+        <!-- <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="ella_lyaabdoon"/> -->
 
         <!-- 🚫 DISABLE GOOGLE PLAY SERVICES ADS (if any dependency adds it) -->
         <meta-data

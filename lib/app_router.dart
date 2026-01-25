@@ -4,7 +4,9 @@ import 'package:ella_lyaabdoon/features/intro/presentation/intro_screen.dart';
 import 'package:ella_lyaabdoon/features/settings/presentation/settings_screen.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
 import 'package:ella_lyaabdoon/core/constants/app_routes.dart';
+import 'package:ella_lyaabdoon/core/services/location_storage.dart';
 import 'package:ella_lyaabdoon/features/history/presentation/history_screen.dart';
+import 'package:ella_lyaabdoon/features/settings/presentation/screens/location_permission_screen.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -48,6 +50,24 @@ class AppRouter {
     navigatorKey: _rootNavigatorKey,
     onException: (context, state, router) {},
 
+    redirect: (context, state) async {
+      final isIntro = state.matchedLocation == AppRoutes.intro;
+      final isLocationPermission =
+          state.matchedLocation == AppRoutes.locationPermission;
+
+      if (!AppServicesDBprovider.isOpenedBefore()) {
+        return isIntro ? null : AppRoutes.intro;
+      }
+
+      final hasLocation = await LocationStorage.hasLocation();
+      if (!hasLocation) {
+        if (isLocationPermission || isIntro) return null;
+        return AppRoutes.locationPermission;
+      }
+
+      return null;
+    },
+
     routes: [
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
@@ -69,6 +89,13 @@ class AppRouter {
         name: AppRoutes.home,
         builder: (context, state) => const HomeScreen(),
         pageBuilder: defaultPageBuilder(const HomeScreen()),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: AppRoutes.locationPermission,
+        name: AppRoutes.locationPermission,
+        builder: (context, state) => const LocationPermissionScreen(),
+        pageBuilder: defaultPageBuilder(const LocationPermissionScreen()),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,

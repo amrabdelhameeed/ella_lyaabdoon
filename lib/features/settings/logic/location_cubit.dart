@@ -1,11 +1,34 @@
 ﻿import 'package:bloc/bloc.dart';
 import 'package:ella_lyaabdoon/core/services/location_service.dart';
 import 'package:ella_lyaabdoon/core/services/location_storage.dart';
+import 'package:geolocator/geolocator.dart';
 import 'location_state.dart';
+import 'dart:async';
 
 class LocationCubit extends Cubit<LocationState> {
+  StreamSubscription<ServiceStatus>? _serviceStatusSubscription;
+
   LocationCubit() : super(const LocationState()) {
     init();
+    _subscribeToServiceStatus();
+  }
+
+  @override
+  Future<void> close() {
+    _serviceStatusSubscription?.cancel();
+    return super.close();
+  }
+
+  void _subscribeToServiceStatus() {
+    _serviceStatusSubscription = Geolocator.getServiceStatusStream().listen((
+      status,
+    ) {
+      if (status == ServiceStatus.enabled) {
+        updateLocation(fromUserAction: false);
+      } else {
+        emit(state.copyWith(status: LocationStatus.servicesDisabled));
+      }
+    });
   }
 
   Future<void> init() async {
@@ -36,7 +59,7 @@ class LocationCubit extends Cubit<LocationState> {
         }
       }
 
-      // fetch fresh location if nothing saved
+      // If no saved location, check permissions first
       await updateLocation(fromUserAction: false);
     } catch (e) {
       emit(
@@ -96,12 +119,24 @@ class LocationCubit extends Cubit<LocationState> {
         ),
       );
     } catch (e) {
-      emit(
-        state.copyWith(
-          status: LocationStatus.error,
-          errorMessage: e.toString(),
-        ),
-      );
+      final errorMsg = e.toString();
+      LocationStatus status = LocationStatus.error;
+
+      if (errorMsg.contains('Location services are disabled')) {
+        status = LocationStatus.servicesDisabled;
+      } else if (errorMsg.contains('Location permissions are denied')) {
+        status = LocationStatus.permissionDenied;
+      } else if (errorMsg.contains(
+        'Location permissions are permanently denied',
+      )) {
+        status = LocationStatus.permissionPermanentlyDenied;
+      }
+
+      emit(state.copyWith(status: status, errorMessage: errorMsg));
     }
+  }
+
+  Future<void> requestPermission() async {
+    await updateLocation(fromUserAction: true);
   }
 }

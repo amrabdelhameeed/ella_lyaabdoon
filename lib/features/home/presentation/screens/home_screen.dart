@@ -11,6 +11,9 @@ import 'package:ella_lyaabdoon/features/home/logic/home_cubit.dart';
 import 'package:ella_lyaabdoon/features/home/logic/home_state.dart';
 import 'package:ella_lyaabdoon/features/home/logic/quran_audio_cubit.dart';
 import 'package:ella_lyaabdoon/features/home/logic/translation_cubit.dart';
+import 'package:ella_lyaabdoon/core/services/strike_service.dart';
+import 'package:ella_lyaabdoon/features/settings/logic/location_cubit.dart';
+import 'package:ella_lyaabdoon/features/settings/logic/location_state.dart';
 import 'package:ella_lyaabdoon/features/home/presentation/widgets/timeline_header.dart';
 import 'package:ella_lyaabdoon/features/home/presentation/widgets/timeline_reward_item.dart';
 import 'package:ella_lyaabdoon/features/home/presentation/widgets/timeline_show_more_button.dart';
@@ -43,7 +46,9 @@ class _HomeScreenState extends State<HomeScreen>
   final Map<AzanDayPeriod, GlobalKey> _periodKeys = {};
   final GlobalKey _historyKey = GlobalKey();
   final GlobalKey _settingsKey = GlobalKey();
+  final GlobalKey _strikeKey = GlobalKey();
   // final GlobalKey _firstRewardKey = GlobalKey();
+  final String _strikeShowcaseKey = 'strike_showcase_shown21';
 
   // Services
   final InAppReview _inAppReview = InAppReview.instance;
@@ -59,6 +64,21 @@ class _HomeScreenState extends State<HomeScreen>
   static const int _reviewMinLaunches = 5;
   static const int _reviewRemindDays = 7;
   static const int _reviewRemindLaunches = 10;
+  // ADD THIS NEW METHOD
+
+  // ADD THIS: Cache shuffled rewards
+  Map<AzanDayPeriod, List<dynamic>> _shuffledRewards = {};
+  // MODIFY THIS METHOD
+  void _shuffleRewardsOnce() {
+    for (var item in AppLists.timelineItems) {
+      // Create a shuffled copy and store it in our cache
+      final shuffledList = List<dynamic>.from(item.rewards)..shuffle();
+      _shuffledRewards[item.period] = shuffledList;
+    }
+    debugPrint(
+      '✅ Rewards shuffled and cached: ${_shuffledRewards.length} periods',
+    );
+  }
 
   @override
   void initState() {
@@ -69,6 +89,8 @@ class _HomeScreenState extends State<HomeScreen>
     _playSavedReciterAyah();
     _initializeRateMyApp();
     _initializeHomeWidget();
+    _shuffleRewardsOnce(); // ADD THIS LINE
+
     // Add this to test
     Future.delayed(Duration(seconds: 2), () {
       PrayerWidgetService.updateWidget();
@@ -200,8 +222,8 @@ class _HomeScreenState extends State<HomeScreen>
       Scrollable.ensureVisible(
         key!.currentContext!,
         duration: const Duration(milliseconds: 500),
-        curve: Curves.easeInOut,
-        alignment: 0.1,
+        curve: Curves.bounceIn,
+        alignment: 0.0,
       );
     }
   }
@@ -234,8 +256,10 @@ class _HomeScreenState extends State<HomeScreen>
   void _startShowcase(BuildContext showcaseContext) {
     if (_hasStartedShowcase) return;
 
-    if (!CacheHelper.getBool(_showcaseKey)) {
-      // Try multiple times to find the widget context
+    final homeShown = CacheHelper.getBool(_showcaseKey);
+    final strikeShown = CacheHelper.getBool(_strikeShowcaseKey);
+
+    if (!homeShown || !strikeShown) {
       _attemptShowcaseStart(showcaseContext, 0);
     }
   }
@@ -250,30 +274,41 @@ class _HomeScreenState extends State<HomeScreen>
       Future.delayed(Duration(milliseconds: 200 * (attempt + 1)), () {
         if (!mounted) return;
 
-        // debugPrint(
-        //   'Showcase attempt $attempt: _firstRewardKey.currentContext = ${_firstRewardKey.currentContext}',
-        // );
-        debugPrint(
-          'Showcase attempt $attempt: _historyKey.currentContext = ${_historyKey.currentContext}',
-        );
-        debugPrint(
-          'Showcase attempt $attempt: _settingsKey.currentContext = ${_settingsKey.currentContext}',
-        );
-
-        if (
-        // _firstRewardKey.currentContext != null &&
-        _historyKey.currentContext != null &&
+        if (_strikeKey.currentContext != null &&
+            _historyKey.currentContext != null &&
             _settingsKey.currentContext != null) {
           _hasStartedShowcase = true;
 
-          debugPrint('Starting showcase now!');
-          ShowCaseWidget.of(showcaseContext).startShowCase([
-            _historyKey, _settingsKey,
-            //  _firstRewardKey
-          ]);
-          CacheHelper.setBool(_showcaseKey, true);
+          final homeShown = CacheHelper.getBool(_showcaseKey);
+          final strikeShown = CacheHelper.getBool(_strikeShowcaseKey);
+
+          final List<GlobalKey> showcaseTargets = [];
+
+          // Add strike only if not shown before
+          if (!strikeShown) {
+            showcaseTargets.add(_strikeKey);
+          }
+
+          // Add old ones only if home showcase not fully shown
+          if (!homeShown) {
+            showcaseTargets.addAll([_historyKey, _settingsKey]);
+          }
+
+          if (showcaseTargets.isEmpty) {
+            return; // Nothing new to show
+          }
+
+          ShowCaseWidget.of(showcaseContext).startShowCase(showcaseTargets);
+
+          // Mark keys as shown
+          if (!strikeShown) {
+            CacheHelper.setBool(_strikeShowcaseKey, true);
+          }
+
+          if (!homeShown) {
+            CacheHelper.setBool(_showcaseKey, true);
+          }
         } else {
-          debugPrint('Retrying showcase start...');
           _attemptShowcaseStart(showcaseContext, attempt + 1);
         }
       });
@@ -314,27 +349,42 @@ class _HomeScreenState extends State<HomeScreen>
       providers: [
         BlocProvider(create: (_) => QuranAudioCubit()),
         BlocProvider(create: (_) => TranslationCubit()),
-        BlocProvider(create: (_) => HomeCubit()),
+        BlocProvider(create: (_) => LocationCubit()),
+        BlocProvider(create: (context) => HomeCubit()..initialize()),
         BlocProvider(create: (_) => HistoryCubit()),
       ],
-      child: UpgradeAlert(
-        barrierDismissible: false,
-        showIgnore: false,
-        showLater: false,
-        showReleaseNotes: true,
-        upgrader: Upgrader(
-          // debugDisplayAlways: kDebugMode,
-          durationUntilAlertAgain: const Duration(seconds: 2),
-          debugLogging: true,
-        ),
-        child: ShowCaseWidget(
-          onComplete: (_, __) => _onShowcaseComplete(),
-          autoPlayDelay: const Duration(seconds: 8),
-          disableBarrierInteraction: false,
-          autoPlay: false,
-          builder: (contextOfShowCase) {
-            return _buildScaffold(contextOfShowCase);
-          },
+      child: BlocListener<LocationCubit, LocationState>(
+        listener: (context, state) {
+          if (state.status == LocationStatus.loaded &&
+              state.latitude != null &&
+              state.longitude != null) {
+            context.read<HomeCubit>().updateWithLocation(
+              state.latitude!,
+              state.longitude!,
+              state.currentCity ?? "Unknown",
+            );
+          }
+        },
+        child: UpgradeAlert(
+          barrierDismissible: false,
+          showIgnore: false,
+          showLater: false,
+          showReleaseNotes: true,
+          upgrader: Upgrader(
+            languageCode: AppServicesDBprovider.currentLocale(),
+            // debugDisplayAlways: kDebugMode,
+            durationUntilAlertAgain: const Duration(hours: 1),
+            // debugLogging: true,
+          ),
+          child: ShowCaseWidget(
+            onComplete: (_, __) => _onShowcaseComplete(),
+            autoPlayDelay: const Duration(seconds: 8),
+            disableBarrierInteraction: false,
+            autoPlay: false,
+            builder: (contextOfShowCase) {
+              return _buildScaffold(contextOfShowCase);
+            },
+          ),
         ),
       ),
     );
@@ -342,6 +392,13 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildScaffold(BuildContext showcaseContext) {
     return Scaffold(
+      // floatingActionButton: FloatingActionButton(
+      //   child:
+      //   //CHALLENGE ICON
+      //   const Icon(Icons.),
+      //   onPressed: () {
+      //   //A DIALOG
+      // },),
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(),
       body: _buildBody(showcaseContext),
@@ -350,8 +407,32 @@ class _HomeScreenState extends State<HomeScreen>
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      title: Text('home_screen'.tr()),
+      title: Text('app_title'.tr()),
       actions: [
+        Showcase(
+          key: _strikeKey,
+          title: 'showcase_strike_title'.tr(),
+          description: 'showcase_strike_desc'.tr(),
+          child: Row(
+            children: [
+              Icon(
+                Icons.local_fire_department,
+                color: StrikeService.getStrikeColor(
+                  StrikeService.getStrikeCount(),
+                ),
+              ),
+              Text(
+                StrikeService.getStrikeCount().toString(),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: StrikeService.getStrikeColor(
+                    StrikeService.getStrikeCount(),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
         _buildShowcaseButton(
           key: _historyKey,
           title: 'showcase_history_title'.tr(),
@@ -392,36 +473,41 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Widget _buildBody(BuildContext showcaseContext) {
-    return BlocConsumer<HomeCubit, HomeState>(
-      listenWhen: (previous, current) =>
-          previous.currentPeriod != current.currentPeriod,
-      listener: (context, state) {
-        if (state.status == HomeStatus.loaded) {
-          PrayerWidgetService.updateWidget();
-        }
-        if (state.currentPeriod != null) {
-          // Store the current period for later scrolling
-          _currentPeriodForScroll = state.currentPeriod;
-
-          // Only scroll immediately if showcase has already been shown
-          if (CacheHelper.getBool(_showcaseKey)) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _scrollToCurrentPeriod(state.currentPeriod!);
-            });
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewPadding.bottom,
+      ),
+      child: BlocConsumer<HomeCubit, HomeState>(
+        listenWhen: (previous, current) =>
+            previous.currentPeriod != current.currentPeriod,
+        listener: (context, state) {
+          if (state.status == HomeStatus.loaded) {
+            PrayerWidgetService.updateWidget();
           }
-        }
-      },
-      builder: (context, state) {
-        if (state.status == HomeStatus.loading) {
-          return const Center(child: CircularProgressIndicator());
-        }
+          if (state.currentPeriod != null) {
+            // Store the current period for later scrolling
+            _currentPeriodForScroll = state.currentPeriod;
 
-        if (state.status == HomeStatus.error) {
-          return Center(child: Text(state.errorMessage ?? 'Unknown error'));
-        }
+            // Only scroll immediately if showcase has already been shown
+            if (CacheHelper.getBool(_showcaseKey)) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                _scrollToCurrentPeriod(state.currentPeriod!);
+              });
+            }
+          }
+        },
+        builder: (context, state) {
+          if (state.status == HomeStatus.loading) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-        return _buildTimeline(state, showcaseContext);
-      },
+          if (state.status == HomeStatus.error) {
+            return Center(child: Text(state.errorMessage ?? 'Unknown error'));
+          }
+
+          return _buildTimeline(state, showcaseContext);
+        },
+      ),
     );
   }
 
@@ -437,7 +523,6 @@ class _HomeScreenState extends State<HomeScreen>
     HomeState state,
     BuildContext showcaseContext,
   ) {
-    // Always showcase the first reward of the first prayer (index 0, reward 0)
     int rewardCounter = 0;
 
     final items = AppLists.timelineItems.asMap().entries.map((entry) {
@@ -449,12 +534,16 @@ class _HomeScreenState extends State<HomeScreen>
       final isFirst = index == 0;
       final isLast = index == AppLists.timelineItems.length - 1;
       final isExpanded = state.expandedPeriods.contains(item.period);
-      final visibleRewards = _getVisibleRewards(
-        item,
-        state.currentPeriod,
-        state.expandedPeriods,
+
+      // USE CACHED SHUFFLED REWARDS instead of item.rewards
+      final shuffledRewards = _shuffledRewards[item.period] ?? item.rewards;
+
+      final visibleRewards = _getVisibleRewardsFromList(
+        shuffledRewards,
+        isCurrent,
+        isExpanded,
       );
-      final hasMore = item.rewards.length > 3;
+      final hasMore = shuffledRewards.length > 3;
       final showMoreButton = !isCurrent && hasMore;
 
       return Container(
@@ -479,7 +568,6 @@ class _HomeScreenState extends State<HomeScreen>
                       i == visibleRewards.length - 1 &&
                       !showMoreButton &&
                       isLast,
-                  // Show showcase on very first reward (global counter == 0)
                   isFirstRewardOfFirstPrayer: rewardCounter++ == 0,
                 ),
               if (showMoreButton)
@@ -487,7 +575,7 @@ class _HomeScreenState extends State<HomeScreen>
                   builder: (context, state) {
                     return TimelineShowMoreButton(
                       isExpanded: isExpanded,
-                      remainingCount: item.rewards.length - 3,
+                      remainingCount: shuffledRewards.length - 3,
                       isLeftAligned: isLeftAligned,
                       isCurrent: isCurrent,
                       isLast: isLast,
@@ -504,10 +592,19 @@ class _HomeScreenState extends State<HomeScreen>
       );
     }).toList();
 
-    // Start showcase after all items are built
     _startShowcase(showcaseContext);
-
     return items;
+  }
+
+  List<dynamic> _getVisibleRewardsFromList(
+    List<dynamic> rewards,
+    bool isCurrent,
+    bool isExpanded,
+  ) {
+    if (isCurrent || isExpanded) {
+      return rewards;
+    }
+    return rewards.take(3).toList();
   }
 
   Widget _buildRewardItem({

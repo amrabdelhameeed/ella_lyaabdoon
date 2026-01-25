@@ -1,14 +1,17 @@
-import 'dart:math';
-
-import 'package:easy_localization/easy_localization.dart';
+import 'dart:io';
+import 'package:easy_localization/easy_localization.dart' as ez;
 import 'package:ella_lyaabdoon/features/home/logic/translation_cubit.dart';
 import 'package:ella_lyaabdoon/core/models/timeline_reward.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ella_lyaabdoon/utils/notification_helper.dart';
-import 'package:ella_lyaabdoon/core/models/scheduled_notification_model.dart';
+import 'package:screenshot/screenshot.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
 
 class RewardDetailDialog extends StatelessWidget {
   final TimelineReward reward;
@@ -36,7 +39,29 @@ class _RewardDetailDialogContent extends StatefulWidget {
 
 class _RewardDetailDialogContentState
     extends State<_RewardDetailDialogContent> {
+  void _logEvent(String eventName, {Map<String, Object>? parameters}) {
+    kReleaseMode
+        ? FirebaseAnalytics.instance.logEvent(
+            name: eventName,
+            parameters: parameters,
+          )
+        : null;
+  }
+
+  @override
+  initState() {
+    _logEvent(
+      'reward_detail_opened',
+      parameters: {
+        'reward_id': widget.reward.id,
+        'reward_title': widget.reward.title,
+      },
+    );
+    super.initState();
+  }
+
   bool _showTranslation = false;
+  final ScreenshotController _screenshotController = ScreenshotController();
 
   void _copyToClipboard(BuildContext context, String text) {
     Clipboard.setData(ClipboardData(text: text));
@@ -63,6 +88,321 @@ class _RewardDetailDialogContentState
 
     if (_showTranslation) {
       context.read<TranslationCubit>().translate(widget.reward.description);
+    }
+  }
+
+  // Build the full content widget for screenshot (without ScrollView)
+  Widget _buildFullContentWidget(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return Container(
+      constraints: const BoxConstraints(maxWidth: 500),
+      decoration: BoxDecoration(
+        // borderRadius: BorderRadius.circular(20),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [Colors.grey[900]!, Colors.grey[850]!]
+              : [Colors.white, Colors.green.withValues(alpha: 0.03)],
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Header with gradient
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Colors.greenAccent.withValues(alpha: 0.2),
+                  Colors.green.withValues(alpha: 0.1),
+                ],
+              ),
+              borderRadius: const BorderRadius.only(
+                // topLeft: Radius.circular(20),
+                // topRight: Radius.circular(20),
+              ),
+            ),
+            child: Row(
+              children: [
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    widget.reward.title,
+                    style: theme.textTheme.titleLarge!.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 15,
+                      color: isDark ? Colors.white : Colors.green[900],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Content (NO ScrollView for screenshot)
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Hadith section
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.grey[800]!.withValues(alpha: 0.5)
+                        : Colors.amber.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.amber.withValues(alpha: 0.2)
+                          : Colors.amber.withValues(alpha: 0.3),
+                      width: 2,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.menu_book_rounded,
+                            color: Colors.amber[700],
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Hadith'.tr(),
+                            style: theme.textTheme.titleMedium!.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber[800],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        widget.reward.description,
+                        style: theme.textTheme.bodyLarge!.copyWith(
+                          height: 2,
+                          fontSize: 16,
+                          color: isDark ? Colors.white : Colors.grey[800],
+                        ),
+                        textAlign: TextAlign.justify,
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // Source section
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.grey[800]!.withValues(alpha: 0.5)
+                        : Colors.green.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.green.withValues(alpha: 0.2)
+                          : Colors.green.withValues(alpha: 0.3),
+                      width: 2,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.source_rounded,
+                            color: Colors.green[700],
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Source'.tr(),
+                            style: theme.textTheme.titleMedium!.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.green[800],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        widget.reward.source,
+                        style: theme.textTheme.bodyMedium!.copyWith(
+                          height: 1.6,
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? Colors.white : Colors.grey[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // App branding footer
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: Colors.green.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'shared_with'.tr(),
+                          style: theme.textTheme.titleMedium!.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white : Colors.grey[800],
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(width: 4),
+                        Image.asset(
+                          'assets/playstore.png',
+                          height: 50,
+                          width: 50,
+                        ),
+                        // const SizedBox(height: 4),
+                        // Text(
+                        //   'تطبيق فضائل الصلوات',
+                        //   style: theme.textTheme.bodySmall!.copyWith(
+                        //     color: Colors.green[600],
+                        //   ),
+                        // ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _shareReward(BuildContext context) async {
+    try {
+      // Show loading indicator
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Center(
+          child: Container(
+            padding: EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      );
+
+      // Capture FULL widget including scrolled content
+      final Uint8List? image = await _screenshotController
+          .captureFromLongWidget(
+            InheritedTheme.captureAll(
+              context,
+              Material(
+                child: MediaQuery(
+                  data: MediaQuery.of(context),
+                  child: Directionality(
+                    textDirection: TextDirection.rtl,
+                    child: _buildFullContentWidget(context),
+                  ),
+                ),
+              ),
+            ),
+            delay: Duration(milliseconds: 100),
+            context: context,
+            pixelRatio: 2.0,
+            constraints: BoxConstraints(maxWidth: 400),
+          );
+
+      if (image == null) {
+        Navigator.pop(context); // Close loading dialog
+        throw Exception('Failed to capture screenshot');
+      }
+
+      // Save image to temporary directory
+      final directory = await getTemporaryDirectory();
+      final imagePath =
+          '${directory.path}/reward_${DateTime.now().millisecondsSinceEpoch}.png';
+      final imageFile = File(imagePath);
+      await imageFile.writeAsBytes(image);
+
+      Navigator.pop(context); // Close loading dialog
+
+      // Share with text
+      final shareText = 'captured_with'.tr();
+
+      final result = await SharePlus.instance.share(
+        ShareParams(
+          title: 'الا ليعبدون',
+          subject: 'مشاركة من تطبيق إلا ليعبدون',
+          text: shareText,
+          files: [XFile(imagePath)],
+        ),
+      );
+
+      // Clean up the temporary file after sharing
+      if (result.status == ShareResultStatus.success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('جزاك الله خيراً'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Future.delayed(Duration(seconds: 2), () {
+          try {
+            if (imageFile.existsSync()) {
+              imageFile.deleteSync();
+            }
+          } catch (e) {
+            debugPrint('Error deleting temp file: $e');
+          }
+        });
+      }
+    } catch (e) {
+      // Close loading dialog if still open
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context);
+      }
+
+      debugPrint('Share error: $e');
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to share'.tr()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -109,18 +449,6 @@ class _RewardDetailDialogContentState
               ),
               child: Row(
                 children: [
-                  // Container(
-                  //   padding: const EdgeInsets.all(12),
-                  //   decoration: BoxDecoration(
-                  //     color: Colors.greenAccent.withValues(alpha: 0.3),
-                  //     shape: BoxShape.circle,
-                  //   ),
-                  //   child: Icon(
-                  //     Icons.auto_awesome,
-                  //     color: Colors.green[700],
-                  //     size: 12,
-                  //   ),
-                  // ),
                   const SizedBox(width: 16),
                   Expanded(
                     child: Text(
@@ -129,11 +457,24 @@ class _RewardDetailDialogContentState
                       style: theme.textTheme.titleLarge!.copyWith(
                         fontWeight: FontWeight.bold,
                         fontSize: 15,
-
                         color: isDark ? Colors.white : Colors.green[900],
                       ),
                     ),
                   ),
+                  // Share button
+                  IconButton(
+                    onPressed: () => _shareReward(context),
+                    icon: Badge(
+                      alignment: Alignment.topRight,
+                      // largeSize: 2,
+                      label: Text("New".tr()),
+                      textColor: Colors.white,
+                      child: Icon(Icons.share_outlined),
+                    ),
+                    color: Colors.green[700],
+                    tooltip: "Share".tr(),
+                  ),
+                  // Alarm button
                   IconButton(
                     onPressed: () async {
                       final time = await showTimePicker(
@@ -143,11 +484,9 @@ class _RewardDetailDialogContentState
 
                       if (time != null && context.mounted) {
                         try {
-                          // Generate a stable, reasonable notification ID from reward ID
                           final notificationId =
                               widget.reward.id.hashCode.abs() % 2147483647;
 
-                          // Check if already scheduled
                           final isScheduled =
                               await NotificationHelper.isNotificationScheduled(
                                 notificationId,
@@ -180,7 +519,6 @@ class _RewardDetailDialogContentState
                             if (shouldReplace != true) return;
                           }
 
-                          // Schedule the notification with full description
                           await NotificationHelper.scheduleDaily(
                             notificationId: notificationId,
                             payload: {
@@ -189,7 +527,7 @@ class _RewardDetailDialogContentState
                                   .toString(),
                             },
                             title: widget.reward.title,
-                            body: widget.reward.description, // Full description
+                            body: widget.reward.description,
                             time: time,
                           );
 
@@ -232,6 +570,7 @@ class _RewardDetailDialogContentState
                     color: Colors.green[700],
                     tooltip: "Schedule Reminder".tr(),
                   ),
+                  // Close button
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
                     icon: const Icon(Icons.close),
@@ -241,7 +580,7 @@ class _RewardDetailDialogContentState
               ),
             ),
 
-            // Content
+            // Content (WITH ScrollView for viewing)
             Flexible(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
@@ -428,7 +767,6 @@ class _RewardDetailDialogContentState
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Disclaimer
                                   Container(
                                     padding: const EdgeInsets.all(10),
                                     margin: const EdgeInsets.only(bottom: 12),
@@ -475,7 +813,6 @@ class _RewardDetailDialogContentState
                                             .copyWith(
                                               fontSize: 12,
                                               overflow: TextOverflow.ellipsis,
-
                                               fontWeight: FontWeight.bold,
                                               color: Colors.blue[800],
                                             ),
@@ -578,38 +915,6 @@ class _RewardDetailDialogContentState
                     ),
 
                     const SizedBox(height: 20),
-
-                    // Decorative footer
-                    // Center(
-                    //   child: Container(
-                    //     padding: const EdgeInsets.symmetric(
-                    //       horizontal: 16,
-                    //       vertical: 8,
-                    //     ),
-                    //     decoration: BoxDecoration(
-                    //       color: Colors.greenAccent.withValues(alpha:0.1),
-                    //       borderRadius: BorderRadius.circular(20),
-                    //     ),
-                    //     child: Row(
-                    //       mainAxisSize: MainAxisSize.min,
-                    //       children: [
-                    //         Icon(
-                    //           Icons.verified,
-                    //           color: Colors.green[600],
-                    //           size: 16,
-                    //         ),
-                    //         const SizedBox(width: 8),
-                    //         Text(
-                    //           'بارك الله فيك',
-                    //           style: theme.textTheme.bodySmall!.copyWith(
-                    //             color: Colors.green[700],
-                    //             fontWeight: FontWeight.w600,
-                    //           ),
-                    //         ),
-                    //       ],
-                    //     ),
-                    //   ),
-                    // ),
                   ],
                 ),
               ),

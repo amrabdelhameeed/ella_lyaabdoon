@@ -1,14 +1,18 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:ella_lyaabdoon/core/constants/app_lists.dart';
+import 'package:ella_lyaabdoon/core/di/di.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
 import 'package:ella_lyaabdoon/core/services/cache_helper.dart';
+import 'package:ella_lyaabdoon/features/home/logic/quran_audio_cubit.dart';
 import 'package:ella_lyaabdoon/features/settings/logic/location_cubit.dart';
 import 'package:ella_lyaabdoon/features/settings/logic/location_state.dart';
 import 'package:ella_lyaabdoon/features/settings/logic/settings_cubit.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -38,12 +42,74 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final GlobalKey _languageKey = GlobalKey();
   final GlobalKey _locationKey = GlobalKey();
   final GlobalKey _playAyahKey = GlobalKey();
+  final GlobalKey _widgetKey = GlobalKey();
+
+  final _ayahPreviewController = StreamController<bool>.broadcast();
+  bool _isPreviewPlaying = false;
+  Timer? _previewTimer;
 
   @override
   void initState() {
     super.initState();
+
     _loadScheduledNotifications();
     _logScreenView();
+  }
+
+  Future<void> _playAyahPreview() async {
+    if (_isPreviewPlaying) return;
+
+    final String reciterId = AppServicesDBprovider.getAyahReciter();
+
+    if (reciterId.isEmpty || reciterId == 'OFF') {
+      debugPrint('Reciter is OFF. Not playing any ayah.');
+      return;
+    }
+
+    final validReciter = AppLists.reciters.firstWhere(
+      (r) => r['id'] == reciterId,
+      orElse: () =>
+          AppLists.reciters.firstWhere((r) => r['id'] == 'ar.muhammadayyoub'),
+    );
+
+    _logEvent(
+      'ayah_preview_play',
+      parameters: {'reciter': validReciter['id'] ?? 'OFF'},
+    );
+
+    _isPreviewPlaying = true;
+    if (!_ayahPreviewController.isClosed) {
+      _ayahPreviewController.add(true);
+    }
+
+    quranAudioCubit.playAyah(validReciter['id']!, 4731);
+
+    _previewTimer?.cancel();
+    _previewTimer = Timer(const Duration(seconds: 8), _stopAyahPreview);
+  }
+
+  void _stopAyahPreview() {
+    if (!_isPreviewPlaying) return;
+
+    _logEvent('ayah_preview_stop');
+
+    quranAudioCubit.stop();
+
+    _isPreviewPlaying = false;
+
+    if (!_ayahPreviewController.isClosed) {
+      _ayahPreviewController.add(false);
+    }
+
+    _previewTimer?.cancel();
+    _previewTimer = null;
+  }
+
+  @override
+  void dispose() {
+    _previewTimer?.cancel();
+    _ayahPreviewController.close();
+    super.dispose();
   }
 
   void _logScreenView() {
@@ -54,10 +120,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   void _logEvent(String eventName, {Map<String, Object>? parameters}) {
-    FirebaseAnalytics.instance.logEvent(
-      name: eventName,
-      parameters: parameters,
-    );
+    kReleaseMode
+        ? FirebaseAnalytics.instance.logEvent(
+            name: eventName,
+            parameters: parameters,
+          )
+        : null;
   }
 
   Future<void> _loadScheduledNotifications() async {
@@ -72,7 +140,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() => _isLoadingNotifications = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading notifications: $e')),
+          SnackBar(
+            backgroundColor: Colors.green,
+            content: Text('Error loading notifications: $e'),
+          ),
         );
       }
     }
@@ -132,6 +203,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
+            backgroundColor: Colors.green,
+
             content: Text('thank_you_for_rating'.tr()),
             duration: const Duration(seconds: 2),
           ),
@@ -150,16 +223,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return MultiBlocProvider(
       providers: [
         BlocProvider<SettingsCubit>(create: (_) => SettingsCubit()),
-        BlocProvider<LocationCubit>(create: (_) => LocationCubit()..init()),
+        BlocProvider<LocationCubit>(create: (_) => LocationCubit()),
       ],
       child: ShowCaseWidget(
         builder: (context) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!CacheHelper.getBool('settings_showcase_shown2')) {
               ShowCaseWidget.of(context).startShowCase([
-                if (_scheduledNotifications.isNotEmpty) _scheduledKey,
+                // if (_scheduledNotifications.isNotEmpty) _scheduledKey,
                 _playAyahKey,
                 _locationKey,
+                _widgetKey,
               ]);
               CacheHelper.setBool('settings_showcase_shown2', true);
               _logEvent('showcase_shown');
@@ -306,6 +380,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         context,
                                       ).showSnackBar(
                                         SnackBar(
+                                          backgroundColor: Colors.green,
+
                                           content: Text(
                                             'Notification cancelled'.tr(),
                                           ),
@@ -436,9 +512,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         title: 'showcase_play_ayah_title'.tr(),
                         description: 'showcase_play_ayah_desc'.tr(),
                         child: ListTile(
-                          leading: Icon(
-                            Icons.play_circle_filled,
-                            color: colorScheme.primary,
+                          leading: StreamBuilder<bool>(
+                            stream: _ayahPreviewController.stream,
+                            initialData: false,
+                            builder: (context, snapshot) {
+                              final isPlaying = snapshot.data ?? false;
+
+                              return IconButton(
+                                icon: Icon(
+                                  isPlaying
+                                      ? Icons.stop_circle
+                                      : Icons.play_circle_filled,
+                                  color: colorScheme.primary,
+                                  size: 30,
+                                ),
+                                onPressed: () async {
+                                  if (isPlaying) {
+                                    _stopAyahPreview();
+                                  } else {
+                                    await _playAyahPreview();
+                                  }
+                                },
+                              );
+                            },
                           ),
                           title: Text('play_ayah'.tr()),
                           subtitle: Text(
@@ -488,11 +584,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ],
                                 onChanged: (value) {
                                   if (value != null) {
+                                    _stopAyahPreview(); // stop current preview
+
                                     _logEvent(
                                       'ayah_reciter_changed',
                                       parameters: {'reciter': value},
                                     );
                                     cubit.setAyahReciter(value);
+                                    _playAyahPreview();
                                   }
                                 },
                               ),
@@ -545,6 +644,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 16),
 
+                    /// WIDGET SECTION
+                    if (!state.isWidgetInstalled) ...[
+                      _buildSectionHeader(context, 'home_widget_settings'.tr()),
+                      Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
+                        child: Showcase(
+                          key: _widgetKey,
+                          title: 'showcase_widget_title'.tr(),
+                          description: 'showcase_widget_desc'.tr(),
+                          child: ListTile(
+                            onTap: () {
+                              _logEvent('widget_pin_requested');
+                              context.read<SettingsCubit>().requestPinWidget();
+                            },
+                            leading: Icon(
+                              Icons.widgets_rounded,
+                              color: colorScheme.primary,
+                            ),
+                            title: Badge(
+                              alignment: AlignmentDirectional.topEnd,
+                              // largeSize: 2,
+                              label: Text("New".tr()),
+                              // textColor: colorScheme.primary,
+                              child: Text('install_widget_title'.tr()),
+                            ),
+                            subtitle: Text(
+                              'install_widget_desc'.tr(),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: Colors.grey),
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.add_location_alt_outlined),
+                              onPressed: () {
+                                _logEvent('widget_pin_requested');
+                                context
+                                    .read<SettingsCubit>()
+                                    .requestPinWidget()
+                                    .then((value) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text('widget_added'.tr()),
+                                          backgroundColor: Colors.green,
+                                        ),
+                                      );
+                                    });
+                              },
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
                     /// ABOUT SECTION
                     _buildSectionHeader(context, 'about'.tr()),
                     Card(
@@ -595,15 +752,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             trailing: const Icon(Icons.chevron_right),
                             onTap: () async {
                               _logEvent('share_app_clicked');
+                              final isArabic =
+                                  context.locale.languageCode == 'ar';
+
+                              final sadqah = isArabic
+                                  ? 'صدقة جارية'
+                                  : 'Sadaqa Jariyah';
+                              final usingApp = isArabic
+                                  ? 'أنا أستخدم'
+                                  : 'I am using';
+                              final appTitle = isArabic
+                                  ? 'إلا ليعبدون'
+                                  : 'Ella Lyaabdoon';
+                              final downloadPrompt = isArabic
+                                  ? 'حمّل التطبيق من متجر بلاي من خلال هذا الرابط:'
+                                  : 'Download it from the Play Store with this link:';
+
                               final result = await SharePlus.instance.share(
                                 ShareParams(
                                   text:
-                                      '${'sadqah_garyah'.tr()}\n\nI am using Ella Lyaabdoon app \n Download it from the Play Store with this link: https://play.google.com/store/apps/details?id=com.amrabdelhameed.ella_lyaabdoon',
-                                  subject: 'Ella Lyaabdoon'.tr(),
+                                      '$sadqah\n\n'
+                                      '$usingApp $appTitle\n'
+                                      '$downloadPrompt\n'
+                                      'https://play.google.com/store/apps/details?id=com.amrabdelhameed.ella_lyaabdoon',
+                                  subject: appTitle,
                                 ),
                               );
 
                               if (result.status == ShareResultStatus.success) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('جزاك الله خيراً'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
                                 _logEvent('share_app_success');
                               }
                             },
@@ -669,6 +851,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 _launchUrl(
                                   'https://www.behance.net/ahmd3assem',
                                 );
+                                _logEvent('contributor_1_clicked');
                               },
                               title: const Text('أحمد عاصم'),
                             ),
@@ -688,11 +871,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: ExpansionTile(
                         title: Text('developer_info'.tr()),
                         leading: Icon(Icons.person, color: colorScheme.primary),
-                        onExpansionChanged: (expanded) {
-                          if (expanded) {
-                            _logEvent('developer_info_expanded');
-                          }
-                        },
+                        onExpansionChanged: (expanded) {},
                         children: [
                           Padding(
                             padding: const EdgeInsets.all(16),
@@ -716,9 +895,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     style: TextStyle(color: Colors.grey),
                                   ),
                                   trailing: const Icon(Icons.open_in_new),
-                                  onTap: () => _launchUrl(
-                                    'https://github.com/amrabdelhameeed',
-                                  ),
+                                  onTap: () async {
+                                    _launchUrl(
+                                      'https://github.com/amrabdelhameeed',
+                                    );
+                                    _logEvent('developer_info_github_clicked');
+                                  },
                                 ),
                                 ListTile(
                                   leading: Icon(
@@ -731,9 +913,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     style: TextStyle(color: Colors.grey),
                                   ),
                                   trailing: const Icon(Icons.open_in_new),
-                                  onTap: () => _launchUrl(
-                                    'https://www.linkedin.com/in/amrabdelhameeed/',
-                                  ),
+                                  onTap: () async {
+                                    _launchUrl(
+                                      'https://www.linkedin.com/in/amrabdelhameeed/',
+                                    );
+                                    _logEvent(
+                                      'developer_info_linkedin_clicked',
+                                    );
+                                  },
                                 ),
                                 ListTile(
                                   leading: Icon(
@@ -746,8 +933,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     style: TextStyle(color: Colors.grey),
                                   ),
                                   trailing: const Icon(Icons.open_in_new),
-                                  onTap: () =>
-                                      _launchUrl('https://wa.me/201121009270'),
+                                  onTap: () async {
+                                    _launchUrl('https://wa.me/201121009270');
+                                    _logEvent(
+                                      'developer_info_whatsapp_clicked',
+                                    );
+                                  },
                                 ),
                               ],
                             ),
