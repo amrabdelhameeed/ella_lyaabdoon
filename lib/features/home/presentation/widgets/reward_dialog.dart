@@ -356,9 +356,14 @@ class _RewardDetailDialogContentState
       await imageFile.writeAsBytes(image);
 
       Navigator.pop(context); // Close loading dialog
-
+      final translations = {
+        "ar":
+            "تم التقاطها بتطبيق إلا ليعبدون\n\nhttps://play.google.com/store/apps/details?id=com.amrabdelhameed.ella_lyaabdoon",
+        "en":
+            "Captured with Ella Lyaabdoon app\n\nhttps://play.google.com/store/apps/details?id=com.amrabdelhameed.ella_lyaabdoon",
+      };
       // Share with text
-      final shareText = 'captured_with'.tr();
+      final shareText = translations[AppServicesDBprovider.currentLocale()]!;
 
       final result = await SharePlus.instance.share(
         ShareParams(

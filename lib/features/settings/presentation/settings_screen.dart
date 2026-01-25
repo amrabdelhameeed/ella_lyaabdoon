@@ -7,7 +7,7 @@ import 'package:ella_lyaabdoon/core/constants/app_lists.dart';
 import 'package:ella_lyaabdoon/core/di/di.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
 import 'package:ella_lyaabdoon/core/services/cache_helper.dart';
-import 'package:ella_lyaabdoon/features/home/logic/quran_audio_cubit.dart';
+import 'package:ella_lyaabdoon/core/services/strike_service.dart';
 import 'package:ella_lyaabdoon/features/settings/logic/location_cubit.dart';
 import 'package:ella_lyaabdoon/features/settings/logic/location_state.dart';
 import 'package:ella_lyaabdoon/features/settings/logic/settings_cubit.dart';
@@ -129,23 +129,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadScheduledNotifications() async {
+    if (!mounted) return;
+
     setState(() => _isLoadingNotifications = true);
+
     try {
       final notifications = await NotificationHelper.getPendingNotifications();
+
+      if (!mounted) return;
+
+      final filtered = notifications
+          .where((n) => n.id != StrikeService.notificationId)
+          .toList();
+
       setState(() {
-        _scheduledNotifications = notifications;
+        _scheduledNotifications = filtered;
         _isLoadingNotifications = false;
       });
     } catch (e) {
+      if (!mounted) return;
+
       setState(() => _isLoadingNotifications = false);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            backgroundColor: Colors.green,
-            content: Text('Error loading notifications: $e'),
-          ),
-        );
-      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: Colors.green,
+          content: Text('Error loading notifications: $e'),
+        ),
+      );
     }
   }
 

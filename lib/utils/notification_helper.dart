@@ -15,12 +15,30 @@ class NotificationHelper {
 
   static const String _channelId = 'ella_lyaabdoon';
   static const String _channelName = 'Ella Lyaabdoon';
+  static const String _channelDescription = 'Ella Lyaabdoon Notifications';
 
   /* -------------------------------------------------------------------------- */
   /*                               INITIALIZATION                               */
   /* -------------------------------------------------------------------------- */
 
   static Future<void> initialize() async {
+    const androidChannel = AndroidNotificationChannel(
+      _channelId,
+      _channelName,
+      description: _channelDescription,
+      importance: Importance.max,
+      playSound: true,
+      enableVibration: true,
+      showBadge: true,
+    );
+
+    await _local
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.createNotificationChannel(androidChannel);
+
+    // Then initialize
     const androidInit = AndroidInitializationSettings('notification_icon');
 
     const settings = InitializationSettings(
@@ -30,6 +48,7 @@ class NotificationHelper {
 
     await _local.initialize(settings);
 
+    // Request FCM permissions
     await _messaging.requestPermission(
       alert: true,
       sound: true,
@@ -39,7 +58,9 @@ class NotificationHelper {
       provisional: true,
       criticalAlert: true,
     );
-    _local
+
+    // Request Android notification permissions (Android 13+)
+    await _local
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
         >()
@@ -52,16 +73,13 @@ class NotificationHelper {
 
   @pragma('vm:entry-point')
   static Future<void> firebaseBackgroundHandler(RemoteMessage message) async {
-    // ⚠️ Do NOT show notification here - FCM handles it automatically
-    // This handler is just for processing data or logging
     debugPrint('📬 Background message received: ${message.messageId}');
-    // Initialize local notifications if not already
-    // await NotificationHelper.initialize();
 
-    // Show notification (supports image)
-    await NotificationHelper._showNotificationWithImage(message);
-    // You can process data here if needed
-    // But don't call _showNotificationWithImage() to avoid duplicates
+    // ✅ IMPORTANT: Initialize in background isolate
+    await initialize();
+
+    // Show notification with image
+    await _showNotificationWithImage(message);
   }
 
   /* -------------------------------------------------------------------------- */
@@ -89,10 +107,15 @@ class NotificationHelper {
 
     BigPictureStyleInformation? bigPictureStyleInformation;
 
-    // Download and process image if available
+    // ✅ Download and process image if available (with better error handling)
     if (imageUrl != null && imageUrl.isNotEmpty) {
       try {
-        final response = await http.get(Uri.parse(imageUrl));
+        final response = await http
+            .get(Uri.parse(imageUrl))
+            .timeout(
+              const Duration(seconds: 120), // Add timeout for release mode
+            );
+
         if (response.statusCode == 200) {
           final byteArray = response.bodyBytes;
           bigPictureStyleInformation = BigPictureStyleInformation(
@@ -100,10 +123,13 @@ class NotificationHelper {
             largeIcon: ByteArrayAndroidBitmap(byteArray),
             contentTitle: title,
             summaryText: body,
+            htmlFormatContentTitle: true,
+            htmlFormatSummaryText: true,
           );
         }
       } catch (e) {
-        debugPrint('Failed to fetch notification image: $e');
+        debugPrint('⚠️ Failed to fetch notification image: $e');
+        // Continue without image
       }
     }
 
@@ -116,13 +142,13 @@ class NotificationHelper {
         android: AndroidNotificationDetails(
           _channelId,
           _channelName,
+          channelDescription: _channelDescription,
           color: const Color.fromARGB(255, 15, 170, 70),
           importance: Importance.max,
           priority: Priority.high,
           playSound: true,
           enableVibration: true,
           visibility: NotificationVisibility.public,
-
           colorized: true,
           styleInformation:
               bigPictureStyleInformation ??
@@ -174,6 +200,8 @@ class NotificationHelper {
       _details(bigText: body),
       payload: payload == null ? null : jsonEncode(payload),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      // uiLocalNotificationDateInterpretation:
+      //     UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 
@@ -208,6 +236,8 @@ class NotificationHelper {
       payload: payload == null ? null : jsonEncode(payload),
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
+      // uiLocalNotificationDateInterpretation:
+      //     UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 
@@ -248,13 +278,13 @@ class NotificationHelper {
     final android = AndroidNotificationDetails(
       _channelId,
       _channelName,
+      channelDescription: _channelDescription,
       color: const Color.fromARGB(255, 15, 170, 70),
       importance: Importance.max,
       priority: Priority.high,
       playSound: true,
       enableVibration: true,
       visibility: NotificationVisibility.public,
-
       colorized: true,
       styleInformation: bigText != null
           ? BigTextStyleInformation(

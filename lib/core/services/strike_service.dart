@@ -9,7 +9,7 @@ class StrikeService {
   static const String _strikeCountKey = 'strikeCount';
   static const String _lastNotificationScheduledKey =
       'lastNotificationScheduled';
-  static const int _notificationId = 9999;
+  static const int notificationId = 9999;
 
   static Color getStrikeColor(int count) {
     if (count <= 0) return Colors.grey;
@@ -93,7 +93,7 @@ class StrikeService {
     CacheHelper.setString(_lastOpenKey, now.toIso8601String());
 
     // Cancel any pending notification (user already opened the app today)
-    await NotificationHelper.cancel(_notificationId);
+    await NotificationHelper.cancel(notificationId);
 
     // No need to reschedule - notification will be rescheduled tomorrow
   }
@@ -112,7 +112,7 @@ class StrikeService {
     CacheHelper.setInt(_strikeCountKey, newStrikeCount);
 
     // Cancel old notification and schedule new one
-    await NotificationHelper.cancel(_notificationId);
+    await NotificationHelper.cancel(notificationId);
     await _scheduleStrikeWarning(todayDateOnly);
   }
 
@@ -129,7 +129,7 @@ class StrikeService {
     CacheHelper.setInt(_strikeCountKey, 1);
 
     // Cancel old notification and schedule new one
-    await NotificationHelper.cancel(_notificationId);
+    await NotificationHelper.cancel(notificationId);
     await _scheduleStrikeWarning(todayDateOnly);
   }
 
@@ -183,7 +183,7 @@ class StrikeService {
     }
 
     await NotificationHelper.scheduleAt(
-      notificationId: _notificationId,
+      notificationId: notificationId,
       title: title,
       body: body,
       dateTime: tomorrow,
@@ -229,7 +229,7 @@ class StrikeService {
     CacheHelper.setInt(_strikeCountKey, 0);
     CacheHelper.remove(_lastOpenKey);
     CacheHelper.remove(_lastNotificationScheduledKey);
-    await NotificationHelper.cancel(_notificationId);
+    await NotificationHelper.cancel(notificationId);
   }
 
   /// Get strike status information

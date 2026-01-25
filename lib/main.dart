@@ -34,7 +34,7 @@ import 'package:home_widget/home_widget.dart';
 // GLOBAL CONFIGURATION
 // ============================================================
 
-const Duration kInitTimeout = Duration(seconds: 3);
+const Duration kInitTimeout = Duration(seconds: 5);
 
 ClarityConfig? _clarityConfig;
 bool _firebaseInitialized = false;
@@ -463,14 +463,14 @@ Future<void> _initMessaging() async {
 
       if (apnsToken != null) {
         NotificationHelper.subscribeToTopic(
-          kDebugMode ? 'TEST' : 'ALL',
-          // 'TEST',
+          kDebugMode ? 'TEST3' : 'ALL',
+          // 'TEST2',
         ).timeout(kInitTimeout).catchError((_) => null);
       }
     } else {
       NotificationHelper.subscribeToTopic(
-        kDebugMode ? 'TEST' : 'ALL',
-        // 'TEST',
+        kDebugMode ? 'TEST3' : 'ALL',
+        // 'TEST2',
       ).timeout(kInitTimeout).catchError((_) => null);
     }
 

@@ -6,8 +6,16 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](https://opensource.org/licenses/MIT)
 
 **Ella Lyaabdoon** is a smart, modern spiritual companion app designed to help Muslims build a consistent and meaningful relationship with Zekr (remembrance of Allah). Inspired by the profound concept of turning every moment into worship, the app organizes your day around prayer times, offering authentic, Hadith-backed rewards.
+## 📲 Download Now
 
----
+<a href="https://play.google.com/store/apps/details?id=com.amrabdelhameed.ella_lyaabdoon">
+<img src="assets/playstore.png" width="170" alt="Ella Lyaabdoon App Logo">
+</a>
+
+
+<a href="https://play.google.com/store/apps/details?id=com.amrabdelhameed.ella_lyaabdoon">
+<img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" width="170" alt="Get it on Google Play">
+</a>
 
 ## ✨ Key Features
 
@@ -22,7 +30,10 @@ Every Zekr is backed by authentic Hadiths. Know the exact merit and reward for e
 Track your consistency with a beautiful calendar view. See your progress, visualize your streaks, and build lasting spiritual habits.
 
 ### 🏠 Interactive Home Widgets
-Access your spiritual goals directly from your home screen. Our interactive widgets allow you to refresh rewards and check completed Zekr without even opening the app.
+Access your spiritual goals directly from your home screen. Our interactive widgets allow you to refresh rewards and check completed Zekr without even opening the app. You can pin the specialized widget for quick access.
+
+### 🔔 Smart Reminders & Notifications
+Never miss your Azkar with customizable daily reminders. Manage your schedule directly from the app, with the ability to view and delete pending notifications at your convenience.
 
 ### 🎧 Multi-Reciter Audio Support
 Start your day with the beautiful recitation of the Quran. Choose from various world-renowned reciters to play at app startup.
@@ -31,6 +42,9 @@ Start your day with the beautiful recitation of the Quran. Choose from various w
 - **Dark/Light Mode**: Full support for system themes with a curated, eye-pleasing green palette.
 - **Multilingual**: Seamlessly switch between **Arabic** and **English**.
 - **Onboarding**: A smooth introduction to the app's core philosophy.
+
+### 💬 Support & Feedback
+We value your feedback! Reach out to us directly via WhatsApp for suggestions or complaints to help us improve the experience for the Ummah.
 
 ---
 
