@@ -76,7 +76,7 @@ class RewardWidgetService {
       );
 
       // 5️⃣ Update widget
-      await HomeWidget.updateWidget(androidName: 'ZikrCheckWidgetProvider');
+      // await HomeWidget.updateWidget(androidName: 'ZikrCheckWidgetProvider');
 
       debugPrint('✅ Reward widget updated successfully');
     } catch (e) {
@@ -132,7 +132,7 @@ class RewardWidgetService {
         'reward_update_time',
         timeFormat.format(now),
       );
-      await HomeWidget.updateWidget(androidName: 'ZikrCheckWidgetProvider');
+      // await HomeWidget.updateWidget(androidName: 'ZikrCheckWidgetProvider');
 
       debugPrint(
         '✅ Check states & update time refreshed at ${timeFormat.format(now)}',

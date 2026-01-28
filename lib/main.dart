@@ -79,6 +79,7 @@ Future<void> _ensureHiveReady() async {
 
     if (!Hive.isBoxOpen('zikrHistoryBox')) {
       await HistoryDBProvider.init().timeout(Duration(seconds: 3));
+      await HistoryDBProvider.cleanupDuplicates().timeout(Duration(seconds: 3));
     }
 
     _hiveInitialized = true;
