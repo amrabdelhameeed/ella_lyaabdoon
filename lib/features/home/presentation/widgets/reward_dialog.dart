@@ -277,7 +277,7 @@ class _RewardDetailDialogContentState
                             fontWeight: FontWeight.bold,
                             color: isDark ? Colors.white : Colors.grey[800],
                           ),
-                          textAlign: TextAlign.center,
+                          // textAlign: TextAlign.center,
                         ),
                         const SizedBox(width: 4),
                         Image.asset(

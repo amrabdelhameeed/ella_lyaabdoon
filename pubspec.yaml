@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.1.0+9
+version: 1.1.1+10
 
 environment:
   sdk: ^3.9.0-333.2.beta
@@ -148,16 +148,6 @@ flutter_native_splash:
 
   # Android 12+ specific configuration
   android_12:
-    # Background color for Android 12+
     color: "#378654"
-
-    color_dark: "#378654"
-    # Center logo for Android 12+
-    # Android 12+ requires a square image (960x960 or 1152x1152)
-    # Your 1920x1920 image works perfectly here
-    image: assets/splash/android-splash-1920x1920.png
-    #image_dark: assets/splash/android-splash-1920x1920.png
-    # Icon background color (the circular area behind your logo)
-    # Use white or transparent to match your logo background
-    icon_background_color: "#FFFFFF"
-    #icon_background_color_dark: "#1E1E1E"
+    image: assets/splash/android12.png
+# dart run flutter_native_splash:create

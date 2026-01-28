@@ -1,6 +1,7 @@
 package com.amrabdelhameed.ella_lyaabdoon
 
 import android.content.Context
+import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -9,7 +10,6 @@ import androidx.compose.ui.unit.sp
 import androidx.glance.*
 import androidx.glance.action.ActionParameters
 import androidx.glance.action.clickable
-import androidx.glance.action.actionStartActivity
 import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.action.ActionCallback
 import androidx.glance.appwidget.action.actionRunCallback
@@ -107,14 +107,14 @@ private fun CompactWidgetContent(period: String, title: String, desc: String, ti
 
                 Spacer(modifier = GlanceModifier.height(10.dp))
 
-                // CLICKABLE CONTENT AREA (OPAQUE FIX)
+                // CLICKABLE CONTENT AREA
                 Box(
                     modifier = GlanceModifier
                         .fillMaxWidth()
                         .defaultWeight()
-                        .background(ColorProvider(Color(0x01000000))) // invisible hit-layer
+                        .background(ColorProvider(Color(0x01000000)))
                         .cornerRadius(14.dp)
-                        .clickable(actionStartActivity<MainActivity>())
+                        .clickable(actionRunCallback<LaunchAppCallback>())
                         .padding(8.dp)
                 ) {
 
@@ -155,13 +155,22 @@ private fun CompactWidgetContent(period: String, title: String, desc: String, ti
 
                             Spacer(modifier = GlanceModifier.height(6.dp))
 
+                            // Dynamic font size based on description length
+                            val descFontSize = when {
+                                desc.length > 100 -> 14.sp  // Very long text
+                                desc.length > 60 -> 15.sp   // Long text
+                                desc.length > 30 -> 16.sp   // Medium text
+                                else -> 20.sp               // Short text
+                            }
+
                             Text(
                                 text = desc,
                                 style = TextStyle(
                                     color = whiteAlpha90,
-                                    fontSize = 14.sp,
-                                    textAlign = TextAlign.Center
-                                )
+                                    fontSize = descFontSize,
+                                    textAlign = TextAlign.Center,
+                                ),
+                                maxLines = 8
                             )
                         }
                     }
@@ -214,6 +223,24 @@ private fun CompactWidgetContent(period: String, title: String, desc: String, ti
                 }
             }
         }
+    }
+}
+
+// Simple callback to launch app
+class LaunchAppCallback : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters
+    ) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            // Use NEW_TASK only - this allows splash screen to show properly
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            // Add action to ensure fresh launch
+            action = Intent.ACTION_MAIN
+            addCategory(Intent.CATEGORY_LAUNCHER)
+        }
+        context.startActivity(intent)
     }
 }
 

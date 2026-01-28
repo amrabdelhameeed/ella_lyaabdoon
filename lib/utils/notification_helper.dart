@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:timezone/timezone.dart' as tz;
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 
 class NotificationHelper {
   NotificationHelper._();
@@ -16,6 +18,9 @@ class NotificationHelper {
   static const String _channelId = 'ella_lyaabdoon';
   static const String _channelName = 'Ella Lyaabdoon';
   static const String _channelDescription = 'Ella Lyaabdoon Notifications';
+
+  // 🔴 NEW: Callback for when user taps notification
+  static Function(String?)? onNotificationTap;
 
   /* -------------------------------------------------------------------------- */
   /*                               INITIALIZATION                               */
@@ -46,7 +51,11 @@ class NotificationHelper {
       iOS: DarwinInitializationSettings(),
     );
 
-    await _local.initialize(settings);
+    // 🔴 CRITICAL FIX: Add notification tap handler
+    await _local.initialize(
+      settings,
+      onDidReceiveNotificationResponse: _onNotificationTapped,
+    );
 
     // Request FCM permissions
     await _messaging.requestPermission(
@@ -68,6 +77,65 @@ class NotificationHelper {
   }
 
   /* -------------------------------------------------------------------------- */
+  /*                    NOTIFICATION TAP HANDLER WITH ANALYTICS                 */
+  /* -------------------------------------------------------------------------- */
+
+  // 🔴 NEW: Handle notification tap with Firebase Analytics
+  static void _onNotificationTapped(NotificationResponse response) {
+    debugPrint('📱 Notification tapped!');
+    debugPrint('📱 Payload: ${response.payload}');
+
+    // Parse payload
+    if (response.payload != null && response.payload!.isNotEmpty) {
+      try {
+        final payload = jsonDecode(response.payload!);
+        final notificationType = payload['type'] ?? 'unknown';
+
+        // Log to Firebase Analytics
+        _logEvent(
+          'notification_opened',
+          parameters: {
+            'notification_type': notificationType,
+            'action': response.actionId ?? 'tap',
+            'timestamp': DateTime.now().toIso8601String(),
+          },
+        );
+
+        // Log specific analytics for strike notifications
+        if (notificationType == 'strike_warning') {
+          final strikeCount = payload['strike_count'] ?? 0;
+          _logEvent(
+            'strike_notification_opened',
+            parameters: {
+              'strike_count': strikeCount,
+              'scheduled_date': payload['scheduled_date'] ?? '',
+            },
+          );
+        }
+
+        debugPrint('✅ Analytics logged for: $notificationType');
+      } catch (e) {
+        debugPrint('⚠️ Failed to parse notification payload: $e');
+      }
+    }
+
+    // Call external callback if set
+    onNotificationTap?.call(response.payload);
+  }
+
+  /// Log Firebase Analytics events
+  static void _logEvent(String eventName, {Map<String, Object>? parameters}) {
+    if (kReleaseMode) {
+      FirebaseAnalytics.instance.logEvent(
+        name: eventName,
+        parameters: parameters,
+      );
+    } else {
+      debugPrint('📊 [DEBUG] Analytics: $eventName | $parameters');
+    }
+  }
+
+  /* -------------------------------------------------------------------------- */
   /*                         FCM BACKGROUND HANDLER                              */
   /* -------------------------------------------------------------------------- */
 
@@ -80,6 +148,16 @@ class NotificationHelper {
 
     // Show notification with image
     await _showNotificationWithImage(message);
+
+    // Log FCM notification received
+    _logEvent(
+      'fcm_notification_received_background',
+      parameters: {
+        'message_id': message.messageId ?? 'unknown',
+        'has_notification': message.notification != null,
+        'has_data': message.data.isNotEmpty,
+      },
+    );
   }
 
   /* -------------------------------------------------------------------------- */
@@ -91,6 +169,16 @@ class NotificationHelper {
     if (message.notification != null) {
       await _showNotificationWithImage(message);
     }
+
+    // Log FCM notification received
+    _logEvent(
+      'fcm_notification_received_foreground',
+      parameters: {
+        'message_id': message.messageId ?? 'unknown',
+        'has_notification': message.notification != null,
+        'has_data': message.data.isNotEmpty,
+      },
+    );
   }
 
   /* -------------------------------------------------------------------------- */
@@ -123,14 +211,20 @@ class NotificationHelper {
             largeIcon: ByteArrayAndroidBitmap(byteArray),
             contentTitle: title,
             summaryText: body,
-            htmlFormatContentTitle: true,
-            htmlFormatSummaryText: true,
+            // htmlFormatContentTitle: true,
+            // htmlFormatSummaryText: true,
           );
         }
       } catch (e) {
         debugPrint('⚠️ Failed to fetch notification image: $e');
         // Continue without image
       }
+    }
+
+    // Add notification type to payload
+    final payload = Map<String, dynamic>.from(message.data);
+    if (!payload.containsKey('type')) {
+      payload['type'] = 'fcm_notification';
     }
 
     // Show notification
@@ -160,7 +254,7 @@ class NotificationHelper {
           presentSound: true,
         ),
       ),
-      payload: message.data.isEmpty ? null : jsonEncode(message.data),
+      payload: payload.isEmpty ? null : jsonEncode(payload),
     );
   }
 
@@ -180,6 +274,14 @@ class NotificationHelper {
       body,
       _details(bigText: body),
       payload: payload == null ? null : jsonEncode(payload),
+    );
+
+    _logEvent(
+      'local_notification_shown',
+      parameters: {
+        'notification_id': notificationId,
+        'type': payload?['type'] ?? 'unknown',
+      },
     );
   }
 
@@ -203,6 +305,8 @@ class NotificationHelper {
       // uiLocalNotificationDateInterpretation:
       //     UILocalNotificationDateInterpretation.absoluteTime,
     );
+
+    debugPrint('✅ Notification scheduled for: ${dateTime.toString()}');
   }
 
   static Future<void> scheduleDaily({

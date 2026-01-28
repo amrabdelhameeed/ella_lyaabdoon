@@ -101,3 +101,35 @@ web/build/
 # OS files
 .DS_Store
 Thumbs.db
+# Firebase config
+lib/firebase_options.dart
+.firebase-plugins-dependencies
+.firebaserc
+firebase.json
+firestore.indexes.json
+firestore.rules
+
+# Environment files
+.env
+
+# Flutter/Dart build & logs
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+build/
+.dart_tool/
+.flutter-*
+*.log
+
+# IDE / metadata
+*.iml
+.metadata
+.idea/
+
+# Misc / temporary
+analysis_options.yaml
+analysis_output.txt
+prepare-release.ps1
+
+# Project files that usually shouldn't be in Git
