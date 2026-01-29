@@ -301,6 +301,7 @@ class NotificationHelper {
       tzDate,
       _details(bigText: body),
       payload: payload == null ? null : jsonEncode(payload),
+      matchDateTimeComponents: DateTimeComponents.time,
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       // uiLocalNotificationDateInterpretation:
       //     UILocalNotificationDateInterpretation.absoluteTime,

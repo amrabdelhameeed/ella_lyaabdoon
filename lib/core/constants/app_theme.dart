@@ -74,7 +74,31 @@ class AppTheme {
         fontSize: 18,
       ),
     ),
+    checkboxTheme: CheckboxThemeData(
+      // 1. The checkmark icon color
+      checkColor: WidgetStateProperty.all(Colors.white),
 
+      // 2. The background color of the box
+      fillColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          // Green background when checked
+          return _lightGreenScheme
+              .primary; // Use _darkGreenScheme for dark theme
+        }
+        // Transparent background when unchecked
+        return Colors.transparent;
+      }),
+
+      // 3. The border (side)
+      side: WidgetStateBorderSide.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          // Green border when checked (matches fill)
+          return BorderSide(color: _lightGreenScheme.primary, width: 2);
+        }
+        // Green border when unchecked
+        return BorderSide(color: Colors.grey, width: 2);
+      }),
+    ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ButtonStyle(
         backgroundColor: WidgetStateProperty.all(_lightGreenScheme.primary),
@@ -110,7 +134,27 @@ class AppTheme {
     iconTheme: IconThemeData(color: _darkGreenScheme.primary),
 
     textTheme: textTheme(locale, _darkGreenScheme.onBackground),
+    checkboxTheme: CheckboxThemeData(
+      // 1. The check icon is always white
+      checkColor: WidgetStateProperty.all(Colors.white),
 
+      // 2. Control the background fill
+      fillColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return AppColors.greenPrimary; // Solid green when checked
+        }
+        return Colors.transparent; // Transparent when unchecked
+      }),
+
+      // 3. Control the border (The "Side")
+      side: WidgetStateBorderSide.resolveWith((states) {
+        if (states.contains(WidgetState.selected)) {
+          return const BorderSide(color: AppColors.greenPrimary, width: 2);
+        }
+        // Green border even when unchecked
+        return BorderSide(color: Colors.grey.shade400, width: 2);
+      }),
+    ),
     appBarTheme: AppBarTheme(
       backgroundColor: _darkGreenScheme.surface,
       elevation: 1,
