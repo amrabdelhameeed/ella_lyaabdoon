@@ -1,5 +1,7 @@
 import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:ella_lyaabdoon/features/home/presentation/screens/home_screen.dart';
+import 'package:ella_lyaabdoon/features/home/presentation/screens/reels_view_screen.dart';
+import 'package:ella_lyaabdoon/features/home/presentation/screens/streak_statistics_screen.dart';
 import 'package:ella_lyaabdoon/features/intro/presentation/intro_screen.dart';
 import 'package:ella_lyaabdoon/features/settings/presentation/settings_screen.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
@@ -103,6 +105,20 @@ class AppRouter {
         name: AppRoutes.history,
         builder: (context, state) => const HistoryScreen(),
         pageBuilder: defaultPageBuilder(const HistoryScreen()),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: AppRoutes.reels,
+        name: AppRoutes.reels,
+        builder: (context, state) => const ReelsViewScreen(),
+        // pageBuilder: defaultPageBuilder(const ReelsViewScreen()),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: AppRoutes.streakStatistics,
+        name: AppRoutes.streakStatistics,
+        builder: (context, state) => const StreakStatisticsScreen(),
+        pageBuilder: defaultPageBuilder(const StreakStatisticsScreen()),
       ),
     ],
   );

@@ -34,4 +34,6 @@ class TranslationCubit extends Cubit<TranslationState> {
       emit(TranslationError('Error: ${e.toString()}'));
     }
   }
+
+  void reset() => emit(TranslationInitial());
 }

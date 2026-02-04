@@ -461,6 +461,8 @@ class _RewardDetailDialogContentState
                       maxLines: 4,
                       style: theme.textTheme.titleLarge!.copyWith(
                         fontWeight: FontWeight.bold,
+                        fontFamily: 'kufi',
+
                         fontSize: 15,
                         color: isDark ? Colors.white : Colors.green[900],
                       ),
@@ -539,6 +541,7 @@ class _RewardDetailDialogContentState
                           if (context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
+                                duration: Duration(seconds: 5),
                                 content: Text(
                                   '${'Reminder scheduled for'.tr()} ${time.format(context)}',
                                 ),

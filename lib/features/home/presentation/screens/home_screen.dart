@@ -1,5 +1,5 @@
-﻿import 'package:clarity_flutter/clarity_flutter.dart';
-import 'package:easy_localization/easy_localization.dart';
+﻿import 'package:easy_localization/easy_localization.dart';
+import 'package:ella_lyaabdoon/app_router.dart';
 import 'package:ella_lyaabdoon/core/constants/app_lists.dart';
 import 'package:ella_lyaabdoon/core/constants/app_routes.dart';
 import 'package:ella_lyaabdoon/core/models/azan_day_period.dart';
@@ -18,6 +18,10 @@ import 'package:ella_lyaabdoon/features/settings/logic/location_state.dart';
 import 'package:ella_lyaabdoon/features/home/presentation/widgets/timeline_header.dart';
 import 'package:ella_lyaabdoon/features/home/presentation/widgets/timeline_reward_item.dart';
 import 'package:ella_lyaabdoon/features/home/presentation/widgets/timeline_show_more_button.dart';
+
+import 'package:ella_lyaabdoon/features/home/presentation/widgets/streak_animation_widget.dart';
+import 'package:ella_lyaabdoon/features/home/presentation/widgets/streak_confetti_controller.dart';
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -48,14 +52,16 @@ class _HomeScreenState extends State<HomeScreen>
   final GlobalKey _historyKey = GlobalKey();
   final GlobalKey _settingsKey = GlobalKey();
   final GlobalKey _strikeKey = GlobalKey();
-  final GlobalKey _strikeWidgetKey = GlobalKey();
 
   // final GlobalKey _firstRewardKey = GlobalKey();
   final String _strikeShowcaseKey = 'strike_showcase_shown21';
 
   // Services
+  // Services
   final InAppReview _inAppReview = InAppReview.instance;
   late RateMyApp _rateMyApp;
+  late StreakConfettiController _confettiController;
+  StreamSubscription? _milestoneSubscription;
 
   // State
   bool _hasStartedShowcase = false;
@@ -93,12 +99,47 @@ class _HomeScreenState extends State<HomeScreen>
     _initializeRateMyApp();
     _initializeHomeWidget();
     _shuffleRewardsOnce(); // ADD THIS LINE
+    _confettiController = StreakConfettiController();
+
+    // Check for milestone achievements after initialization
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndCelebrateMilestone();
+    });
+
+    // Listen for new milestone achievements
+    _milestoneSubscription = StrikeService.milestoneStream.listen((data) {
+      if (mounted) {
+        debugPrint('🎉 HomeScreen: Received milestone event!');
+        _confettiController.initialize(context);
+        _confettiController.celebrateMilestone(data);
+      }
+    });
 
     // Add this to test
     Future.delayed(Duration(seconds: 2), () {
       PrayerWidgetService.updateWidget();
       debugPrint('🔴 Widget update called from initState');
     });
+  }
+
+  void _checkAndCelebrateMilestone() {
+    // Check if there's a pending celebration from handleAppOpen()
+    final milestoneData = StrikeService.getPendingCelebration();
+
+    if (milestoneData != null && mounted) {
+      debugPrint(
+        '\ud83c\udf8a HomeScreen: Found pending celebration, triggering confetti!',
+      );
+      _confettiController.initialize(context);
+      // Delay celebration to ensure UI is ready
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) {
+          _confettiController.celebrateMilestone(milestoneData);
+        }
+      });
+    } else {
+      debugPrint('\u2139\ufe0f HomeScreen: No pending celebration found');
+    }
   }
 
   void _initializeHomeWidget() {
@@ -330,12 +371,18 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
+  void _navigateToReelsView() {
+    AppRouter.router.pushNamed(AppRoutes.reels);
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this); // ADD THIS LINE
 
+    _milestoneSubscription?.cancel();
     _scrollController.dispose();
     _pulseController.dispose();
+    _confettiController.dispose();
     super.dispose();
   }
 
@@ -395,16 +442,21 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildScaffold(BuildContext showcaseContext) {
     return Scaffold(
-      // floatingActionButton: FloatingActionButton(
-      //   child:
-      //   //CHALLENGE ICON
-      //   const Icon(Icons.),
-      //   onPressed: () {
-      //   //A DIALOG
-      // },),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _navigateToReelsView,
+        icon: const Icon(Icons.play_circle_outline),
+        label: Text('reels_view'.tr()),
+        tooltip: 'switch_to_reels'.tr(),
+      ),
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(),
-      body: _buildBody(showcaseContext),
+      body: Stack(
+        children: [
+          _buildBody(showcaseContext),
+          // Confetti overlay
+          _confettiController.getConfettiWidget(),
+        ],
+      ),
     );
   }
 
@@ -412,155 +464,26 @@ class _HomeScreenState extends State<HomeScreen>
     return AppBar(
       title: Text('app_title'.tr()),
       actions: [
-        // Step 1: Create a key for the GestureDetector
+        // Animated Streak Widget
         Showcase(
           key: _strikeKey,
           title: 'showcase_strike_title'.tr(),
           description: 'showcase_strike_desc'.tr(),
-          child: GestureDetector(
-            key: _strikeWidgetKey,
-            onTap: () {
-              final overlay = Overlay.of(context);
-              if (overlay == null) return;
-
-              final renderBox =
-                  _strikeWidgetKey.currentContext!.findRenderObject()
-                      as RenderBox;
-              final size = renderBox.size;
-              final offset = renderBox.localToGlobal(Offset.zero);
-
-              final screenSize = MediaQuery.of(context).size;
-
-              // Popup size estimate
-              const popupWidth = 250.0;
-              const popupHeight = 80.0;
-
-              // Calculate position, clamped to screen bounds
-              double left = offset.dx;
-              double top = offset.dy + size.height + 8;
-
-              if (left + popupWidth > screenSize.width - 8) {
-                left =
-                    screenSize.width - popupWidth - 8; // shift left if overflow
-              }
-              if (top + popupHeight > screenSize.height - 8) {
-                top = offset.dy - popupHeight - 8; // show above if overflow
-              }
-
-              late OverlayEntry overlayEntry;
-              overlayEntry = OverlayEntry(
-                builder: (context) => Stack(
-                  children: [
-                    GestureDetector(
-                      onTap: () => overlayEntry.remove(),
-                      behavior: HitTestBehavior.translucent,
-                      child: Container(color: Colors.transparent),
-                    ),
-                    Positioned(
-                      left: left,
-                      top: top,
-                      width: popupWidth,
-                      child: TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0, end: 1),
-                        duration: const Duration(milliseconds: 300),
-                        builder: (context, value, child) {
-                          return Opacity(
-                            opacity: value,
-                            child: Transform.translate(
-                              offset: Offset(
-                                0,
-                                (1 - value) * -10,
-                              ), // slide from top
-                              child: child,
-                            ),
-                          );
-                        },
-                        child: Material(
-                          color: Colors.transparent,
-                          child: Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surface,
-                              borderRadius: BorderRadius.circular(8),
-                              boxShadow: [
-                                BoxShadow(color: Colors.black26, blurRadius: 8),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.local_fire_department,
-                                  color: StrikeService.getStrikeColor(
-                                    StrikeService.getStrikeCount(),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'showcase_strike_title'.tr(),
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelLarge
-                                            ?.copyWith(
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.onSurface,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'showcase_strike_desc'.tr(),
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.onSurface,
-                                            ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              );
-
-              overlay.insert(overlayEntry);
-            },
-            child: Row(
-              children: [
-                Icon(
-                  Icons.local_fire_department,
-                  color: StrikeService.getStrikeColor(
-                    StrikeService.getStrikeCount(),
-                  ),
-                ),
-                ClarityUnmask(
-                  child: Text(
-                    StrikeService.getStrikeCount().toString(),
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: StrikeService.getStrikeColor(
-                        StrikeService.getStrikeCount(),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+          child: Hero(
+            tag: 'streak_icon',
+            child: Material(
+              color: Colors.transparent,
+              child: ValueListenableBuilder<int>(
+                valueListenable: StrikeService.streakNotifier,
+                builder: (context, count, child) {
+                  return StreakAnimationWidget(
+                    streakCount: count,
+                    onTap: () {
+                      context.pushNamed(AppRoutes.streakStatistics);
+                    },
+                  );
+                },
+              ),
             ),
           ),
         ),
