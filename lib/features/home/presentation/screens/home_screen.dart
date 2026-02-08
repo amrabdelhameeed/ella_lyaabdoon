@@ -12,7 +12,7 @@ import 'package:ella_lyaabdoon/features/home/logic/home_cubit.dart';
 import 'package:ella_lyaabdoon/features/home/logic/home_state.dart';
 import 'package:ella_lyaabdoon/features/home/logic/quran_audio_cubit.dart';
 import 'package:ella_lyaabdoon/features/home/logic/translation_cubit.dart';
-import 'package:ella_lyaabdoon/core/services/strike_service.dart';
+import 'package:ella_lyaabdoon/core/services/streak_service.dart';
 import 'package:ella_lyaabdoon/features/settings/logic/location_cubit.dart';
 import 'package:ella_lyaabdoon/features/settings/logic/location_state.dart';
 import 'package:ella_lyaabdoon/features/home/presentation/widgets/timeline_header.dart';
@@ -51,10 +51,10 @@ class _HomeScreenState extends State<HomeScreen>
   final Map<AzanDayPeriod, GlobalKey> _periodKeys = {};
   final GlobalKey _historyKey = GlobalKey();
   final GlobalKey _settingsKey = GlobalKey();
-  final GlobalKey _strikeKey = GlobalKey();
+  final GlobalKey _streakKey = GlobalKey();
 
   // final GlobalKey _firstRewardKey = GlobalKey();
-  final String _strikeShowcaseKey = 'strike_showcase_shown21';
+  final String _streakShowcaseKey = 'streak_showcase_shown21';
 
   // Services
   // Services
@@ -107,7 +107,7 @@ class _HomeScreenState extends State<HomeScreen>
     });
 
     // Listen for new milestone achievements
-    _milestoneSubscription = StrikeService.milestoneStream.listen((data) {
+    _milestoneSubscription = StreakService.milestoneStream.listen((data) {
       if (mounted) {
         debugPrint('🎉 HomeScreen: Received milestone event!');
         _confettiController.initialize(context);
@@ -124,7 +124,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _checkAndCelebrateMilestone() {
     // Check if there's a pending celebration from handleAppOpen()
-    final milestoneData = StrikeService.getPendingCelebration();
+    final milestoneData = StreakService.getPendingCelebration();
 
     if (milestoneData != null && mounted) {
       debugPrint(
@@ -301,9 +301,9 @@ class _HomeScreenState extends State<HomeScreen>
     if (_hasStartedShowcase) return;
 
     final homeShown = CacheHelper.getBool(_showcaseKey);
-    final strikeShown = CacheHelper.getBool(_strikeShowcaseKey);
+    final streakShown = CacheHelper.getBool(_streakShowcaseKey);
 
-    if (!homeShown || !strikeShown) {
+    if (!homeShown || !streakShown) {
       _attemptShowcaseStart(showcaseContext, 0);
     }
   }
@@ -318,19 +318,19 @@ class _HomeScreenState extends State<HomeScreen>
       Future.delayed(Duration(milliseconds: 200 * (attempt + 1)), () {
         if (!mounted) return;
 
-        if (_strikeKey.currentContext != null &&
+        if (_streakKey.currentContext != null &&
             _historyKey.currentContext != null &&
             _settingsKey.currentContext != null) {
           _hasStartedShowcase = true;
 
           final homeShown = CacheHelper.getBool(_showcaseKey);
-          final strikeShown = CacheHelper.getBool(_strikeShowcaseKey);
+          final streakShown = CacheHelper.getBool(_streakShowcaseKey);
 
           final List<GlobalKey> showcaseTargets = [];
 
-          // Add strike only if not shown before
-          if (!strikeShown) {
-            showcaseTargets.add(_strikeKey);
+          // Add streak only if not shown before
+          if (!streakShown) {
+            showcaseTargets.add(_streakKey);
           }
 
           // Add old ones only if home showcase not fully shown
@@ -345,8 +345,8 @@ class _HomeScreenState extends State<HomeScreen>
           ShowCaseWidget.of(showcaseContext).startShowCase(showcaseTargets);
 
           // Mark keys as shown
-          if (!strikeShown) {
-            CacheHelper.setBool(_strikeShowcaseKey, true);
+          if (!streakShown) {
+            CacheHelper.setBool(_streakShowcaseKey, true);
           }
 
           if (!homeShown) {
@@ -466,15 +466,15 @@ class _HomeScreenState extends State<HomeScreen>
       actions: [
         // Animated Streak Widget
         Showcase(
-          key: _strikeKey,
-          title: 'showcase_strike_title'.tr(),
-          description: 'showcase_strike_desc'.tr(),
+          key: _streakKey,
+          title: 'showcase_streak_title'.tr(),
+          description: 'showcase_streak_desc'.tr(),
           child: Hero(
             tag: 'streak_icon',
             child: Material(
               color: Colors.transparent,
               child: ValueListenableBuilder<int>(
-                valueListenable: StrikeService.streakNotifier,
+                valueListenable: StreakService.streakNotifier,
                 builder: (context, count, child) {
                   return StreakAnimationWidget(
                     streakCount: count,

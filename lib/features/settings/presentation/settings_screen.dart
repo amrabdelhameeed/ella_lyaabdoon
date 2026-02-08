@@ -7,7 +7,7 @@ import 'package:ella_lyaabdoon/core/constants/app_lists.dart';
 import 'package:ella_lyaabdoon/core/di/di.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
 import 'package:ella_lyaabdoon/core/services/cache_helper.dart';
-import 'package:ella_lyaabdoon/core/services/strike_service.dart';
+import 'package:ella_lyaabdoon/core/services/streak_service.dart';
 import 'package:ella_lyaabdoon/features/settings/logic/location_cubit.dart';
 import 'package:ella_lyaabdoon/features/settings/logic/location_state.dart';
 import 'package:ella_lyaabdoon/features/settings/logic/settings_cubit.dart';
@@ -139,7 +139,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (!mounted) return;
 
       final filtered = notifications
-          .where((n) => n.id != StrikeService.notificationId)
+          .where((n) => n.id != StreakService.notificationId)
           .toList();
 
       setState(() {

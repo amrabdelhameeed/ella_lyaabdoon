@@ -101,13 +101,13 @@ class NotificationHelper {
           },
         );
 
-        // Log specific analytics for strike notifications
-        if (notificationType == 'strike_warning') {
-          final strikeCount = payload['strike_count'] ?? 0;
+        // Log specific analytics for streak notifications
+        if (notificationType == 'streak_warning') {
+          final streakCount = payload['streak_count'] ?? 0;
           _logEvent(
-            'strike_notification_opened',
+            'streak_notification_opened',
             parameters: {
-              'strike_count': strikeCount,
+              'streak_count': streakCount,
               'scheduled_date': payload['scheduled_date'] ?? '',
             },
           );

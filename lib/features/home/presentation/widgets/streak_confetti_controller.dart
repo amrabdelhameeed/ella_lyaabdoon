@@ -2,7 +2,7 @@ import 'dart:math';
 
 import 'package:confetti/confetti.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:ella_lyaabdoon/core/services/strike_service.dart';
+import 'package:ella_lyaabdoon/core/services/streak_service.dart';
 import 'package:flutter/material.dart';
 
 class StreakConfettiController {
@@ -45,7 +45,7 @@ class StreakConfettiController {
   void _showCongratulationsDialog(int milestone, String milestoneName) {
     if (_context == null || !_context!.mounted) return;
 
-    final color = StrikeService.getStrikeColor(milestone);
+    final color = StreakService.getStreakColor(milestone);
 
     showDialog(
       context: _context!,
@@ -190,7 +190,7 @@ class StreakConfettiController {
 
   int _getParticleCount() {
     // More particles for higher milestones
-    final currentStreak = StrikeService.getStrikeCount();
+    final currentStreak = StreakService.getStreakCount();
     if (currentStreak >= 365) return 300;
     if (currentStreak >= 180) return 250;
     if (currentStreak >= 90) return 200;
@@ -204,7 +204,7 @@ class StreakConfettiController {
   }
 
   List<Color> _getConfettiColors() {
-    final currentStreak = StrikeService.getStrikeCount();
+    final currentStreak = StreakService.getStreakCount();
 
     // Rainbow colors for epic streaks
     if (currentStreak >= 60) {
@@ -243,7 +243,7 @@ class StreakConfettiController {
     final random = Random();
 
     // Mix of shapes based on streak
-    final currentStreak = StrikeService.getStrikeCount();
+    final currentStreak = StreakService.getStreakCount();
 
     if (currentStreak >= 30 && random.nextBool()) {
       // Star shape for high streaks

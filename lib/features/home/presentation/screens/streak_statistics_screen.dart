@@ -1,6 +1,6 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
-import 'package:ella_lyaabdoon/core/services/strike_service.dart';
+import 'package:ella_lyaabdoon/core/services/streak_service.dart';
 import 'package:flutter/material.dart';
 
 class StreakStatisticsScreen extends StatelessWidget {
@@ -8,9 +8,9 @@ class StreakStatisticsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final stats = StrikeService.getComprehensiveStats();
+    final stats = StreakService.getComprehensiveStats();
     final currentStreak = stats['currentStreak'] as int;
-    final color = StrikeService.getStrikeColor(currentStreak);
+    final color = StreakService.getStreakColor(currentStreak);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -241,11 +241,11 @@ class StreakStatisticsScreen extends StatelessWidget {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: StrikeService.milestones.map((milestone) {
+              children: StreakService.milestones.map((milestone) {
                 final isAchieved = achievedMilestones.contains(milestone);
-                final color = StrikeService.getStrikeColor(milestone);
+                final color = StreakService.getStreakColor(milestone);
                 final milestoneName =
-                    StrikeService.milestoneNames[milestone] ?? 'milestone';
+                    StreakService.milestoneNames[milestone] ?? 'milestone';
 
                 return _buildAchievementBadge(
                   context,

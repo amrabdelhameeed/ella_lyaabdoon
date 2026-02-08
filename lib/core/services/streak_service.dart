@@ -8,9 +8,9 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-class StrikeService {
+class StreakService {
   static const String _lastOpenKey = 'lastOpenDate';
-  static const String _strikeCountKey = 'strikeCount';
+  static const String _streakCountKey = 'strikeCount';
   static const String _lastNotificationScheduledKey =
       'lastNotificationScheduled';
   static const int notificationId = 9999;
@@ -50,7 +50,7 @@ class StrikeService {
 
   // Reactive notifiers
   static final ValueNotifier<int> streakNotifier = ValueNotifier(
-    CacheHelper.getInt(_strikeCountKey),
+    CacheHelper.getInt(_streakCountKey),
   );
 
   static final StreamController<Map<String, dynamic>> _milestoneController =
@@ -59,7 +59,7 @@ class StrikeService {
   static Stream<Map<String, dynamic>> get milestoneStream =>
       _milestoneController.stream;
 
-  static Color getStrikeColor(int count) {
+  static Color getStreakColor(int count) {
     if (count <= 0) return Colors.grey;
     if (count < 3) return const Color(0xffF45D51);
     if (count < 7) return Colors.orange;
@@ -89,13 +89,13 @@ class StrikeService {
     final todayDateOnly = _getDateOnly(now);
 
     final lastOpenStr = CacheHelper.getString(_lastOpenKey);
-    int currentStrikeCount = CacheHelper.getInt(_strikeCountKey);
+    int currentstreakCount = CacheHelper.getInt(_streakCountKey);
 
     debugPrint('📅 Today: ${DateFormat("yyyy-MM-dd").format(todayDateOnly)}');
     debugPrint('💾 Last open stored: $lastOpenStr');
-    debugPrint('🔥 Current strike count: $currentStrikeCount');
+    debugPrint('🔥 Current streak count: $currentstreakCount');
 
-    // First time user or new strike calculation
+    // First time user or new streak calculation
     if (lastOpenStr.isEmpty) {
       await _handleFirstTimeOpen(now, todayDateOnly);
       return;
@@ -117,10 +117,10 @@ class StrikeService {
       // Same day - just update timestamp but DON'T cancel notification
       await _handleSameDayOpen(now, todayDateOnly);
     } else if (daysDifference == 1) {
-      // Consecutive day - increment strike
-      await _handleConsecutiveDayOpen(now, todayDateOnly, currentStrikeCount);
+      // Consecutive day - increment streak
+      await _handleConsecutiveDayOpen(now, todayDateOnly, currentstreakCount);
     } else if (daysDifference > 1) {
-      // Missed days - reset strike
+      // Missed days - reset streak
       await _handleMissedDaysOpen(now, todayDateOnly, daysDifference);
     } else {
       // Negative difference (clock changed or timezone issue)
@@ -131,7 +131,7 @@ class StrikeService {
     }
 
     // Migrate statistics for existing users (one-time operation)
-    _migrateStatisticsIfNeeded(currentStrikeCount, lastOpenDateOnly);
+    _migrateStatisticsIfNeeded(currentstreakCount, lastOpenDateOnly);
   }
 
   /// One-time migration to initialize statistics for existing users
@@ -209,24 +209,24 @@ class StrikeService {
     DateTime now,
     DateTime todayDateOnly,
   ) async {
-    debugPrint('🎉 First time opening app - Setting strike to 1');
+    debugPrint('🎉 First time opening app - Setting streak to 1');
 
     CacheHelper.setString(_lastOpenKey, now.toIso8601String());
-    CacheHelper.setInt(_strikeCountKey, 1);
+    CacheHelper.setInt(_streakCountKey, 1);
 
     // Update statistics
     _updateStatistics(1, true);
 
     _logEvent(
-      'strike_started',
+      'streak_started',
       parameters: {
-        'strike_count': 1,
+        'streak_count': 1,
         'date': DateFormat('yyyy-MM-dd').format(todayDateOnly),
       },
     );
 
     // Schedule reminder for tomorrow
-    await _scheduleStrikeWarning(todayDateOnly);
+    await _scheduleStreakWarning(todayDateOnly);
   }
 
   // 🔴 CRITICAL FIX #1: Same day open should NOT cancel notification
@@ -251,36 +251,36 @@ class StrikeService {
   static Future<void> _handleConsecutiveDayOpen(
     DateTime now,
     DateTime todayDateOnly,
-    int currentStrikeCount,
+    int currentStreakCount,
   ) async {
-    final newStrikeCount = currentStrikeCount + 1;
+    final newStreakCount = currentStreakCount + 1;
     debugPrint(
-      '🔥 Consecutive day! Strike: $currentStrikeCount → $newStrikeCount',
+      '🔥 Consecutive day! Streak: $currentStreakCount → $newStreakCount',
     );
 
     CacheHelper.setString(_lastOpenKey, now.toIso8601String());
-    CacheHelper.setInt(_strikeCountKey, newStrikeCount);
+    CacheHelper.setInt(_streakCountKey, newStreakCount);
 
     // Update notifier
-    streakNotifier.value = newStrikeCount;
+    streakNotifier.value = newStreakCount;
 
     // Update statistics
-    _updateStatistics(newStrikeCount, true);
+    _updateStatistics(newStreakCount, true);
 
     // Check for milestone achievement
-    checkMilestoneAchievement(newStrikeCount);
+    checkMilestoneAchievement(newStreakCount);
 
     _logEvent(
-      'strike_continued',
+      'Streak_continued',
       parameters: {
-        'previous_count': currentStrikeCount,
-        'new_count': newStrikeCount,
+        'previous_count': currentStreakCount,
+        'new_count': newStreakCount,
         'date': DateFormat('yyyy-MM-dd').format(todayDateOnly),
       },
     );
 
     // Schedule new notification for tomorrow
-    await _scheduleStrikeWarning(todayDateOnly);
+    await _scheduleStreakWarning(todayDateOnly);
   }
 
   static Future<void> _handleMissedDaysOpen(
@@ -288,17 +288,17 @@ class StrikeService {
     DateTime todayDateOnly,
     int daysDifference,
   ) async {
-    final previousStrike = CacheHelper.getInt(_strikeCountKey);
+    final previousStreak = CacheHelper.getInt(_streakCountKey);
 
     debugPrint(
-      '💔 Missed ${daysDifference - 1} day(s) - Resetting strike to 1',
+      '💔 Missed ${daysDifference - 1} day(s) - Resetting Streak to 1',
     );
 
     // Record the streak break
-    _recordStreakBreak(previousStrike);
+    _recordStreakBreak(previousStreak);
 
     CacheHelper.setString(_lastOpenKey, now.toIso8601String());
-    CacheHelper.setInt(_strikeCountKey, 1);
+    CacheHelper.setInt(_streakCountKey, 1);
 
     // Update notifier
     streakNotifier.value = 1;
@@ -307,9 +307,9 @@ class StrikeService {
     _updateStatistics(1, true);
 
     _logEvent(
-      'strike_broken',
+      'Streak_broken',
       parameters: {
-        'previous_count': previousStrike,
+        'previous_count': previousStreak,
         'days_missed': daysDifference - 1,
         'date': DateFormat('yyyy-MM-dd').format(todayDateOnly),
       },
@@ -317,17 +317,17 @@ class StrikeService {
 
     // Cancel old notification and schedule new one
     await NotificationHelper.cancel(notificationId);
-    await _scheduleStrikeWarning(todayDateOnly);
+    await _scheduleStreakWarning(todayDateOnly);
   }
 
   // 🔴 CRITICAL FIX #3: New method to ensure notification is always scheduled
   static Future<void> _ensureNotificationScheduled(
     DateTime todayDateOnly,
   ) async {
-    final strikeCount = CacheHelper.getInt(_strikeCountKey);
+    final streakCount = CacheHelper.getInt(_streakCountKey);
 
-    if (strikeCount <= 0) {
-      debugPrint('⏰ No active strike - notification NOT needed');
+    if (streakCount <= 0) {
+      debugPrint('⏰ No active Streak - notification NOT needed');
       return;
     }
 
@@ -338,7 +338,7 @@ class StrikeService {
 
     if (!isScheduled) {
       debugPrint('⚠️ Notification missing! Rescheduling...');
-      await _scheduleStrikeWarning(todayDateOnly);
+      await _scheduleStreakWarning(todayDateOnly);
     } else {
       debugPrint('✅ Notification already scheduled for tomorrow');
     }
@@ -346,11 +346,11 @@ class StrikeService {
 
   // 🔴 CRITICAL FIX #4: Removed duplicate scheduling prevention logic
   // The old logic prevented notifications from being rescheduled properly
-  static Future<void> _scheduleStrikeWarning(DateTime todayDateOnly) async {
-    final strikeCount = CacheHelper.getInt(_strikeCountKey);
+  static Future<void> _scheduleStreakWarning(DateTime todayDateOnly) async {
+    final streakCount = CacheHelper.getInt(_streakCountKey);
 
-    if (strikeCount <= 0) {
-      debugPrint('⏰ No active strike - notification NOT scheduled');
+    if (streakCount <= 0) {
+      debugPrint('⏰ No active Streak - notification NOT scheduled');
       return;
     }
 
@@ -368,11 +368,11 @@ class StrikeService {
           )
         : DateTime.now().add(const Duration(minutes: 1));
 
-    String title = "strike_reminder_title".tr();
-    String body = "strike_reminder_body".tr();
+    String title = "streak_reminder_title".tr();
+    String body = "streak_reminder_body".tr();
 
     // Fallback for uninitialized translations
-    if (title == "strike_reminder_title") {
+    if (title == "streak_reminder_title") {
       title = "حافظ على تتابع أيامك! 🔥";
       body =
           "أنت على وشك فقدان تتابع أيامك في ذكر الله. افتح التطبيق الآن لتحافظ عليه!";
@@ -384,8 +384,8 @@ class StrikeService {
       body: body,
       dateTime: tomorrow,
       payload: {
-        'type': 'strike_warning',
-        'strike_count': strikeCount,
+        'type': 'Streak_warning',
+        'streak_count': streakCount,
         'scheduled_date': tomorrow.toIso8601String(),
       },
     );
@@ -397,29 +397,29 @@ class StrikeService {
     );
 
     debugPrint(
-      '⏰ Reminder scheduled for: ${DateFormat("yyyy-MM-dd hh:mm a").format(tomorrow)} | Strike: $strikeCount',
+      '⏰ Reminder scheduled for: ${DateFormat("yyyy-MM-dd hh:mm a").format(tomorrow)} | Streak: $streakCount',
     );
 
     _logEvent(
-      'strike_notification_scheduled',
+      'streak_notification_scheduled',
       parameters: {
-        'strike_count': strikeCount,
+        'streak_count': streakCount,
         'scheduled_time': tomorrow.toIso8601String(),
       },
     );
   }
 
-  static int getStrikeCount() {
-    return CacheHelper.getInt(_strikeCountKey);
+  static int getStreakCount() {
+    return CacheHelper.getInt(_streakCountKey);
   }
 
-  /// Check if user's strike is in danger (didn't open today yet)
-  static bool isStrikeInDanger() {
+  /// Check if user's streak is in danger (didn't open today yet)
+  static bool isStreakInDanger() {
     final lastOpenStr = CacheHelper.getString(_lastOpenKey);
     if (lastOpenStr.isEmpty) return false;
 
-    final strikeCount = CacheHelper.getInt(_strikeCountKey);
-    if (strikeCount <= 0) return false;
+    final streakCount = CacheHelper.getInt(_streakCountKey);
+    if (streakCount <= 0) return false;
 
     final lastOpen = DateTime.parse(lastOpenStr);
     final lastOpenDateOnly = _getDateOnly(lastOpen);
@@ -430,32 +430,32 @@ class StrikeService {
     return daysDifference >= 1;
   }
 
-  /// Reset strike manually
-  static Future<void> resetStrike() async {
-    final previousStrike = CacheHelper.getInt(_strikeCountKey);
+  /// Reset streak manually
+  static Future<void> resetStreak() async {
+    final previousStreak = CacheHelper.getInt(_streakCountKey);
 
-    debugPrint('🔄 Strike reset manually');
+    debugPrint('🔄 Streak reset manually');
 
-    CacheHelper.setInt(_strikeCountKey, 0);
+    CacheHelper.setInt(_streakCountKey, 0);
     streakNotifier.value = 0;
     CacheHelper.remove(_lastOpenKey);
     CacheHelper.remove(_lastNotificationScheduledKey);
     await NotificationHelper.cancel(notificationId);
 
     _logEvent(
-      'strike_reset_manual',
-      parameters: {'previous_count': previousStrike},
+      'streak_reset_manual',
+      parameters: {'previous_count': previousStreak},
     );
   }
 
-  /// Get strike status information
-  static Map<String, dynamic> getStrikeStatus() {
+  /// Get Streak status information
+  static Map<String, dynamic> getStreakStatus() {
     final lastOpenStr = CacheHelper.getString(_lastOpenKey);
-    final strikeCount = CacheHelper.getInt(_strikeCountKey);
+    final streakCount = CacheHelper.getInt(_streakCountKey);
 
     if (lastOpenStr.isEmpty) {
       return {
-        'strikeCount': 0,
+        'streakCount': 0,
         'isActive': false,
         'lastOpen': null,
         'isInDanger': false,
@@ -468,11 +468,11 @@ class StrikeService {
     final daysDifference = todayDateOnly.difference(lastOpenDateOnly).inDays;
 
     return {
-      'strikeCount': strikeCount,
-      'isActive': strikeCount > 0,
+      'streakCount': streakCount,
+      'isActive': streakCount > 0,
       'lastOpen': lastOpen,
       'daysSinceLastOpen': daysDifference,
-      'isInDanger': daysDifference >= 1 && strikeCount > 0,
+      'isInDanger': daysDifference >= 1 && streakCount > 0,
       'openedToday': daysDifference == 0,
     };
   }
@@ -557,7 +557,7 @@ class StrikeService {
 
   /// Get next milestone to achieve
   static int? getNextMilestone() {
-    final currentStreak = getStrikeCount();
+    final currentStreak = getStreakCount();
     final achieved = getAchievedMilestones();
 
     for (final milestone in milestones) {
@@ -570,34 +570,29 @@ class StrikeService {
 
   /// Check if a milestone was just achieved and return celebration data
   static Map<String, dynamic>? checkMilestoneAchievement(int newStreak) {
-    // Check if this streak count is a milestone
     if (!milestones.contains(newStreak)) return null;
 
-    // Check if we already celebrated today (prevent duplicate celebrations)
     final lastCelebration = CacheHelper.getString(_lastCelebrationKey);
     final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-    if (lastCelebration == today) {
-      debugPrint('ℹ️ Already celebrated today ($today)');
-      // For testing purposes, we might want to allow this if explicitly requested,
-      // but for now we'll stick to once per day to avoid annoyance.
-      // return null;
+    if (lastCelebration == today) return null;
 
-      // RELAXATION FOR TESTING: If in debug mode, maybe allow?
-      // Or just rely on the user changing dates.
-      // Let's return null to be safe for now, as the user is likely changing dates.
-      return null;
-    }
+    final achieved = getAchievedMilestones();
 
-    // REMOVED LIFETIME CHECK to allow celebrating again if streak is lost and regained.
-    // final achieved = getAchievedMilestones();
-    // if (achieved.contains(newStreak)) return null;
-
-    final achieved = getAchievedMilestones(); // Get fresh list
-
-    // Mark milestone as achieved
     achieved.add(newStreak);
     CacheHelper.setString(_achievedMilestonesKey, jsonEncode(achieved));
     CacheHelper.setString(_lastCelebrationKey, today);
+
+    // ✅ Firebase Analytics logging for milestone achievement
+    _logEvent(
+      'streak_milestone_achieved',
+      parameters: {
+        'milestone_days': newStreak,
+        'milestone_name': milestoneNames[newStreak] ?? 'unknown',
+        'current_streak': newStreak,
+        'total_active_days': getTotalActiveDays(),
+        'date': today,
+      },
+    );
 
     debugPrint('🎉 Milestone achieved: $newStreak days!');
 
@@ -607,11 +602,7 @@ class StrikeService {
       'shouldCelebrate': true,
     };
 
-    // Store celebration data for HomeScreen to pick up
     CacheHelper.setString(_pendingCelebrationKey, jsonEncode(celebrationData));
-    debugPrint('🎊 Stored pending celebration for HomeScreen');
-
-    // Notify listeners
     _milestoneController.add(celebrationData);
 
     return celebrationData;
@@ -705,7 +696,7 @@ class StrikeService {
 
   /// Get comprehensive statistics for display
   static Map<String, dynamic> getComprehensiveStats() {
-    final currentStreak = getStrikeCount();
+    final currentStreak = getStreakCount();
     final longestStreak = getLongestStreak();
     final totalActiveDays = getTotalActiveDays();
     final streakBreaks = getStreakBreakCount();

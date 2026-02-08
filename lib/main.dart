@@ -13,7 +13,7 @@ import 'package:ella_lyaabdoon/features/history/data/history_db_provider.dart';
 import 'package:ella_lyaabdoon/core/constants/app_theme.dart';
 import 'package:ella_lyaabdoon/core/services/cache_helper.dart';
 import 'package:ella_lyaabdoon/core/utils/observer.dart';
-import 'package:ella_lyaabdoon/core/services/strike_service.dart';
+import 'package:ella_lyaabdoon/core/services/streak_service.dart';
 import 'package:ella_lyaabdoon/utils/notification_helper.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -364,8 +364,8 @@ Future<void> _initializeInBackground() async {
   // UI setup
   _setupUI();
 
-  // Strike feature
-  await StrikeService.handleAppOpen();
+  // Streak feature
+  await StreakService.handleAppOpen();
 
   debugPrint('✅ Optional services complete');
 }
@@ -507,6 +507,7 @@ class MyApp extends StatelessWidget {
     // Safety check
     if (!_hiveInitialized || !_allServicesReady) {
       return MaterialApp(
+        showPerformanceOverlay: true,
         home: Scaffold(
           backgroundColor: Colors.white,
           body: Center(

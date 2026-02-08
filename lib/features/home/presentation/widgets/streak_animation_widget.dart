@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
-import 'package:ella_lyaabdoon/core/services/strike_service.dart';
+import 'package:clarity_flutter/clarity_flutter.dart';
+import 'package:ella_lyaabdoon/core/services/streak_service.dart';
 import 'package:flutter/material.dart';
 
 class StreakAnimationWidget extends StatefulWidget {
@@ -88,7 +89,7 @@ class _StreakAnimationWidgetState extends State<StreakAnimationWidget>
 
   @override
   Widget build(BuildContext context) {
-    final color = StrikeService.getStrikeColor(widget.streakCount);
+    final color = StreakService.getStreakColor(widget.streakCount);
 
     return GestureDetector(
       onTap: _handleTap,
@@ -167,15 +168,17 @@ class _StreakAnimationWidgetState extends State<StreakAnimationWidget>
               // Streak count
               Positioned(
                 right: 0,
-                child: Text(
-                  widget.streakCount.toString(),
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 16,
-                    color: color,
-                    shadows: [
-                      Shadow(blurRadius: 4, color: color.withOpacity(0.5)),
-                    ],
+                child: ClarityUnmask(
+                  child: Text(
+                    widget.streakCount.toString(),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: color,
+                      shadows: [
+                        Shadow(blurRadius: 4, color: color.withOpacity(0.5)),
+                      ],
+                    ),
                   ),
                 ),
               ),
