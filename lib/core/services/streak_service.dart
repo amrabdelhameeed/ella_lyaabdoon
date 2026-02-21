@@ -578,21 +578,45 @@ class StreakService {
 
     final achieved = getAchievedMilestones();
 
+    // Check if this milestone was already achieved
+    if (achieved.contains(newStreak)) {
+      debugPrint('⚠️ Milestone $newStreak already achieved, skipping');
+      return null;
+    }
+
     achieved.add(newStreak);
     CacheHelper.setString(_achievedMilestonesKey, jsonEncode(achieved));
     CacheHelper.setString(_lastCelebrationKey, today);
 
-    // ✅ Firebase Analytics logging for milestone achievement
-    _logEvent(
-      'streak_milestone_achieved',
-      parameters: {
-        'milestone_days': newStreak,
-        'milestone_name': milestoneNames[newStreak] ?? 'unknown',
-        'current_streak': newStreak,
-        'total_active_days': getTotalActiveDays(),
-        'date': today,
-      },
-    );
+    // ✅ Enhanced Firebase Analytics logging for milestone achievement
+    if (kReleaseMode) {
+      final milestoneName = milestoneNames[newStreak] ?? 'unknown';
+
+      _logEvent(
+        'streak_milestone_achieved',
+        parameters: {
+          'milestone_days': newStreak,
+          'milestone_name': milestoneName,
+          'current_streak': newStreak,
+          'total_active_days': getTotalActiveDays(),
+          'longest_streak': getLongestStreak(),
+          'date': today,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        },
+      );
+
+      // Also log individual milestone events for better tracking
+      _logEvent(
+        'milestone_${newStreak}_days',
+        parameters: {
+          'milestone_name': milestoneName,
+          'achievement_date': today,
+          'total_active_days': getTotalActiveDays(),
+        },
+      );
+
+      debugPrint('📊 Firebase: Milestone $newStreak ($milestoneName) logged');
+    }
 
     debugPrint('🎉 Milestone achieved: $newStreak days!');
 

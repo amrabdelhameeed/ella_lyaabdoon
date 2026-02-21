@@ -1,5 +1,6 @@
 import 'package:adhan_dart/adhan_dart.dart';
 import 'package:ella_lyaabdoon/core/models/azan_day_period.dart';
+import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
 
 class AzanHelper {
   final double latitude;
@@ -10,8 +11,11 @@ class AzanHelper {
   AzanHelper({required this.latitude, required this.longitude}) {
     final coordinates = Coordinates(latitude, longitude);
 
-    final params = CalculationMethodParameters.egyptian()
-      ..madhab = Madhab.shafi;
+    final methodStr = AppServicesDBprovider.getCalculationMethod();
+    final madhabStr = AppServicesDBprovider.getMadhab();
+
+    final params = _getParams(methodStr)
+      ..madhab = (madhabStr == 'hanafi' ? Madhab.hanafi : Madhab.shafi);
 
     prayerTimes = PrayerTimes(
       coordinates: coordinates,
@@ -19,6 +23,55 @@ class AzanHelper {
       calculationParameters: params,
       precision: true,
     );
+  }
+  CalculationParameters _getParams(String method) {
+    switch (method) {
+      case 'karachi':
+        return CalculationMethodParameters.karachi();
+
+      case 'isna':
+      case 'north_america':
+        return CalculationMethodParameters.northAmerica();
+
+      case 'muslim_world_league':
+        return CalculationMethodParameters.muslimWorldLeague();
+
+      case 'umm_al_qura':
+        return CalculationMethodParameters.ummAlQura();
+
+      case 'dubai':
+        return CalculationMethodParameters.dubai();
+
+      case 'kuwait':
+        return CalculationMethodParameters.kuwait();
+
+      case 'qatar':
+        return CalculationMethodParameters.qatar();
+
+      case 'singapore':
+        return CalculationMethodParameters.singapore();
+
+      case 'tehran':
+        return CalculationMethodParameters.tehran();
+
+      case 'egyptian':
+        return CalculationMethodParameters.egyptian();
+
+      case 'turkiye':
+        return CalculationMethodParameters.turkiye();
+
+      case 'morocco':
+        return CalculationMethodParameters.morocco();
+
+      case 'moonsighting_committee':
+        return CalculationMethodParameters.moonsightingCommittee();
+
+      case 'other':
+        return CalculationMethodParameters.other();
+
+      default:
+        return CalculationMethodParameters.egyptian();
+    }
   }
 
   DateTime get fajr => prayerTimes.fajr.toLocal();

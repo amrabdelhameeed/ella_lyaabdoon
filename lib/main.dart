@@ -102,7 +102,7 @@ void main() async {
 
       // Initialize default clarity
       _clarityConfig = ClarityConfig(
-        projectId: "toksotegrs",
+        projectId: kReleaseMode ? "toksotegrs" : "",
         userId: "default_${DateTime.now().millisecondsSinceEpoch}",
         logLevel: kDebugMode ? LogLevel.Info : LogLevel.None,
       );
@@ -429,7 +429,7 @@ Future<void> _initMessaging() async {
         .then((token) {
           if (token != null) {
             _clarityConfig = ClarityConfig(
-              projectId: "toksotegrs",
+              projectId: kReleaseMode ? "toksotegrs" : "",
               userId: token,
               logLevel: kDebugMode ? LogLevel.Info : LogLevel.None,
             );

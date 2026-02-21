@@ -59,6 +59,19 @@ class AppServicesDBprovider {
 
   static String getAyahReciter() =>
       _box.get(AppDatabaseKeys.ayahReciterKey) ?? "";
+
+  // Calculation Method
+  static String getCalculationMethod() =>
+      _box.get(AppDatabaseKeys.calculationMethodKey) ?? "egyptian";
+  static Future<void> setCalculationMethod(String value) async {
+    await _box.put(AppDatabaseKeys.calculationMethodKey, value);
+  }
+
+  // Madhab
+  static String getMadhab() => _box.get(AppDatabaseKeys.madhabKey) ?? "shafi";
+  static Future<void> setMadhab(String value) async {
+    await _box.put(AppDatabaseKeys.madhabKey, value);
+  }
 }
 
 class AppDatabaseKeys {
@@ -80,4 +93,7 @@ class AppDatabaseKeys {
 
   // New key for AyahReciter
   static const String ayahReciterKey = 'ayahReciterKey';
+
+  static const String calculationMethodKey = 'calculationMethodKey';
+  static const String madhabKey = 'madhabKey';
 }

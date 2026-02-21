@@ -1,3 +1,4 @@
+import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
 import 'package:ella_lyaabdoon/core/services/streak_service.dart';
@@ -84,11 +85,13 @@ class StreakStatisticsScreen extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              Text(
-                '$currentStreak',
-                style: theme.textTheme.displayLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: color,
+              ClarityUnmask(
+                child: Text(
+                  '$currentStreak',
+                  style: theme.textTheme.displayLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: color,
+                  ),
                 ),
               ),
               Text(
@@ -99,10 +102,12 @@ class StreakStatisticsScreen extends StatelessWidget {
               ),
               if (streakStartDate != null) ...[
                 const SizedBox(height: 16),
-                Text(
-                  '${'streak_started_on'.tr()}: ${DateFormat('d MMM yyyy', AppServicesDBprovider.currentLocale()).format(streakStartDate)}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.6),
+                ClarityUnmask(
+                  child: Text(
+                    '${'streak_started_on'.tr()}: ${DateFormat('d MMM yyyy', AppServicesDBprovider.currentLocale()).format(streakStartDate)}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                    ),
                   ),
                 ),
               ],
@@ -185,11 +190,13 @@ class StreakStatisticsScreen extends StatelessWidget {
           children: [
             Icon(icon, color: color, size: 32),
             const SizedBox(height: 8),
-            Text(
-              value,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
+            ClarityUnmask(
+              child: Text(
+                value,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
               ),
             ),
             const SizedBox(height: 4),
@@ -299,13 +306,15 @@ class StreakStatisticsScreen extends StatelessWidget {
                   : theme.colorScheme.onSurface.withOpacity(0.5),
             ),
             const SizedBox(width: 4),
-            Text(
-              '$milestone ${'days'.tr()}',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: isAchieved
-                    ? color
-                    : theme.colorScheme.onSurface.withOpacity(0.5),
+            ClarityUnmask(
+              child: Text(
+                '$milestone ${'days'.tr()}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: isAchieved
+                      ? color
+                      : theme.colorScheme.onSurface.withOpacity(0.5),
+                ),
               ),
             ),
           ],
@@ -345,17 +354,21 @@ class StreakStatisticsScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '$nextMilestone ${'days'.tr()}',
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.bold,
+                ClarityUnmask(
+                  child: Text(
+                    '$nextMilestone ${'days'.tr()}',
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
-                Text(
-                  '$daysToGo ${'days_to_go'.tr()}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                ClarityUnmask(
+                  child: Text(
+                    '$daysToGo ${'days_to_go'.tr()}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    ),
                   ),
                 ),
               ],
@@ -405,11 +418,13 @@ class StreakStatisticsScreen extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(
-                  '${last30Days.length} / 30 ${'days'.tr()}',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
+                ClarityUnmask(
+                  child: Text(
+                    '${last30Days.length} / 30 ${'days'.tr()}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.colorScheme.onSurface,
+                    ),
                   ),
                 ),
               ],

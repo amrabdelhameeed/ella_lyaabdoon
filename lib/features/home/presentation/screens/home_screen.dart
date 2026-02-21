@@ -1,4 +1,4 @@
-﻿import 'package:easy_localization/easy_localization.dart';
+﻿import 'package:easy_localization/easy_localization.dart' as easy;
 import 'package:ella_lyaabdoon/app_router.dart';
 import 'package:ella_lyaabdoon/core/constants/app_lists.dart';
 import 'package:ella_lyaabdoon/core/constants/app_routes.dart';
@@ -7,6 +7,7 @@ import 'package:ella_lyaabdoon/core/models/timeline_item.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
 import 'package:ella_lyaabdoon/core/services/cache_helper.dart';
 import 'package:ella_lyaabdoon/core/services/prayer_widget_service.dart';
+import 'package:ella_lyaabdoon/core/utils/ramadan_zeena_permanent.dart';
 import 'package:ella_lyaabdoon/features/history/logic/history_cubit.dart';
 import 'package:ella_lyaabdoon/features/home/logic/home_cubit.dart';
 import 'package:ella_lyaabdoon/features/home/logic/home_state.dart';
@@ -21,6 +22,8 @@ import 'package:ella_lyaabdoon/features/home/presentation/widgets/timeline_show_
 
 import 'package:ella_lyaabdoon/features/home/presentation/widgets/streak_animation_widget.dart';
 import 'package:ella_lyaabdoon/features/home/presentation/widgets/streak_confetti_controller.dart';
+import 'package:ella_lyaabdoon/utils/constants/app_colors.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -74,9 +77,26 @@ class _HomeScreenState extends State<HomeScreen>
   static const int _reviewRemindDays = 7;
   static const int _reviewRemindLaunches = 10;
   // ADD THIS NEW METHOD
+  bool isZeenaEnabled = false;
+  Future<void> loadConfig() async {
+    final remoteConfig = FirebaseRemoteConfig.instance;
+    await remoteConfig.setConfigSettings(
+      RemoteConfigSettings(
+        fetchTimeout: const Duration(seconds: 10),
+        minimumFetchInterval: const Duration(days: 1),
+      ),
+    );
+    await remoteConfig.setDefaults({'enable_zeena': true});
+
+    await remoteConfig.fetchAndActivate();
+
+    setState(() {
+      isZeenaEnabled = remoteConfig.getBool('enable_zeena');
+    });
+  }
 
   // ADD THIS: Cache shuffled rewards
-  Map<AzanDayPeriod, List<dynamic>> _shuffledRewards = {};
+  final Map<AzanDayPeriod, List<dynamic>> _shuffledRewards = {};
   // MODIFY THIS METHOD
   void _shuffleRewardsOnce() {
     for (var item in AppLists.timelineItems) {
@@ -94,8 +114,9 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this); // ADD THIS LINE
     _initializeKeys();
+    loadConfig();
     _initializePulseAnimation();
-    _playSavedReciterAyah();
+    // _playSavedReciterAyah();
     _initializeRateMyApp();
     _initializeHomeWidget();
     _shuffleRewardsOnce(); // ADD THIS LINE
@@ -242,23 +263,23 @@ class _HomeScreenState extends State<HomeScreen>
     debugPrint(actions[button]);
   }
 
-  void _playSavedReciterAyah() {
-    final String reciterId = AppServicesDBprovider.getAyahReciter();
+  // void _playSavedReciterAyah() {
+  //   final String reciterId = AppServicesDBprovider.getAyahReciter();
 
-    if (reciterId.isEmpty) {
-      debugPrint('Reciter is OFF. Not playing any ayah.');
-      return;
-    }
+  //   if (reciterId.isEmpty) {
+  //     debugPrint('Reciter is OFF. Not playing any ayah.');
+  //     return;
+  //   }
 
-    final validReciter = AppLists.reciters.firstWhere(
-      (r) => r['id'] == reciterId,
-      orElse: () =>
-          AppLists.reciters.firstWhere((r) => r['id'] == 'ar.muhammadayyoub'),
-    );
+  //   final validReciter = AppLists.reciters.firstWhere(
+  //     (r) => r['id'] == reciterId,
+  //     orElse: () =>
+  //         AppLists.reciters.firstWhere((r) => r['id'] == 'ar.muhammadayyoub'),
+  //   );
 
-    QuranAudioCubit().playAyah(validReciter['id']!, 4731);
-    debugPrint('Playing Reciter: ${validReciter['name']}');
-  }
+  //   QuranAudioCubit().playAyah(validReciter['id']!, 4731);
+  //   debugPrint('Playing Reciter: ${validReciter['name']}');
+  // }
 
   void _scrollToCurrentPeriod(AzanDayPeriod period) {
     final key = _periodKeys[period];
@@ -278,7 +299,7 @@ class _HomeScreenState extends State<HomeScreen>
   ) {
     if (prayerTimes != null && prayerTimes.containsKey(period)) {
       final time = prayerTimes[period]!;
-      return DateFormat.jm(context.locale.toString()).format(time);
+      return easy.DateFormat.jm(context.locale.toString()).format(time);
     }
     return '';
   }
@@ -397,7 +418,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (_) => QuranAudioCubit()),
+        // BlocProvider(create: (_) => QuranAudioCubit()),
         BlocProvider(create: (_) => TranslationCubit()),
         BlocProvider(create: (_) => LocationCubit()),
         BlocProvider(create: (context) => HomeCubit()..initialize()),
@@ -442,17 +463,25 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildScaffold(BuildContext showcaseContext) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _navigateToReelsView,
-        icon: const Icon(Icons.play_circle_outline),
-        label: Text('reels_view'.tr()),
-        tooltip: 'switch_to_reels'.tr(),
-      ),
+      // floatingActionButton: FloatingActionButton.extended(
+      //   onPressed: _navigateToReelsView,
+      //   icon: const Icon(Icons.play_circle_outline),
+      //   label: Text('reels_view'.tr()),
+      //   tooltip: 'switch_to_reels'.tr(),
+      // ),
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: _buildAppBar(),
       body: Stack(
         children: [
           _buildBody(showcaseContext),
+          isZeenaEnabled
+              ? Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: RamadanZeena(animate: false, height: 20),
+                )
+              : SizedBox.shrink(),
           // Confetti overlay
           _confettiController.getConfettiWidget(),
         ],
@@ -462,7 +491,37 @@ class _HomeScreenState extends State<HomeScreen>
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      title: Text('app_title'.tr()),
+      title: Stack(
+        children: [
+          Text('app_title'.tr()),
+          isZeenaEnabled
+              ? RamadanZeena(
+                  isWithRope: false,
+                  animate: true,
+                  isWillBeHidden: false,
+                  height: 20,
+                  items: [
+                    ZeenaItem(
+                      xFraction: 0.4,
+                      ropeLength: 25,
+                      color: AppColors.greenDark,
+                      hasStar: true,
+                      moonRadius: 10,
+                      swayDelay: 0.1,
+                    ),
+                    ZeenaItem(
+                      xFraction: 0.05,
+                      ropeLength: 26,
+                      color: Colors.deepOrange,
+                      hasStar: false,
+                      moonRadius: 9,
+                      swayDelay: 0.4,
+                    ),
+                  ],
+                )
+              : SizedBox.shrink(),
+        ],
+      ),
       actions: [
         // Animated Streak Widget
         Showcase(

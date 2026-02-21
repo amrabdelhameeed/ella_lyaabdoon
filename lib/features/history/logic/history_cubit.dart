@@ -43,4 +43,19 @@ class HistoryCubit extends Cubit<HistoryState> {
       emit(HistoryError(e.toString()));
     }
   }
+
+  Future<void> incrementCounter(String zikrId) async {
+    try {
+      await HistoryDBProvider.incrementCounter(zikrId);
+
+      // Update local state to trigger rebuild
+      final currentChecks = state is HistoryLoaded
+          ? Map<String, bool>.from((state as HistoryLoaded).checks)
+          : <String, bool>{};
+
+      emit(HistoryLoaded(checks: currentChecks, lastUpdated: DateTime.now()));
+    } catch (e) {
+      emit(HistoryError(e.toString()));
+    }
+  }
 }

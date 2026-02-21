@@ -4,11 +4,14 @@ class HistoryDBProvider {
   HistoryDBProvider._();
 
   static const String _boxName = 'zikrHistoryBox';
+  static const String _counterBoxName = 'zikrCounterBox';
   static Box<List<String>>? _box;
+  static Box<int>? _counterBox;
 
   /// Initialize Hive box
   static Future<void> init() async {
     _box = await Hive.openBox<List<String>>(_boxName);
+    _counterBox = await Hive.openBox<int>(_counterBoxName);
   }
 
   static Box<List<String>> get _safeBox {
@@ -142,5 +145,32 @@ class HistoryDBProvider {
       // Save cleaned data
       await _safeBox.put(key, uniqueDates.values.toList());
     }
+  }
+
+  /// ✅ Counters logic
+
+  static String _getCounterKey(String zikrId) {
+    final today = DateTime.now();
+    return '${zikrId}_${today.year}_${today.month}_${today.day}';
+  }
+
+  /// Get current count for a zikr today
+  static int getCounter(String zikrId) {
+    if (_counterBox == null || !_counterBox!.isOpen) return 0;
+    return _counterBox!.get(_getCounterKey(zikrId)) ?? 0;
+  }
+
+  /// Increment counter for a zikr today
+  static Future<void> incrementCounter(String zikrId) async {
+    if (_counterBox == null || !_counterBox!.isOpen) return;
+    final key = _getCounterKey(zikrId);
+    final current = _counterBox!.get(key) ?? 0;
+    await _counterBox!.put(key, current + 1);
+  }
+
+  /// Reset counter for a zikr today
+  static Future<void> resetCounter(String zikrId) async {
+    if (_counterBox == null || !_counterBox!.isOpen) return;
+    await _counterBox!.delete(_getCounterKey(zikrId));
   }
 }

@@ -67,9 +67,19 @@ class _ReelsViewContentState extends State<_ReelsViewContent> {
     _allRewards.clear();
     final currentPeriod = context.read<HomeCubit>().state.currentPeriod;
 
-    // Build rewards list in timeline order (not reordered)
-    for (var item in AppLists.timelineItems) {
-      for (var reward in item.rewards) {
+    // // Find the current period index
+    // final currentIndexInTimeline = AppLists.timelineItems.indexWhere(
+    //   (item) => item.period == currentPeriod,
+    // );
+
+    // Build the list in prayer order, but shuffle rewards within each period
+    for (int i = 0; i < AppLists.timelineItems.length; i++) {
+      final item = AppLists.timelineItems[i];
+
+      // Shuffle only the rewards inside this period
+      final rewardsShuffled = List.from(item.rewards)..shuffle();
+
+      for (var reward in rewardsShuffled) {
         _allRewards.add(
           RewardItem(
             reward: reward,
@@ -80,15 +90,13 @@ class _ReelsViewContentState extends State<_ReelsViewContent> {
       }
     }
 
-    // Find the index of the first reward in current period
+    // Find the index of the first reward in current period to scroll to it
     if (currentPeriod != null && _allRewards.isNotEmpty) {
       final currentPeriodIndex = _allRewards.indexWhere(
         (item) => item.period == currentPeriod,
       );
-
       if (currentPeriodIndex != -1) {
         _currentIndex = currentPeriodIndex;
-        // Update PageController to start at current period
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_pageController.hasClients) {
             _pageController.jumpToPage(_currentIndex);
@@ -424,8 +432,9 @@ class _ReelsViewContentState extends State<_ReelsViewContent> {
                                       opacity: 0,
                                       child: Text(
                                         reward.title,
+                                        maxLines: 2,
                                         style: const TextStyle(
-                                          fontSize: 20,
+                                          fontSize: 18,
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
@@ -486,31 +495,19 @@ class _ReelsViewContentState extends State<_ReelsViewContent> {
                                         textToShow = state.translatedText;
                                       }
 
-                                      return AnimatedTextKit(
-                                        key: ValueKey(textToShow),
-                                        isRepeatingAnimation: false,
-                                        animatedTexts: [
-                                          TypewriterAnimatedText(
-                                            textAlign: TextAlign.center,
-                                            textToShow,
-                                            textStyle: TextStyle(
-                                              fontFamily:
-                                                  state is TranslationLoaded
-                                                  ? null
-                                                  : 'kufi',
-                                              color: Colors.white.withOpacity(
-                                                0.95,
-                                              ),
-                                              fontSize: _getFontSize(
-                                                textToShow.length,
-                                              ),
-                                              height: 1.6,
-                                            ),
-                                            speed: const Duration(
-                                              milliseconds: 45,
-                                            ),
+                                      return Text(
+                                        textToShow,
+                                        textAlign: TextAlign.start,
+                                        style: TextStyle(
+                                          fontFamily: state is TranslationLoaded
+                                              ? null
+                                              : 'kufi',
+                                          color: Colors.white.withOpacity(0.95),
+                                          fontSize: _getFontSize(
+                                            textToShow.length,
                                           ),
-                                        ],
+                                          height: 1.6,
+                                        ),
                                       );
                                     },
                                   ),
@@ -1004,18 +1001,18 @@ class _ReelsViewContentState extends State<_ReelsViewContent> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              duration: const Duration(seconds: 5),
+              duration: const Duration(seconds: 3),
               content: Text(
                 '${'Reminder scheduled for'.tr()} ${time.format(context)}',
               ),
               backgroundColor: Colors.green,
-              action: SnackBarAction(
-                label: 'Undo'.tr(),
-                textColor: Colors.white,
-                onPressed: () async {
-                  await NotificationHelper.cancel(notificationId);
-                },
-              ),
+              // action: SnackBarAction(
+              //   label: 'Undo'.tr(),
+              //   textColor: Colors.white,
+              //   onPressed: () async {
+              //     await NotificationHelper.cancel(notificationId);
+              //   },
+              // ),
             ),
           );
         }

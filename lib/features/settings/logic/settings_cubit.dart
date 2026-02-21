@@ -14,6 +14,8 @@ class SettingsCubit extends Cubit<SettingsState> {
           isEnglish: AppServicesDBprovider.currentLocale() == 'en',
           isWidgetInstalled: true,
           playAyahReciter: AppServicesDBprovider.getAyahReciter(),
+          calculationMethod: AppServicesDBprovider.getCalculationMethod(),
+          madhab: AppServicesDBprovider.getMadhab(),
         ),
       ) {
     checkWidgetStatus();
@@ -40,6 +42,16 @@ class SettingsCubit extends Cubit<SettingsState> {
         playAyahReciter: valueToSave, // empty string means OFF
       ),
     );
+  }
+
+  void setCalculationMethod(String method) {
+    AppServicesDBprovider.setCalculationMethod(method);
+    emit(state.copyWith(calculationMethod: method));
+  }
+
+  void setMadhab(String madhab) {
+    AppServicesDBprovider.setMadhab(madhab);
+    emit(state.copyWith(madhab: madhab));
   }
 
   Future<void> checkWidgetStatus() async {

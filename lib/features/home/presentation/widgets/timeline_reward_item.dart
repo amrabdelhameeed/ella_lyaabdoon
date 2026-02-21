@@ -1,7 +1,11 @@
+import 'dart:ui' as ui;
+import 'package:clarity_flutter/clarity_flutter.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:ella_lyaabdoon/core/models/timeline_reward.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
 import 'package:ella_lyaabdoon/core/services/zikr_widget_service.dart';
 import 'package:ella_lyaabdoon/features/home/presentation/widgets/reward_dialog.dart';
+import 'package:ella_lyaabdoon/utils/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ella_lyaabdoon/features/history/logic/history_cubit.dart';
@@ -24,9 +28,12 @@ class TimelineRewardItem extends StatelessWidget {
   });
 
   void _showRewardDetails(BuildContext context) {
+    Clarity.setCurrentScreenName('reward_dialog');
     showDialog(
       context: context,
-      builder: (context) => RewardDetailDialog(reward: reward),
+      builder: (context) {
+        return RewardDetailDialog(reward: reward);
+      },
     );
   }
 
@@ -51,7 +58,7 @@ class TimelineRewardItem extends StatelessWidget {
             final lineWidth = (lineEnd - lineStart).abs();
 
             return SizedBox(
-              height: 100,
+              height: 110,
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
@@ -190,9 +197,9 @@ class TimelineRewardItem extends StatelessWidget {
                                 ],
                         ),
                         child: Directionality(
-                          textDirection: isLeftAligned
-                              ? TextDirection.rtl
-                              : TextDirection.ltr,
+                          textDirection: isArabic
+                              ? ui.TextDirection.rtl
+                              : ui.TextDirection.ltr,
                           child: Row(
                             children: [
                               // Square Checkbox Button with enhanced colors
@@ -272,36 +279,79 @@ class TimelineRewardItem extends StatelessWidget {
 
                               // Reward title (with proper spacing)
                               Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 8,
-                                  ),
-                                  child: Text(
-                                    reward.title,
-                                    textDirection: isArabic
-                                        ? TextDirection.rtl
-                                        : TextDirection.ltr,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium!
-                                        .copyWith(
-                                          fontWeight: FontWeight.w600,
-                                          color: isChecked || isCurrent
-                                              ? Theme.of(
-                                                  context,
-                                                ).textTheme.bodyMedium?.color
-                                              : Theme.of(context)
-                                                    .textTheme
-                                                    .bodyMedium
-                                                    ?.color
-                                                    ?.withValues(alpha: 0.7),
-                                          decoration: isChecked
-                                              ? TextDecoration.lineThrough
-                                              : null,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Stack(
+                                    children: [
+                                      // Content
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 12,
                                         ),
-                                    maxLines: 3,
-                                    overflow: TextOverflow.ellipsis,
+                                        alignment: Alignment.centerRight,
+                                        child: Text(
+                                          reward.title,
+                                          textDirection: ui.TextDirection.rtl,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium!
+                                              .copyWith(
+                                                fontFamily: 'kufi',
+                                                fontWeight: FontWeight.w600,
+                                                color: isChecked || isCurrent
+                                                    ? Theme.of(context)
+                                                          .textTheme
+                                                          .bodyMedium
+                                                          ?.color
+                                                    : Theme.of(context)
+                                                          .textTheme
+                                                          .bodyMedium
+                                                          ?.color
+                                                          ?.withValues(
+                                                            alpha: 0.7,
+                                                          ),
+                                                decoration: isChecked
+                                                    ? TextDecoration.lineThrough
+                                                    : null,
+                                              ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+
+                                      // Smaller / Closer Banner
+                                      Positioned(
+                                        top: -2,
+                                        right: isArabic ? null : -2,
+                                        left: isArabic ? -2 : null,
+                                        child: Transform.scale(
+                                          scale: 0.8, // reduce visual size
+                                          child: Banner(
+                                            location: isArabic
+                                                ? BannerLocation.topEnd
+                                                : BannerLocation.topEnd,
+                                            message:
+                                                reward.zikrLevel ==
+                                                    ZikrLevel.easy
+                                                ? "easy".tr()
+                                                : "hard".tr(),
+                                            color:
+                                                reward.zikrLevel ==
+                                                    ZikrLevel.easy
+                                                ? Colors.blue
+                                                : Colors.orange.withValues(
+                                                    alpha: 0.8,
+                                                  ),
+                                            textStyle: const TextStyle(
+                                              fontSize: 11,
+                                              fontFamily: 'kufi',
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -317,6 +367,21 @@ class TimelineRewardItem extends StatelessWidget {
           },
         );
       },
+    );
+  }
+
+  Widget _buildLevelBadge(BuildContext context, ZikrLevel level) {
+    final isEasy = level == ZikrLevel.easy;
+    return Banner(
+      location: BannerLocation.topStart,
+      message: isEasy ? "easy".tr() : "hard".tr(),
+      // child: Text(
+      //   // style: TextStyle(
+      //   //   fontSize: 10,
+      //   //   fontWeight: FontWeight.bold,
+      //   //   color: isEasy ? Colors.blue : Colors.orange,
+      //   // ),
+      // ),
     );
   }
 }

@@ -56,54 +56,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _logScreenView();
   }
 
-  Future<void> _playAyahPreview() async {
-    if (_isPreviewPlaying) return;
+  // Future<void> _playAyahPreview() async {
+  //   if (_isPreviewPlaying) return;
 
-    final String reciterId = AppServicesDBprovider.getAyahReciter();
+  //   final String reciterId = AppServicesDBprovider.getAyahReciter();
 
-    if (reciterId.isEmpty || reciterId == 'OFF') {
-      debugPrint('Reciter is OFF. Not playing any ayah.');
-      return;
-    }
+  //   if (reciterId.isEmpty || reciterId == 'OFF') {
+  //     debugPrint('Reciter is OFF. Not playing any ayah.');
+  //     return;
+  //   }
 
-    final validReciter = AppLists.reciters.firstWhere(
-      (r) => r['id'] == reciterId,
-      orElse: () =>
-          AppLists.reciters.firstWhere((r) => r['id'] == 'ar.muhammadayyoub'),
-    );
+  //   final validReciter = AppLists.reciters.firstWhere(
+  //     (r) => r['id'] == reciterId,
+  //     orElse: () =>
+  //         AppLists.reciters.firstWhere((r) => r['id'] == 'ar.muhammadayyoub'),
+  //   );
 
-    _logEvent(
-      'ayah_preview_play',
-      parameters: {'reciter': validReciter['id'] ?? 'OFF'},
-    );
+  //   _logEvent(
+  //     'ayah_preview_play',
+  //     parameters: {'reciter': validReciter['id'] ?? 'OFF'},
+  //   );
 
-    _isPreviewPlaying = true;
-    if (!_ayahPreviewController.isClosed) {
-      _ayahPreviewController.add(true);
-    }
+  //   _isPreviewPlaying = true;
+  //   if (!_ayahPreviewController.isClosed) {
+  //     _ayahPreviewController.add(true);
+  //   }
 
-    quranAudioCubit.playAyah(validReciter['id']!, 4731);
+  //   quranAudioCubit.playAyah(validReciter['id']!, 4731);
 
-    _previewTimer?.cancel();
-    _previewTimer = Timer(const Duration(seconds: 8), _stopAyahPreview);
-  }
+  //   _previewTimer?.cancel();
+  //   _previewTimer = Timer(const Duration(seconds: 8), _stopAyahPreview);
+  // }
 
-  void _stopAyahPreview() {
-    if (!_isPreviewPlaying) return;
+  // void _stopAyahPreview() {
+  //   if (!_isPreviewPlaying) return;
 
-    _logEvent('ayah_preview_stop');
+  //   _logEvent('ayah_preview_stop');
 
-    quranAudioCubit.stop();
+  //   quranAudioCubit.stop();
 
-    _isPreviewPlaying = false;
+  //   _isPreviewPlaying = false;
 
-    if (!_ayahPreviewController.isClosed) {
-      _ayahPreviewController.add(false);
-    }
+  //   if (!_ayahPreviewController.isClosed) {
+  //     _ayahPreviewController.add(false);
+  //   }
 
-    _previewTimer?.cancel();
-    _previewTimer = null;
-  }
+  //   _previewTimer?.cancel();
+  //   _previewTimer = null;
+  // }
 
   @override
   void dispose() {
@@ -512,103 +512,276 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     const SizedBox(height: 16),
 
                     /// QURAN SETTINGS SECTION
-                    _buildSectionHeader(context, 'quran_settings'.tr()),
+                    // _buildSectionHeader(context, 'quran_settings'.tr()),
+                    // Card(
+                    //   margin: const EdgeInsets.symmetric(
+                    //     horizontal: 16,
+                    //     vertical: 4,
+                    //   ),
+                    //   child: Showcase(
+                    //     key: _playAyahKey,
+                    //     title: 'showcase_play_ayah_title'.tr(),
+                    //     description: 'showcase_play_ayah_desc'.tr(),
+                    //     child: ListTile(
+                    //       leading: StreamBuilder<bool>(
+                    //         stream: _ayahPreviewController.stream,
+                    //         initialData: false,
+                    //         builder: (context, snapshot) {
+                    //           final isPlaying = snapshot.data ?? false;
+
+                    //           return IconButton(
+                    //             icon: Icon(
+                    //               isPlaying
+                    //                   ? Icons.stop_circle
+                    //                   : Icons.play_circle_filled,
+                    //               color: colorScheme.primary,
+                    //               size: 30,
+                    //             ),
+                    //             onPressed: () async {
+                    //               if (isPlaying) {
+                    //                 _stopAyahPreview();
+                    //               } else {
+                    //                 await _playAyahPreview();
+                    //               }
+                    //             },
+                    //           );
+                    //         },
+                    //       ),
+                    //       title: Text('play_ayah'.tr()),
+                    //       subtitle: Text(
+                    //         state.playAyahReciter.isEmpty
+                    //             ? 'OFF'.tr()
+                    //             : AppLists.reciters.firstWhere(
+                    //                     (r) => r['id'] == state.playAyahReciter,
+                    //                     orElse: () => {'name': 'OFF'},
+                    //                   )['name'] ??
+                    //                   'OFF',
+                    //         style: Theme.of(
+                    //           context,
+                    //         ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                    //       ),
+                    //       trailing: Container(
+                    //         constraints: const BoxConstraints(maxWidth: 140),
+                    //         padding: const EdgeInsets.symmetric(
+                    //           horizontal: 12,
+                    //           vertical: 4,
+                    //         ),
+                    //         decoration: BoxDecoration(
+                    //           color: colorScheme.surfaceContainerHighest,
+                    //           borderRadius: BorderRadius.circular(8),
+                    //         ),
+                    //         child: DropdownButtonHideUnderline(
+                    //           child: DropdownButton<String>(
+                    //             value: state.playAyahReciter.isEmpty
+                    //                 ? 'OFF'
+                    //                 : state.playAyahReciter,
+                    //             isExpanded: true,
+                    //             isDense: true,
+                    //             items: [
+                    //               DropdownMenuItem(
+                    //                 value: 'OFF',
+                    //                 child: Text('OFF'.tr()),
+                    //               ),
+                    //               ...AppLists.reciters.map(
+                    //                 (reciter) => DropdownMenuItem(
+                    //                   value: reciter['id'],
+                    //                   child: Text(
+                    //                     reciter['name'] ?? '',
+                    //                     maxLines: 2,
+                    //                     overflow: TextOverflow.ellipsis,
+                    //                   ),
+                    //                 ),
+                    //               ),
+                    //             ],
+                    //             onChanged: (value) {
+                    //               if (value != null) {
+                    //                 _stopAyahPreview(); // stop current preview
+
+                    //                 _logEvent(
+                    //                   'ayah_reciter_changed',
+                    //                   parameters: {'reciter': value},
+                    //                 );
+                    //                 cubit.setAyahReciter(value);
+                    //                 _playAyahPreview();
+                    //               }
+                    //             },
+                    //           ),
+                    //         ),
+                    //       ),
+                    //     ),
+                    //   ),
+                    // ),
+                    // const SizedBox(height: 16),
+                    /// PRAYER CALCULATION SECTION
+                    _buildSectionHeader(
+                      context,
+                      'prayer_calculation_settings'.tr(),
+                    ),
                     Card(
                       margin: const EdgeInsets.symmetric(
                         horizontal: 16,
                         vertical: 4,
                       ),
-                      child: Showcase(
-                        key: _playAyahKey,
-                        title: 'showcase_play_ayah_title'.tr(),
-                        description: 'showcase_play_ayah_desc'.tr(),
-                        child: ListTile(
-                          leading: StreamBuilder<bool>(
-                            stream: _ayahPreviewController.stream,
-                            initialData: false,
-                            builder: (context, snapshot) {
-                              final isPlaying = snapshot.data ?? false;
-
-                              return IconButton(
-                                icon: Icon(
-                                  isPlaying
-                                      ? Icons.stop_circle
-                                      : Icons.play_circle_filled,
-                                  color: colorScheme.primary,
-                                  size: 30,
-                                ),
-                                onPressed: () async {
-                                  if (isPlaying) {
-                                    _stopAyahPreview();
-                                  } else {
-                                    await _playAyahPreview();
-                                  }
-                                },
-                              );
-                            },
-                          ),
-                          title: Text('play_ayah'.tr()),
-                          subtitle: Text(
-                            state.playAyahReciter.isEmpty
-                                ? 'OFF'.tr()
-                                : AppLists.reciters.firstWhere(
-                                        (r) => r['id'] == state.playAyahReciter,
-                                        orElse: () => {'name': 'OFF'},
-                                      )['name'] ??
-                                      'OFF',
-                            style: Theme.of(
-                              context,
-                            ).textTheme.bodySmall?.copyWith(color: Colors.grey),
-                          ),
-                          trailing: Container(
-                            constraints: const BoxConstraints(maxWidth: 140),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 4,
+                      child: Column(
+                        children: [
+                          ListTile(
+                            leading: Icon(
+                              Icons.calculate,
+                              color: colorScheme.primary,
                             ),
-                            decoration: BoxDecoration(
-                              color: colorScheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(8),
+                            title: Text('calculation_method'.tr()),
+                            subtitle: Text(
+                              _getCalculationMethodName(
+                                state.calculationMethod,
+                              ).tr(),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: Colors.grey),
                             ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: state.playAyahReciter.isEmpty
-                                    ? 'OFF'
-                                    : state.playAyahReciter,
-                                isExpanded: true,
-                                isDense: true,
-                                items: [
-                                  DropdownMenuItem(
-                                    value: 'OFF',
-                                    child: Text('OFF'.tr()),
-                                  ),
-                                  ...AppLists.reciters.map(
-                                    (reciter) => DropdownMenuItem(
-                                      value: reciter['id'],
-                                      child: Text(
-                                        reciter['name'] ?? '',
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
+                            trailing: Container(
+                              constraints: const BoxConstraints(maxWidth: 160),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: state.calculationMethod,
+                                  isExpanded: true,
+                                  isDense: true,
+                                  items: [
+                                    _buildDropdownItem(
+                                      'egyptian',
+                                      'calculation_egyptian',
                                     ),
-                                  ),
-                                ],
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    _stopAyahPreview(); // stop current preview
+                                    _buildDropdownItem(
+                                      'karachi',
+                                      'calculation_karachi',
+                                    ),
+                                    _buildDropdownItem(
+                                      'isna',
+                                      'calculation_isna',
+                                    ),
+                                    _buildDropdownItem(
+                                      'muslim_world_league',
+                                      'calculation_mwl',
+                                    ),
+                                    _buildDropdownItem(
+                                      'umm_al_qura',
+                                      'calculation_umm_al_qura',
+                                    ),
+                                    _buildDropdownItem(
+                                      'dubai',
+                                      'calculation_dubai',
+                                    ),
+                                    _buildDropdownItem(
+                                      'kuwait',
+                                      'calculation_kuwait',
+                                    ),
+                                    _buildDropdownItem(
+                                      'qatar',
+                                      'calculation_qatar',
+                                    ),
+                                    _buildDropdownItem(
+                                      'singapore',
+                                      'calculation_singapore',
+                                    ),
+                                    _buildDropdownItem(
+                                      'morocco',
+                                      'calculation_morocco',
+                                    ),
+                                    _buildDropdownItem(
+                                      'moonsighting_committee',
+                                      'calculation_moonsighting_committee',
+                                    ),
+                                    _buildDropdownItem(
+                                      'turkiye',
+                                      'calculation_turkiye',
+                                    ),
+                                    _buildDropdownItem(
+                                      'tehran',
+                                      'calculation_tehran',
+                                    ),
+                                    // _buildDropdownItem(
+                                    //   'other',
+                                    //   'calculation_other',
+                                    // ),
 
-                                    _logEvent(
-                                      'ayah_reciter_changed',
-                                      parameters: {'reciter': value},
-                                    );
-                                    cubit.setAyahReciter(value);
-                                    _playAyahPreview();
-                                  }
-                                },
+                                    // Optional (only if different from ISNA in your logic)
+                                    _buildDropdownItem(
+                                      'north_america',
+                                      'calculation_north_america',
+                                    ),
+                                    // _buildDropdownItem('turkey', 'calculation_turkey'),
+                                    // _buildDropdownItem('tehran', 'calculation_tehran'),
+                                  ],
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      _logEvent(
+                                        'calculation_method_changed',
+                                        parameters: {'method': value},
+                                      );
+                                      cubit.setCalculationMethod(value);
+                                    }
+                                  },
+                                ),
                               ),
                             ),
                           ),
-                        ),
+                          Divider(height: 1, indent: 16, endIndent: 16),
+                          ListTile(
+                            leading: Icon(
+                              Icons.gavel,
+                              color: colorScheme.primary,
+                            ),
+                            title: Text('madhab'.tr()),
+                            subtitle: Text(
+                              (state.madhab == 'shafi'
+                                      ? 'madhab_shafi'
+                                      : 'madhab_hanafi')
+                                  .tr(),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: Colors.grey),
+                            ),
+                            trailing: Container(
+                              constraints: const BoxConstraints(maxWidth: 120),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  value: state.madhab,
+                                  isExpanded: true,
+                                  isDense: true,
+                                  items: [
+                                    _buildDropdownItem('shafi', 'madhab_shafi'),
+                                    _buildDropdownItem(
+                                      'hanafi',
+                                      'madhab_hanafi',
+                                    ),
+                                  ],
+                                  onChanged: (value) {
+                                    if (value != null) {
+                                      _logEvent(
+                                        'madhab_changed',
+                                        parameters: {'madhab': value},
+                                      );
+                                      cubit.setMadhab(value);
+                                    }
+                                  },
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -766,9 +939,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               final isArabic =
                                   context.locale.languageCode == 'ar';
 
-                              final sadqah = isArabic
-                                  ? 'صدقة جارية'
-                                  : 'Sadaqa Jariyah';
+                              // final sadqah = isArabic
+                              //     ? 'صدقة جارية'
+                              //     : 'Sadaqa Jariyah';
                               final usingApp = isArabic
                                   ? 'أنا أستخدم'
                                   : 'I am using';
@@ -782,7 +955,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               final result = await SharePlus.instance.share(
                                 ShareParams(
                                   text:
-                                      '$sadqah\n\n'
+                                      // '$sadqah\n\n'
                                       '$usingApp $appTitle\n'
                                       '$downloadPrompt\n'
                                       'https://play.google.com/store/apps/details?id=com.amrabdelhameed.ella_lyaabdoon',
@@ -979,5 +1152,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  DropdownMenuItem<String> _buildDropdownItem(String value, String labelKey) {
+    return DropdownMenuItem(
+      value: value,
+      child: Text(labelKey.tr(), maxLines: 3, overflow: TextOverflow.ellipsis),
+    );
+  }
+
+  String _getCalculationMethodName(String method) {
+    switch (method) {
+      case 'karachi':
+        return 'calculation_karachi';
+      case 'isna':
+        return 'calculation_isna';
+      case 'muslim_world_league':
+        return 'calculation_mwl';
+      case 'umm_al_qura':
+        return 'calculation_umm_al_qura';
+      case 'dubai':
+        return 'calculation_dubai';
+      case 'kuwait':
+        return 'calculation_kuwait';
+      case 'qatar':
+        return 'calculation_qatar';
+      case 'singapore':
+        return 'calculation_singapore';
+      case 'egyptian':
+      default:
+        return 'calculation_egyptian';
+    }
   }
 }

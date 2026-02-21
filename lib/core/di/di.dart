@@ -6,8 +6,8 @@ import 'package:get_it/get_it.dart';
 final getIt = GetIt.instance;
 void initDI() {
   getIt.registerLazySingleton<Dio>(() => DioFactory.getDio());
-  getIt.registerLazySingleton<QuranAudioCubit>(() => QuranAudioCubit());
+  // getIt.registerLazySingleton<QuranAudioCubit>(() => QuranAudioCubit());
 }
 
-final quranAudioCubit = getIt<QuranAudioCubit>();
+// final quranAudioCubit = getIt<QuranAudioCubit>();
 // final fundsCubit = getIt<FundsCubit>();
