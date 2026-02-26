@@ -70,4 +70,5 @@ class CacheKeys {
   static const isTermsAcceptedKey = "isTermsAcceptedKey5";
   static const dahabMasrFavListIdKey = "sand5asd4478";
   static const startTimeKey = "startTimeKey";
+  static const counterTapHintKey = "counterTapHintKey3";
 }

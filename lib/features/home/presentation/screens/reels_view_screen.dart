@@ -1,25 +1,45 @@
 import 'dart:io';
-import 'dart:ui';
-import 'package:animated_text_kit/animated_text_kit.dart';
 import 'package:easy_localization/easy_localization.dart' as ez;
 import 'package:ella_lyaabdoon/core/constants/app_lists.dart';
 import 'package:ella_lyaabdoon/core/models/azan_day_period.dart';
 import 'package:ella_lyaabdoon/core/models/timeline_reward.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
+import 'package:ella_lyaabdoon/core/services/cache_helper.dart';
 import 'package:ella_lyaabdoon/core/services/zikr_widget_service.dart';
+import 'package:ella_lyaabdoon/core/utils/ramadan_zeena_permanent.dart';
 import 'package:ella_lyaabdoon/features/history/data/history_db_provider.dart';
 import 'package:ella_lyaabdoon/features/history/logic/history_cubit.dart';
 import 'package:ella_lyaabdoon/features/home/logic/home_cubit.dart';
 import 'package:ella_lyaabdoon/features/home/logic/home_state.dart';
 import 'package:ella_lyaabdoon/features/home/logic/translation_cubit.dart';
-import 'package:ella_lyaabdoon/features/home/presentation/widgets/reward_dialog.dart';
 import 'package:ella_lyaabdoon/utils/notification_helper.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:ella_lyaabdoon/core/constants/app_routes.dart';
+import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+class _AppColors {
+  static const Color primaryGreen = Color(0xFF2D5F3F);
+  static const Color accentGreen = Color(0xFF4A9B6A);
+  static const Color surfaceGreen = Color(0xFF1C4430);
+}
+
+// Bump suffix any time you want to reset the shown-count for all users.
+const String _kDoubleTapHintKey = 'double_tap_hint1';
+const String _kCounterTapHintKey = 'counter_tap_hint1';
+const int _kMaxHintShows = 5;
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class ReelsViewScreen extends StatelessWidget {
   const ReelsViewScreen({super.key});
@@ -28,14 +48,16 @@ class ReelsViewScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider(create: (context) => HomeCubit()..initialize()),
-        BlocProvider(create: (context) => HistoryCubit()),
-        BlocProvider(create: (context) => TranslationCubit()),
+        BlocProvider(create: (_) => HomeCubit()..initialize()),
+        BlocProvider(create: (_) => HistoryCubit()),
+        BlocProvider(create: (_) => TranslationCubit()),
       ],
       child: const _ReelsViewContent(),
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _ReelsViewContent extends StatefulWidget {
   const _ReelsViewContent();
@@ -44,42 +66,187 @@ class _ReelsViewContent extends StatefulWidget {
   State<_ReelsViewContent> createState() => _ReelsViewContentState();
 }
 
-class _ReelsViewContentState extends State<_ReelsViewContent> {
-  late PageController _pageController;
-
+class _ReelsViewContentState extends State<_ReelsViewContent>
+    with SingleTickerProviderStateMixin {
+  // ── Page / data ──────────────────────────────────────────────────────
+  late final PageController _pageController;
   int _currentIndex = 0;
   List<RewardItem> _allRewards = [];
+
+  // ── Remote config ────────────────────────────────────────────────────
+  bool _isZeenaEnabled = false;
+
+  // ── Counter ──────────────────────────────────────────────────────────
+  final Map<int, int> _counters = {};
+  late final AnimationController _pulseController;
+  late final Animation<double> _pulseAnimation;
+
+  // ── Translation visibility per page ─────────────────────────────────
+  final Map<int, bool> _showTranslation = {};
+
+  // ── Hint: double-tap (mark done) ────────────────────────────────────
+  bool _showDoubleTapHint = false;
+
+  // ── Hint: counter tap ───────────────────────────────────────────────
+  // These are the ONLY two flags controlling visibility.
+  // Nothing else touches _showCounterTapHint except the two methods below.
+  bool _showCounterTapHint = false;
+  bool _counterHintActive = false; // prevents double-scheduling
+
+  // ── Screenshot ───────────────────────────────────────────────────────
   final ScreenshotController _screenshotController = ScreenshotController();
 
-  // Widget theme colors - matching the Android widget exactly
-  static const Color primaryGreen = Color(0xFF2D5F3F);
-  static const Color accentGreen = Color(0xFF4A9B6A);
-  static const Color surfaceGreen = Color(0xFF1C4430);
-  // static const Color goldAccent = Color(0xFFFFD700);
+  // ─────────────────────────────────────────────────────────────────────
+  // Lifecycle
+  // ─────────────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
     _pageController = PageController();
+
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    );
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.25).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeOut),
+    )..addListener(() => setState(() {}));
+
+    _loadRemoteConfig();
+    _maybeShowDoubleTapHint();
   }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    _pulseController.dispose();
+    super.dispose();
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Remote config
+  // ─────────────────────────────────────────────────────────────────────
+
+  Future<void> _loadRemoteConfig() async {
+    final rc = FirebaseRemoteConfig.instance;
+    await rc.setConfigSettings(
+      RemoteConfigSettings(
+        fetchTimeout: const Duration(seconds: 10),
+        minimumFetchInterval: const Duration(days: 1),
+      ),
+    );
+    await rc.setDefaults({'enable_zeena': true});
+    await rc.fetchAndActivate();
+    if (mounted) setState(() => _isZeenaEnabled = rc.getBool('enable_zeena'));
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Analytics
+  // ─────────────────────────────────────────────────────────────────────
+
+  void _logEvent(String name, {Map<String, Object>? parameters}) {
+    if (kReleaseMode) {
+      FirebaseAnalytics.instance.logEvent(name: name, parameters: parameters);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Hint: double-tap
+  // ─────────────────────────────────────────────────────────────────────
+
+  Future<void> _maybeShowDoubleTapHint() async {
+    final n = CacheHelper.getInt(_kDoubleTapHintKey);
+    if (n >= _kMaxHintShows) return;
+    CacheHelper.setInt(_kDoubleTapHintKey, n + 1);
+
+    await Future.delayed(const Duration(milliseconds: 1200));
+    if (!mounted) return;
+    setState(() => _showDoubleTapHint = true);
+
+    await Future.delayed(const Duration(seconds: 3));
+    if (mounted) setState(() => _showDoubleTapHint = false);
+  }
+
+  void _dismissDoubleTapHint() {
+    if (_showDoubleTapHint) setState(() => _showDoubleTapHint = false);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Hint: counter tap
+  //
+  // Called from ONE place only: _onPageLanded(), which is triggered by
+  // onPageChanged (and after initial data load). Never called from build().
+  // ─────────────────────────────────────────────────────────────────────
+
+  Future<void> _maybeShowCounterTapHint() async {
+    // Already showing or already scheduled – bail out.
+    if (_counterHintActive) return;
+
+    // Does the current page even have a counter?
+    if (_currentIndex >= _allRewards.length) return;
+    final reward = _allRewards[_currentIndex].reward as TimelineReward;
+    if (!reward.isWithCounter) return;
+
+    // Check persistent shown-count.
+    final n = CacheHelper.getInt(_kCounterTapHintKey);
+    debugPrint('[CounterHint] stored count=$n, max=$_kMaxHintShows');
+    if (n >= _kMaxHintShows) return;
+    CacheHelper.setInt(_kCounterTapHintKey, n + 1);
+
+    _counterHintActive = true;
+
+    await Future.delayed(const Duration(milliseconds: 900));
+    if (!mounted) return;
+
+    debugPrint('[CounterHint] >>> SHOWING');
+    setState(() => _showCounterTapHint = true);
+
+    await Future.delayed(const Duration(seconds: 3));
+    if (mounted) {
+      setState(() {
+        _showCounterTapHint = false;
+        _counterHintActive = false;
+      });
+    }
+  }
+
+  /// Hide immediately when the user taps the counter.
+  void _dismissCounterTapHint() {
+    if (_showCounterTapHint) {
+      setState(() {
+        _showCounterTapHint = false;
+        _counterHintActive = false;
+      });
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Called whenever the visible page changes (or data first loads).
+  // ─────────────────────────────────────────────────────────────────────
+
+  void _onPageLanded(int index) {
+    setState(() {
+      _currentIndex = index;
+      _showTranslation[index] = false;
+    });
+    context.read<TranslationCubit>().reset();
+    _dismissDoubleTapHint();
+    _dismissCounterTapHint(); // hide previous hint when swiping away
+    _maybeShowCounterTapHint(); // attempt to show for new page
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Rewards list builder
+  // ─────────────────────────────────────────────────────────────────────
 
   void _buildRewardsList() {
     _allRewards.clear();
     final currentPeriod = context.read<HomeCubit>().state.currentPeriod;
 
-    // // Find the current period index
-    // final currentIndexInTimeline = AppLists.timelineItems.indexWhere(
-    //   (item) => item.period == currentPeriod,
-    // );
-
-    // Build the list in prayer order, but shuffle rewards within each period
-    for (int i = 0; i < AppLists.timelineItems.length; i++) {
-      final item = AppLists.timelineItems[i];
-
-      // Shuffle only the rewards inside this period
-      final rewardsShuffled = List.from(item.rewards)..shuffle();
-
-      for (var reward in rewardsShuffled) {
+    for (final item in AppLists.timelineItems) {
+      final shuffled = List.from(item.rewards)..shuffle();
+      for (final reward in shuffled) {
         _allRewards.add(
           RewardItem(
             reward: reward,
@@ -90,167 +257,223 @@ class _ReelsViewContentState extends State<_ReelsViewContent> {
       }
     }
 
-    // Find the index of the first reward in current period to scroll to it
     if (currentPeriod != null && _allRewards.isNotEmpty) {
-      final currentPeriodIndex = _allRewards.indexWhere(
-        (item) => item.period == currentPeriod,
-      );
-      if (currentPeriodIndex != -1) {
-        _currentIndex = currentPeriodIndex;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_pageController.hasClients) {
-            _pageController.jumpToPage(_currentIndex);
-          }
-        });
-      }
+      final idx = _allRewards.indexWhere((r) => r.period == currentPeriod);
+      if (idx != -1) _currentIndex = idx;
     }
 
     if (mounted) setState(() {});
+
+    // Jump to page, then trigger hint after the frame.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_pageController.hasClients) {
+        _pageController.jumpToPage(_currentIndex);
+      }
+      _maybeShowCounterTapHint();
+    });
   }
 
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
+  // ─────────────────────────────────────────────────────────────────────
+  // Counter helpers
+  // ─────────────────────────────────────────────────────────────────────
+
+  int _getCount(int page) => _counters[page] ?? 0;
+
+  void _increment(int page) {
+    _dismissCounterTapHint();
+    setState(() => _counters[page] = (_counters[page] ?? 0) + 1);
+    _pulseController.forward(from: 0);
   }
+
+  void _resetCount(int page) => setState(() => _counters[page] = 0);
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Translation helpers
+  // ─────────────────────────────────────────────────────────────────────
+
+  bool _isShowingTranslation(int page) => _showTranslation[page] ?? false;
+
+  void _toggleTranslation(int page, String text) {
+    final nowShowing = !(_showTranslation[page] ?? false);
+    setState(() => _showTranslation[page] = nowShowing);
+    if (nowShowing) {
+      context.read<TranslationCubit>().translate(text);
+    } else {
+      context.read<TranslationCubit>().reset();
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Build
+  // ─────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
-    final isArabic = AppServicesDBprovider.currentLocale() == "ar";
+    final isArabic = AppServicesDBprovider.currentLocale() == 'ar';
 
     return Scaffold(
-      backgroundColor: primaryGreen,
-      appBar: AppBar(
-        backgroundColor: surfaceGreen,
-        elevation: 0,
-        // leading: IconButton(
-        //   icon: const Icon(Icons.close, color: Colors.white),
-        //   onPressed: () => Navigator.pop(context),
-        // ),
-        title: BlocBuilder<HomeCubit, HomeState>(
-          builder: (context, state) {
-            if (_currentIndex < _allRewards.length) {
-              final currentReward = _allRewards[_currentIndex];
-              return Row(
-                children: [
-                  Text(
-                    currentReward.periodTitle.tr(),
-                    style: const TextStyle(
-                      color: accentGreen,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Spacer(),
-                  Text(
-                    '⏰ ${ez.DateFormat.jm(context.locale.toString()).format(state.prayerTimes![currentReward.period!]!)}',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 15,
-                    ),
-                  ),
-                ],
-              );
-            }
-            return const SizedBox.shrink();
-          },
-        ),
-        centerTitle: true,
-      ),
+      appBar: _buildAppBar(),
       body: BlocConsumer<HomeCubit, HomeState>(
         listenWhen: (prev, curr) =>
             prev.currentPeriod != curr.currentPeriod ||
             prev.status != curr.status,
-
         listener: (context, state) {
           if (state.status != HomeStatus.loaded) return;
-
-          _buildRewardsList(); // now currentPeriod is guaranteed
-
-          WidgetsBinding.instance.addPostFrameCallback((_) async {
-            if (_pageController.hasClients) {
-              _pageController.jumpToPage(
-                _currentIndex,
-                // duration: const Duration(milliseconds: 1000),
-                // curve: Curves.easeInCubic,
-              );
-            }
-          });
+          _buildRewardsList();
         },
-
         builder: (context, state) {
           if (state.status == HomeStatus.loading || _allRewards.isEmpty) {
             return _buildLoadingState();
           }
-
           if (state.status == HomeStatus.error) {
             return _buildErrorState(state.errorMessage);
           }
+          return _buildBody(state, isArabic);
+        },
+      ),
+    );
+  }
 
-          return Stack(
+  // ─────────────────────────────────────────────────────────────────────
+  // AppBar
+  // ─────────────────────────────────────────────────────────────────────
+
+  AppBar _buildAppBar() {
+    return AppBar(
+      elevation: 0,
+      title: BlocBuilder<HomeCubit, HomeState>(
+        builder: (context, state) {
+          if (_currentIndex >= _allRewards.length)
+            return const SizedBox.shrink();
+          final current = _allRewards[_currentIndex];
+          return Row(
             children: [
-              // Main PageView
-              PageView.builder(
-                restorationId: 'reels_view',
-                controller: _pageController,
-                scrollDirection: Axis.vertical,
-                itemCount: _allRewards.length,
-                onPageChanged: (index) {
-                  setState(() {
-                    _currentIndex = index;
-                  });
-                  // Reset translation when page changes
-                  context.read<TranslationCubit>().reset();
-                },
-                itemBuilder: (context, index) {
-                  final rewardItem = _allRewards[index];
-                  final isCurrent = rewardItem.period == state.currentPeriod;
-
-                  return _buildRewardPage(
-                    rewardItem: rewardItem,
-                    isCurrent: isCurrent,
-                    state: state,
-                    isArabic: isArabic,
-                  );
-                },
+              Text(
+                current.periodTitle.tr(),
+                style: const TextStyle(
+                  color: _AppColors.accentGreen,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-
-              // Progress indicator (right side)
-              Positioned(
-                right: 3,
-                top: 20,
-                bottom: 80,
-                child: _buildProgressIndicator(),
+              const Spacer(),
+              Text(
+                '⏰ ${ez.DateFormat.jm(context.locale.toString()).format(state.prayerTimes![current.period!]!)}',
+                style: const TextStyle(fontSize: 15),
               ),
             ],
           );
         },
       ),
+      centerTitle: true,
+      actions: [
+        IconButton(
+          tooltip: 'switch_to_normal'.tr(),
+          icon: const Icon(Icons.view_agenda_outlined),
+          onPressed: () async {
+            await AppServicesDBprovider.setReelsView(value: false);
+            if (context.mounted) context.goNamed(AppRoutes.home);
+          },
+        ),
+      ],
     );
   }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Body
+  // ─────────────────────────────────────────────────────────────────────
+
+  Widget _buildBody(HomeState state, bool isArabic) {
+    return Stack(
+      children: [
+        // ── Page view ──────────────────────────────────────────────────
+        PageView.builder(
+          restorationId: 'reels_view',
+          controller: _pageController,
+          scrollDirection: Axis.vertical,
+          itemCount: _allRewards.length,
+          onPageChanged: _onPageLanded, // ← single source of truth
+          itemBuilder: (context, index) {
+            final item = _allRewards[index];
+            return _buildRewardPage(
+              pageIndex: index,
+              rewardItem: item,
+              isCurrent: item.period == state.currentPeriod,
+              state: state,
+              isArabic: isArabic,
+            );
+          },
+        ),
+
+        // ── Progress indicator ─────────────────────────────────────────
+        Positioned(
+          right: 3,
+          top: 20,
+          bottom: 80,
+          child: _buildProgressIndicator(),
+        ),
+
+        // ── Double-tap hint overlay ────────────────────────────────────
+        if (_showDoubleTapHint)
+          Positioned.fill(child: _buildDoubleTapHintOverlay()),
+
+        // ── Ramadan decoration ─────────────────────────────────────────
+        if (_isZeenaEnabled)
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: RamadanZeena(animate: false, height: 15),
+          ),
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Hint overlays
+  // ─────────────────────────────────────────────────────────────────────
+
+  Widget _buildDoubleTapHintOverlay() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.center,
+          end: Alignment.bottomCenter,
+          colors: [Colors.transparent, Colors.black.withOpacity(0.6)],
+        ),
+      ),
+      child: Center(
+        child: IgnorePointer(
+          child: _HintContent(
+            label: 'double_tap_to_check'.tr(),
+            sublabel: 'tap_twice_to_mark_done'.tr(),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Loading / error states
+  // ─────────────────────────────────────────────────────────────────────
 
   Widget _buildLoadingState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(accentGreen),
-          ),
+          const CircularProgressIndicator(),
           const SizedBox(height: 16),
-          Text(
-            'Loading...'.tr(),
-            style: const TextStyle(color: Colors.white70, fontSize: 16),
-          ),
+          Text('Loading...'.tr()),
         ],
       ),
     );
   }
 
-  Widget _buildErrorState(String? errorMessage) {
+  Widget _buildErrorState(String? message) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32.0),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -260,16 +483,16 @@ class _ReelsViewContentState extends State<_ReelsViewContent> {
               color: Colors.red,
             ),
             const SizedBox(height: 16),
-            Text(
-              errorMessage ?? 'Unknown error',
-              style: const TextStyle(color: Colors.white, fontSize: 16),
-              textAlign: TextAlign.center,
-            ),
+            Text(message ?? 'Unknown error', textAlign: TextAlign.center),
           ],
         ),
       ),
     );
   }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Progress indicator
+  // ─────────────────────────────────────────────────────────────────────
 
   Widget _buildProgressIndicator() {
     return Container(
@@ -280,17 +503,17 @@ class _ReelsViewContentState extends State<_ReelsViewContent> {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final itemHeight = constraints.maxHeight / _allRewards.length;
+          final itemH = constraints.maxHeight / _allRewards.length;
           return Stack(
             children: [
               AnimatedPositioned(
                 duration: const Duration(milliseconds: 300),
-                top: _currentIndex * itemHeight,
+                top: _currentIndex * itemH,
                 child: Container(
                   width: 4,
-                  height: itemHeight,
+                  height: itemH,
                   decoration: BoxDecoration(
-                    color: accentGreen,
+                    color: _AppColors.accentGreen,
                     borderRadius: BorderRadius.circular(10),
                   ),
                 ),
@@ -302,357 +525,98 @@ class _ReelsViewContentState extends State<_ReelsViewContent> {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────────────
+  // Reward page
+  // ─────────────────────────────────────────────────────────────────────
+
   Widget _buildRewardPage({
+    required int pageIndex,
     required RewardItem rewardItem,
     required bool isCurrent,
     required HomeState state,
     required bool isArabic,
   }) {
     final reward = rewardItem.reward as TimelineReward;
-    final prayerTime = state.prayerTimes?[rewardItem.period];
-    final timeText = prayerTime != null
-        ? ez.DateFormat.jm(context.locale.toString()).format(prayerTime)
-        : '';
-    final bool isRtl = Directionality.of(context) == TextDirection.rtl;
+    final isRtl = Directionality.of(context) == TextDirection.rtl;
+    final isEnglish = AppServicesDBprovider.currentLocale() == 'en';
+    final count = _getCount(pageIndex);
+    final showingTranslation = _isShowingTranslation(pageIndex);
+
     return BlocBuilder<HistoryCubit, HistoryState>(
-      builder: (context, historyState) {
+      builder: (context, _) {
         final isChecked = HistoryDBProvider.isCheckedToday(reward.id);
 
-        return Container(
-          color: primaryGreen,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Top gold line (like widget)
-                  Container(
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: accentGreen,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Header with period (like widget header)
-                  // Container(
-                  //   padding: const EdgeInsets.symmetric(
-                  //     horizontal: 16,
-                  //     vertical: 12,
-                  //   ),
-                  //   decoration: BoxDecoration(
-                  //     color: surfaceGreen,
-                  //     borderRadius: BorderRadius.circular(12),
-                  //   ),
-                  //   child: Row(
-                  //     mainAxisAlignment: MainAxisAlignment.center,
-                  //     children: [
-                  //       const Text('🕌', style: TextStyle(fontSize: 20)),
-                  //       const SizedBox(width: 10),
-                  //       Text(
-                  //         rewardItem.periodTitle.tr(),
-                  //         style: const TextStyle(
-                  //           color: accentGreen,
-                  //           fontSize: 18,
-                  //           fontWeight: FontWeight.bold,
-                  //         ),
-                  //       ),
-                  //       if (timeText.isNotEmpty) ...[
-                  //         const SizedBox(width: 12),
-                  //         Text(
-                  //           '⏰ $timeText',
-                  //           style: TextStyle(
-                  //             color: Colors.white.withOpacity(0.8),
-                  //             fontSize: 15,
-                  //           ),
-                  //         ),
-                  //       ],
-                  //     ],
-                  //   ),
-                  // ),
-                  const SizedBox(height: 16),
-
-                  // Main card (like widget content area)
-                  Expanded(
-                    child: Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(
-                          color: isChecked
-                              ? Colors.green.withOpacity(0.5)
-                              : Colors.white.withOpacity(0.2),
-                          width: 2,
-                        ),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Title
-                          // 1. Detect if the current language is RTL (like Arabic)
-                          Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              // 1. The Title - Stays centered
-                              AnimatedDefaultTextStyle(
-                                duration: const Duration(milliseconds: 300),
-                                curve: Curves.easeInOut,
-                                style: TextStyle(
-                                  fontFamily: 'kufi',
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                  height: 1.4,
-                                  // color: isChecked
-                                  //     ? Colors.greenAccent
-                                  //     : Colors.white,
-                                  // decoration: isChecked
-                                  //     ? TextDecoration.lineThrough
-                                  //     : TextDecoration.none,
-                                  decorationColor: Colors.green,
-                                ),
-                                child: Text(
-                                  reward.title,
-                                  textAlign: TextAlign.center,
-                                ),
-                              ),
-
-                              // 2. The Checkmark Layer
-                              // We use IgnorePointer so this layer doesn't block taps to the title
-                              IgnorePointer(
-                                child: Row(
-                                  mainAxisSize: MainAxisSize
-                                      .min, // Vital: Keeps the row only as wide as its content
-                                  children: [
-                                    // Invisible spacer: Same text as title to push the checkmark to the edge
-                                    Opacity(
-                                      opacity: 0,
-                                      child: Text(
-                                        reward.title,
-                                        maxLines: 2,
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-
-                                    // The actual checkmark
-                                    AnimatedOpacity(
-                                      opacity: isChecked ? 1.0 : 0.0,
-                                      duration: const Duration(
-                                        milliseconds: 400,
-                                      ),
-                                      child: AnimatedSlide(
-                                        // Slide in from the side based on language
-                                        offset: isChecked
-                                            ? Offset(isRtl ? -0.5 : 0.7, 0)
-                                            : Offset(isRtl ? -0.1 : 0.3, 0),
-                                        duration: const Duration(
-                                          milliseconds: 400,
-                                        ),
-                                        curve: Curves.easeOutBack,
-                                        child: Text(
-                                          isRtl ? " ✅" : " ✅",
-                                          style: const TextStyle(fontSize: 20),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // Divider line (like widget)
-                          Container(
-                            width: 60,
-                            height: 2,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.3),
-                              borderRadius: BorderRadius.circular(1),
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // Description
-                          Expanded(
-                            child: SingleChildScrollView(
-                              child:
-                                  BlocBuilder<
-                                    TranslationCubit,
-                                    TranslationState
-                                  >(
-                                    builder: (context, state) {
-                                      String textToShow = reward.description;
-                                      if (state is TranslationLoaded) {
-                                        textToShow = state.translatedText;
-                                      }
-
-                                      return Text(
-                                        textToShow,
-                                        textAlign: TextAlign.start,
-                                        style: TextStyle(
-                                          fontFamily: state is TranslationLoaded
-                                              ? null
-                                              : 'kufi',
-                                          color: Colors.white.withOpacity(0.95),
-                                          fontSize: _getFontSize(
-                                            textToShow.length,
-                                          ),
-                                          height: 1.6,
-                                        ),
-                                      );
-                                    },
-                                  ),
-                            ),
-                          ),
-
-                          const SizedBox(height: 12),
-
-                          // Source badge
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 6,
-                            ),
-                            decoration: BoxDecoration(
-                              color: surfaceGreen.withOpacity(0.5),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.menu_book_rounded,
-                                  size: 14,
-                                  color: accentGreen,
-                                ),
-                                const SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    reward.source,
-                                    style: TextStyle(
-                                      fontFamily: 'kufi',
-                                      color: Colors.white.withOpacity(0.9),
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Period bar + level badge
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildPeriodCompletionBar(
+                        rewardItem.period,
+                        isCurrent,
                       ),
                     ),
+                    const SizedBox(width: 8),
+                    _buildLevelBadge(reward.zikrLevel),
+                  ],
+                ),
+                const SizedBox(height: 10),
+
+                // Counter (note: NO hint trigger here)
+                if (reward.isWithCounter) ...[
+                  _buildCounter(context, pageIndex, count),
+                  const SizedBox(height: 10),
+                ],
+
+                // Main card
+                Expanded(
+                  child: GestureDetector(
+                    onDoubleTap: () async {
+                      _dismissDoubleTapHint();
+                      context.read<HistoryCubit>().toggleCheck(reward.id);
+                      await RewardWidgetService.updateWidget();
+                    },
+                    child: _buildMainCard(
+                      reward: reward,
+                      isChecked: isChecked,
+                      isRtl: isRtl,
+                      isEnglish: isEnglish,
+                      showingTranslation: showingTranslation,
+                      pageIndex: pageIndex,
+                    ),
                   ),
+                ),
 
-                  const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
-                  // Action buttons row
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                _buildActionBar(
+                  context: context,
+                  pageIndex: pageIndex,
+                  reward: reward,
+                  isEnglish: isEnglish,
+                  showingTranslation: showingTranslation,
+                  isChecked: isChecked,
+                ),
+
+                const SizedBox(height: 10),
+
+                Center(
+                  child: Column(
                     children: [
-                      // 1. Check Toggle
-                      Checkbox(
-                        value: isChecked,
-                        // Maintains your Cubit logic
-                        onChanged: (bool? value) async {
-                          context.read<HistoryCubit>().toggleCheck(reward.id);
-                          await RewardWidgetService.updateWidget();
-                        },
-                        // Ensures the shape is slightly rounded like your original BoxDecoration
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(5),
-                        ),
-                      ),
-
-                      // 2. Copy
-                      IconButton(
-                        icon: const Icon(
-                          Icons.copy_rounded,
-                          color: accentGreen,
-                        ),
-                        onPressed: () => _copyToClipboard(reward.description),
-                      ),
-
-                      // 3. Share
-                      IconButton(
-                        icon: const Icon(
-                          Icons.share_rounded,
-                          color: accentGreen,
-                        ),
-                        onPressed: () => _shareReward(reward),
-                      ),
-
-                      // 4. Schedule
-                      IconButton(
-                        icon: const Icon(
-                          Icons.alarm_rounded,
-                          color: accentGreen,
-                        ),
-                        onPressed: () => _scheduleNotification(reward),
-                      ),
-
-                      // 5. Translate
-                      BlocBuilder<TranslationCubit, TranslationState>(
-                        builder: (context, state) {
-                          if (state is TranslationLoading) {
-                            return const SizedBox(
-                              width: 24,
-                              height: 24,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  accentGreen,
-                                ),
-                              ),
-                            );
-                          }
-                          return IconButton(
-                            icon: const Icon(
-                              Icons.translate_rounded,
-                              color: accentGreen,
-                            ),
-                            onPressed: () => _translate(reward.description),
-                          );
-                        },
+                      const Icon(Icons.keyboard_arrow_up_rounded, size: 24),
+                      Text(
+                        'swipe_for_more'.tr(),
+                        style: const TextStyle(fontSize: 11),
                       ),
                     ],
                   ),
-
-                  const SizedBox(height: 10),
-
-                  // Swipe hint
-                  Center(
-                    child: Column(
-                      children: [
-                        Icon(
-                          Icons.keyboard_arrow_up_rounded,
-                          color: Colors.white.withOpacity(0.4),
-                          size: 24,
-                        ),
-                        Text(
-                          'swipe_for_more'.tr(),
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.4),
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         );
@@ -660,58 +624,670 @@ class _ReelsViewContentState extends State<_ReelsViewContent> {
     );
   }
 
-  void _translate(String text) {
-    context.read<TranslationCubit>().translate(text);
-  }
+  // ─────────────────────────────────────────────────────────────────────
+  // Main card
+  // ─────────────────────────────────────────────────────────────────────
 
-  double _getFontSize(int textLength) {
-    if (textLength > 200) return 15;
-    if (textLength > 150) return 16;
-    if (textLength > 100) return 17;
-    if (textLength > 60) return 18;
-    return 20;
-  }
-
-  Widget _buildActionButton({
-    required String icon,
-    required String label,
-    required Color color,
-    Color? borderColor,
-    required VoidCallback onTap,
+  Widget _buildMainCard({
+    required TimelineReward reward,
+    required bool isChecked,
+    required bool isRtl,
+    required bool isEnglish,
+    required bool showingTranslation,
+    required int pageIndex,
   }) {
     return Container(
-      height: 38,
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(19),
-        border: borderColor != null ? Border.all(color: borderColor) : null,
+        color: Colors.white.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isChecked
+              ? Theme.of(context).colorScheme.primary.withOpacity(0.5)
+              : Theme.of(context).colorScheme.primary.withOpacity(0.2),
+          width: 2,
+        ),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(19),
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          // ── Title row: centered title, check floats on top of layout ──
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              // Padding on both sides equal to check icon width to keep title truly centered
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 28),
+                child: Text(
+                  reward.title,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontFamily: 'kufi',
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    height: 1.4,
+                    color: AppServicesDBprovider.isDark()
+                        ? Colors.white
+                        : Colors.black,
+                  ),
+                ),
+              ),
+              // Check icon positioned to the end, outside the title padding
+              Positioned(
+                right: isRtl ? null : 0,
+                left: isRtl ? 0 : null,
+                child: AnimatedOpacity(
+                  opacity: isChecked ? 1.0 : 0.0,
+                  duration: const Duration(milliseconds: 300),
+                  child: AnimatedSlide(
+                    offset: isChecked
+                        ? Offset.zero
+                        : Offset(isRtl ? -0.3 : 0.3, 0),
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeOut,
+                    child: const Text('✅', style: TextStyle(fontSize: 20)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 10),
+
+          // ── Divider ──
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 1,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.transparent,
+                        Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                        Colors.transparent,
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 14),
+
+          // ── Description ──
+          Expanded(
+            child: SingleChildScrollView(
+              child: Text(
+                reward.description,
+                textAlign: TextAlign.center,
+                textDirection: TextDirection.rtl,
+                softWrap: true,
+                overflow: TextOverflow.visible,
+                style: TextStyle(
+                  fontFamily: 'kufi',
+                  fontSize: _getFontSize(reward.description.length),
+                  height: 1.7,
+                ),
+              ),
+            ),
+          ),
+
+          if (isEnglish) ...[
+            const SizedBox(height: 12),
+            _buildTranslationSection(showingTranslation),
+          ],
+
+          const SizedBox(height: 12),
+
+          // ── Source badge ──
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(8),
+            ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(icon, style: const TextStyle(fontSize: 14)),
-                const SizedBox(width: 4),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
+                const Icon(
+                  Icons.menu_book_rounded,
+                  size: 14,
+                  color: _AppColors.accentGreen,
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    reward.source,
+                    style: TextStyle(
+                      fontFamily: 'kufi',
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+  // ─────────────────────────────────────────────────────────────────────
+  // Translation section
+  // ─────────────────────────────────────────────────────────────────────
+
+  Widget _buildTranslationSection(bool showingTranslation) {
+    return BlocBuilder<TranslationCubit, TranslationState>(
+      builder: (context, state) {
+        if (!showingTranslation) return const SizedBox.shrink();
+        if (state is TranslationLoading) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation(
+                  Theme.of(context).primaryColor,
+                ),
+              ),
+            ),
+          );
+        }
+        if (state is TranslationError) {
+          return Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.red.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.red.withOpacity(0.4)),
+            ),
+            child: Text(
+              state.message,
+              style: const TextStyle(color: Colors.red),
+            ),
+          );
+        }
+        if (state is TranslationLoaded) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red.withOpacity(0.4)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.warning_amber_rounded,
+                      color: Colors.red,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'Disclaimer: The translation is not 100% accurate',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red[300],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.translate, color: Colors.blue[200], size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'English Translation',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue[200],
+                      fontSize: 13,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: () => _copyToClipboard(state.translatedText),
+                    icon: Icon(
+                      Icons.copy,
+                      size: 16,
+                      color: Colors.white.withOpacity(0.6),
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Text(
+                state.translatedText,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.9),
+                  fontSize: _getFontSize(state.translatedText.length),
+                  height: 1.6,
+                ),
+              ),
+            ],
+          );
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Counter widget
+  // The tap-hint is a clipped overlay INSIDE the counter card's own Stack,
+  // so it matches the card's exact size and border-radius.
+  // ─────────────────────────────────────────────────────────────────────
+
+  Widget _buildCounter(BuildContext context, int pageIndex, int count) {
+    final theme = Theme.of(context);
+    final sw = MediaQuery.of(context).size.width;
+
+    // Responsive sizing
+    final buttonSize = (sw * 0.13).clamp(44.0, 68.0);
+    final iconSize = buttonSize * 0.5;
+    final countFont = (sw * 0.07).clamp(24.0, 40.0);
+    const radius = Radius.circular(14);
+
+    return Material(
+      color: Colors.transparent,
+      child: Stack(
+        children: [
+          // 1. MAIN CARD LAYER
+          // We wrap the whole container in a GestureDetector so the background is tappable.
+          GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () => _increment(pageIndex),
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: sw * 0.04,
+                vertical: 10,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.08),
+                borderRadius: const BorderRadius.all(radius),
+                border: Border.all(
+                  color: theme.primaryColor.withOpacity(0.4),
+                  width: 1.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  // Count Labels
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'zikr_done_count'.tr(),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: (sw * 0.028).clamp(10.0, 13.0),
+                            color: theme.textTheme.bodyLarge?.color,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Transform.scale(
+                          scale: _pulseAnimation.value,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            '$count',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: countFont,
+                              height: 1,
+                              color: theme.textTheme.headlineMedium?.color,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // RESET BUTTON
+                  // AnimatedSwitcher handles the fade between the button and empty space
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: count > 0
+                        ? IconButton(
+                            key: const ValueKey('reset'),
+                            onPressed: () {
+                              // setState is called here to refresh the UI
+                              setState(() {
+                                _resetCount(pageIndex);
+                              });
+                            },
+                            icon: const Icon(Icons.refresh_rounded),
+                            tooltip: 'reset'.tr(),
+                            iconSize: (sw * 0.055).clamp(18.0, 24.0),
+                            padding: const EdgeInsets.all(6),
+                            constraints: const BoxConstraints(
+                              minWidth: 32,
+                              minHeight: 32,
+                            ),
+                          )
+                        : SizedBox(
+                            key: const ValueKey('empty'),
+                            width: (sw * 0.055).clamp(18.0, 24.0) + 12,
+                          ),
+                  ),
+
+                  const SizedBox(width: 8),
+
+                  // ADD BUTTON
+                  GestureDetector(
+                    onTap: () => _increment(pageIndex),
+                    child: Container(
+                      width: buttonSize,
+                      height: buttonSize,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            theme.colorScheme.primary,
+                            theme.colorScheme.primary.withOpacity(0.7),
+                          ],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: theme.primaryColor.withOpacity(0.35),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.add_rounded,
+                        color: Colors.white,
+                        size: iconSize,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // 2. HINT OVERLAY LAYER
+          // Positioned.fill ensures the overlay matches the size of the card.
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring:
+                  true, // Crucial: This allows taps to pass through to the buttons below
+              child: AnimatedOpacity(
+                opacity: _showCounterTapHint ? 1.0 : 0.0,
+                duration: const Duration(milliseconds: 350),
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.all(radius),
+                  child: Container(
+                    color: Colors.black.withOpacity(0.75),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Icon Animation
+                        TweenAnimationBuilder<double>(
+                          tween: Tween(begin: 0.0, end: 1.0),
+                          duration: const Duration(milliseconds: 500),
+                          builder: (_, v, __) => Transform.scale(
+                            scale: 0.7 + v * 0.3,
+                            child: Opacity(
+                              opacity: v,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.18),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.35),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: const Icon(
+                                  Icons.touch_app_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // Text Labels
+                        Flexible(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'tap_anywhere_to_increment'.tr(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'tap_the_card_to_add'.tr(),
+                                style: TextStyle(
+                                  color: Colors.white.withOpacity(0.75),
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  // ─────────────────────────────────────────────────────────────────────
+  // Action bar
+  // ─────────────────────────────────────────────────────────────────────
+
+  Widget _buildActionBar({
+    required BuildContext context,
+    required int pageIndex,
+    required TimelineReward reward,
+    required bool isEnglish,
+    required bool showingTranslation,
+    required bool isChecked,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        Checkbox(
+          value: isChecked,
+          onChanged: (v) async {
+            context.read<HistoryCubit>().toggleCheck(reward.id);
+            await RewardWidgetService.updateWidget();
+          },
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+          side: const BorderSide(color: _AppColors.accentGreen, width: 2),
+          checkColor: Colors.white,
+          activeColor: _AppColors.accentGreen,
+        ),
+        _iconBtn(
+          icon: Icons.copy_rounded,
+          tooltip: 'Copy Hadith'.tr(),
+          onPressed: () => _copyToClipboard(reward.description),
+        ),
+        _iconBtn(
+          icon: Icons.share_rounded,
+          tooltip: 'Share'.tr(),
+          onPressed: () => _shareReward(reward),
+        ),
+        _iconBtn(
+          icon: Icons.alarm_rounded,
+          tooltip: 'Schedule Reminder'.tr(),
+          onPressed: () => _scheduleNotification(reward),
+        ),
+        if (isEnglish)
+          BlocBuilder<TranslationCubit, TranslationState>(
+            builder: (context, state) {
+              if (state is TranslationLoading) {
+                return SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation(
+                      Theme.of(context).primaryColor,
+                    ),
+                  ),
+                );
+              }
+              return _iconBtn(
+                icon: showingTranslation
+                    ? Icons.g_translate_rounded
+                    : Icons.translate_rounded,
+                tooltip: showingTranslation
+                    ? 'Hide Translation'
+                    : 'Translate to English',
+                onPressed: () =>
+                    _toggleTranslation(pageIndex, reward.description),
+              );
+            },
+          ),
+        _iconBtn(
+          icon: Icons.report_gmailerrorred_outlined,
+          tooltip: 'report'.tr(),
+          color: Colors.red[300]!,
+          onPressed: () {
+            _launchUrl(
+              'https://wa.me/201121009270',
+              message:
+                  'يوجد مشكلة في هذا الذكر : ${reward.title} و المعرف الخاص به ${reward.id}',
+            );
+            _logEvent('zikr_complain');
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _iconBtn({
+    required IconData icon,
+    required VoidCallback onPressed,
+    String? tooltip,
+    Color? color = _AppColors.accentGreen,
+  }) {
+    return IconButton(
+      icon: Icon(icon, color: color ?? Theme.of(context).primaryColor),
+      onPressed: onPressed,
+      tooltip: tooltip,
+      padding: const EdgeInsets.all(8),
+      constraints: const BoxConstraints(),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Period completion bar
+  // ─────────────────────────────────────────────────────────────────────
+
+  Widget _buildPeriodCompletionBar(AzanDayPeriod period, bool isCurrent) {
+    final periodRewards = _allRewards.where((r) => r.period == period).toList();
+    final total = periodRewards.length;
+    if (total == 0) return const SizedBox.shrink();
+
+    final done = periodRewards
+        .where(
+          (r) =>
+              HistoryDBProvider.isCheckedToday((r.reward as TimelineReward).id),
+        )
+        .length;
+    final progress = done / total;
+    final isComplete = done == total;
+
+    return Row(
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progress),
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeOut,
+              builder: (_, value, __) =>
+                  LinearProgressIndicator(value: value, minHeight: 6),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          isComplete
+              ? '✅ $done/$total (${((done / total) * 100).round()}%)'
+              : '$done/$total (${((done / total) * 100).round()}%)',
+          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+        ),
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Level badge
+  // ─────────────────────────────────────────────────────────────────────
+
+  Widget _buildLevelBadge(ZikrLevel level) {
+    final isEasy = level == ZikrLevel.easy;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: (isEasy ? Colors.blue : Colors.orange).withOpacity(0.5),
+        ),
+      ),
+      child: Text(
+        isEasy ? 'easy'.tr() : 'hard'.tr(),
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          color: isEasy ? Colors.blue[200] : Colors.orange[200],
         ),
       ),
     );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Utilities
+  // ─────────────────────────────────────────────────────────────────────
+
+  double _getFontSize(int len) {
+    if (len > 300) return 16;
+    if (len > 200) return 18;
+    if (len > 150) return 22;
+    if (len > 100) return 26;
+    if (len > 60) return 32;
+    if (len > 30) return 38;
+    return 44;
   }
 
   void _copyToClipboard(String text) {
@@ -732,32 +1308,32 @@ class _ReelsViewContentState extends State<_ReelsViewContent> {
     );
   }
 
+  Future<void> _launchUrl(String url, {String? message}) async {
+    if (message != null) url = '$url?text=${Uri.encodeComponent(message)}';
+    _logEvent('url_launched', parameters: {'url': url});
+    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  }
+
   Future<void> _shareReward(TimelineReward reward) async {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     try {
-      // Show loading
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
+        builder: (_) => const Center(
           child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(accentGreen),
+            valueColor: AlwaysStoppedAnimation<Color>(_AppColors.accentGreen),
           ),
         ),
       );
 
-      // Build widget for screenshot
       final captureWidget = Container(
         constraints: const BoxConstraints(maxWidth: 500),
-        decoration: const BoxDecoration(color: primaryGreen),
+        decoration: const BoxDecoration(color: _AppColors.primaryGreen),
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Header
-
-            // Content
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -795,8 +1371,7 @@ class _ReelsViewContentState extends State<_ReelsViewContent> {
                     reward.description,
                     style: TextStyle(
                       fontFamily: 'kufi',
-
-                      color: Colors.white.withOpacity(0.95),
+                      color: Colors.white.withOpacity(0.9),
                       fontSize: 16,
                       height: 1.6,
                     ),
@@ -809,7 +1384,7 @@ class _ReelsViewContentState extends State<_ReelsViewContent> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: surfaceGreen.withOpacity(0.5),
+                      color: _AppColors.surfaceGreen.withOpacity(0.5),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -818,14 +1393,13 @@ class _ReelsViewContentState extends State<_ReelsViewContent> {
                         const Icon(
                           Icons.menu_book_rounded,
                           size: 14,
-                          color: accentGreen,
+                          color: _AppColors.accentGreen,
                         ),
                         const SizedBox(width: 6),
                         Text(
                           reward.source,
                           style: TextStyle(
                             fontFamily: 'kufi',
-
                             color: Colors.white.withOpacity(0.9),
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
@@ -838,42 +1412,26 @@ class _ReelsViewContentState extends State<_ReelsViewContent> {
               ),
             ),
             const SizedBox(height: 16),
-
-            Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.green.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: Colors.green.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'shared_with'.tr(),
-                      style: theme.textTheme.titleMedium!.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                      // textAlign: TextAlign.center,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.green.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.green.withOpacity(0.3)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'shared_with'.tr(),
+                    style: theme.textTheme.titleMedium!.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
                     ),
-                    const SizedBox(width: 4),
-                    Image.asset('assets/playstore.png', height: 50, width: 50),
-                    // const SizedBox(height: 4),
-                    // Text(
-                    //   'تطبيق فضائل الصلوات',
-                    //   style: theme.textTheme.bodySmall!.copyWith(
-                    //     color: Colors.green[600],
-                    //   ),
-                    // ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(width: 4),
+                  Image.asset('assets/playstore.png', height: 50, width: 50),
+                ],
               ),
             ),
           ],
@@ -904,39 +1462,34 @@ class _ReelsViewContentState extends State<_ReelsViewContent> {
         throw Exception('Failed to capture screenshot');
       }
 
-      final directory = await getTemporaryDirectory();
-      final imagePath =
-          '${directory.path}/reward_${DateTime.now().millisecondsSinceEpoch}.png';
-      final imageFile = File(imagePath);
-      await imageFile.writeAsBytes(image);
-
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}/reward_${DateTime.now().millisecondsSinceEpoch}.png';
+      final file = File(path);
+      await file.writeAsBytes(image);
       if (mounted) Navigator.pop(context);
 
-      final translations = {
-        "ar":
-            "تم التقاطها بتطبيق إلا ليعبدون\n\nhttps://play.google.com/store/apps/details?id=com.amrabdelhameed.ella_lyaabdoon",
-        "en":
-            "Captured with Ella Lyaabdoon app\n\nhttps://play.google.com/store/apps/details?id=com.amrabdelhameed.ella_lyaabdoon",
-      };
-      final shareText = translations[AppServicesDBprovider.currentLocale()]!;
+      final shareText = AppServicesDBprovider.currentLocale() == 'ar'
+          ? 'تم التقاطها بتطبيق إلا ليعبدون\n\nhttps://play.google.com/store/apps/details?id=com.amrabdelhameed.ella_lyaabdoon'
+          : 'Captured with Ella Lyaabdoon app\n\nhttps://play.google.com/store/apps/details?id=com.amrabdelhameed.ella_lyaabdoon';
 
-      await Share.shareXFiles([XFile(imagePath)], text: shareText);
+      await Share.shareXFiles([XFile(path)], text: shareText);
 
-      // Cleanup
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('جزاك الله خيراً'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
       Future.delayed(const Duration(seconds: 2), () {
         try {
-          if (imageFile.existsSync()) {
-            imageFile.deleteSync();
-          }
-        } catch (e) {
-          debugPrint('Error deleting temp file: $e');
-        }
+          if (file.existsSync()) file.deleteSync();
+        } catch (_) {}
       });
     } catch (e) {
-      if (mounted && Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
-
+      if (mounted && Navigator.canPop(context)) Navigator.pop(context);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -953,100 +1506,193 @@ class _ReelsViewContentState extends State<_ReelsViewContent> {
       context: context,
       initialTime: TimeOfDay.now(),
     );
+    if (time == null || !mounted) return;
 
-    if (time != null && mounted) {
-      try {
-        final notificationId = reward.id.hashCode.abs() % 2147483647;
+    try {
+      final id = reward.id.hashCode.abs() % 2147483647;
+      final isScheduled = await NotificationHelper.isNotificationScheduled(id);
 
-        final isScheduled = await NotificationHelper.isNotificationScheduled(
-          notificationId,
-        );
-
-        if (isScheduled && mounted) {
-          final shouldReplace = await showDialog<bool>(
-            context: context,
-            builder: (context) => AlertDialog(
-              title: Text('Already Scheduled'.tr()),
-              content: Text(
-                'A reminder for this reward already exists. Do you want to replace it?'
-                    .tr(),
+      if (isScheduled && mounted) {
+        final replace = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: Text('Already Scheduled'.tr()),
+            content: Text(
+              'A reminder for this reward already exists. Do you want to replace it?'
+                  .tr(),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: Text('cancel'.tr()),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context, false),
-                  child: Text('cancel'.tr()),
-                ),
-                TextButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  child: Text('Replace'.tr()),
-                ),
-              ],
-            ),
-          );
-
-          if (shouldReplace != true) return;
-        }
-
-        await NotificationHelper.scheduleDaily(
-          notificationId: notificationId,
-          payload: {
-            'reward_id': reward.id.toString(),
-            'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
-          },
-          title: reward.title,
-          body: reward.description,
-          time: time,
-        );
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              duration: const Duration(seconds: 3),
-              content: Text(
-                '${'Reminder scheduled for'.tr()} ${time.format(context)}',
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: Text('Replace'.tr()),
               ),
-              backgroundColor: Colors.green,
-              // action: SnackBarAction(
-              //   label: 'Undo'.tr(),
-              //   textColor: Colors.white,
-              //   onPressed: () async {
-              //     await NotificationHelper.cancel(notificationId);
-              //   },
-              // ),
-            ),
-          );
-        }
-      } catch (e) {
-        debugPrint("Schedule Error: $e");
+            ],
+          ),
+        );
+        if (replace != true) return;
+      }
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to schedule reminder'.tr()),
-              backgroundColor: Colors.red,
+      await NotificationHelper.scheduleDaily(
+        notificationId: id,
+        payload: {
+          'reward_id': reward.id.toString(),
+          'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
+        },
+        title: reward.title,
+        body: reward.description,
+        time: time,
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 3),
+            content: Text(
+              '${'Reminder scheduled for'.tr()} ${time.format(context)}',
             ),
-          );
-        }
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Schedule Error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to schedule reminder'.tr()),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
+}
 
-  void _showRewardDetails(TimelineReward reward) {
-    showDialog(
-      context: context,
-      builder: (context) => RewardDetailDialog(reward: reward),
+// ─────────────────────────────────────────────────────────────────────────────
+// Reusable hint widget
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _HintContent extends StatelessWidget {
+  const _HintContent({
+    required this.label,
+    required this.sublabel,
+    this.useThemedBox = false,
+  });
+
+  final String label;
+  final String sublabel;
+  final bool useThemedBox;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(milliseconds: 600),
+          builder: (context, value, _) => Transform.scale(
+            scale: 0.8 + value * 0.2,
+            child: Opacity(
+              opacity: value,
+              child: Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  // color: Colors.white.withOpacity(0.15),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    // color: Colors.white.withOpacity(0.3),
+                    width: 2,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.touch_app_rounded,
+                  // color: Colors.white,
+                  size: 40,
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        if (useThemedBox)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).primaryColor,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  // color: Theme.of(context).primaryColor.withOpacity(0.4),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    // color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  sublabel,
+                  style: TextStyle(
+                    // color: Colors.white.withOpacity(0.8),
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          )
+        else ...[
+          Text(
+            label,
+            style: const TextStyle(
+              // color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              shadows: [Shadow(blurRadius: 4, color: Colors.black54)],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            sublabel,
+            style: TextStyle(
+              // color: Colors.white.withOpacity(0.8),
+              fontSize: 13,
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
 
-class RewardItem {
-  final dynamic reward;
-  final AzanDayPeriod period;
-  final String periodTitle;
+// ─────────────────────────────────────────────────────────────────────────────
+// Data model
+// ─────────────────────────────────────────────────────────────────────────────
 
-  RewardItem({
+class RewardItem {
+  const RewardItem({
     required this.reward,
     required this.period,
     required this.periodTitle,
   });
+
+  final dynamic reward;
+  final AzanDayPeriod period;
+  final String periodTitle;
 }

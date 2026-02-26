@@ -1,17 +1,21 @@
 import 'dart:io';
 import 'package:easy_localization/easy_localization.dart' as ez;
+import 'package:ella_lyaabdoon/core/shared_widgets/pulsing_wrapper.dart';
 import 'package:ella_lyaabdoon/features/home/logic/translation_cubit.dart';
 import 'package:ella_lyaabdoon/core/models/timeline_reward.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
+import 'package:ella_lyaabdoon/utils/notification_helper.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:ella_lyaabdoon/utils/notification_helper.dart';
 import 'package:screenshot/screenshot.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:ella_lyaabdoon/core/services/zikr_widget_service.dart';
+import 'package:ella_lyaabdoon/features/history/data/history_db_provider.dart';
+import 'package:ella_lyaabdoon/features/history/logic/history_cubit.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class RewardDetailDialog extends StatelessWidget {
@@ -21,8 +25,11 @@ class RewardDetailDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<TranslationCubit>(
-      create: (context) => TranslationCubit(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<TranslationCubit>(create: (_) => TranslationCubit()),
+        // BlocProvider<HistoryCubit>(create: (_) => HistoryCubit()),
+      ],
       child: _RewardDetailDialogContent(reward: reward),
     );
   }
@@ -116,7 +123,12 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
     );
   }
 
-  void _launchUrl(String url) async {
+  void _launchUrl(String url, {String? message}) async {
+    if (message != null) {
+      // Append the message as a WhatsApp text parameter
+      url = '$url?text=${Uri.encodeComponent(message)}';
+    }
+
     _logEvent('url_launched', parameters: {'url': url});
     final uri = Uri.parse(url);
     await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -389,10 +401,53 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
             // ── Body ─────────────────────────────────────────────────
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // ── Done-today checkbox (matches reels view) ──
+                    BlocBuilder<HistoryCubit, HistoryState>(
+                      builder: (context, histState) {
+                        final isChecked = HistoryDBProvider.isCheckedToday(
+                          widget.reward.id,
+                        );
+                        return CheckboxListTile(
+                          contentPadding: EdgeInsets.zero,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          checkboxShape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          activeColor: Colors.green,
+                          value: isChecked,
+                          onChanged: (_) async {
+                            context.read<HistoryCubit>().toggleCheck(
+                              widget.reward.id,
+                            );
+                            await RewardWidgetService.updateWidget();
+                          },
+                          title: Text(
+                            isChecked
+                                ? 'zikr_done_today'.tr()
+                                : 'mark_as_done'.tr(),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: isChecked ? Colors.green : null,
+                              decoration: isChecked
+                                  ? TextDecoration.none
+                                  : null,
+                            ),
+                          ),
+                          // secondary: isChecked
+                          //     ? const Text('✅', style: TextStyle(fontSize: 20))
+                          //     : null,
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 12),
+
                     if (widget.reward.isWithCounter) ...[
                       _buildCounter(context, isDark, theme),
                       const SizedBox(height: 20),
@@ -440,10 +495,13 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
                               decoration: BoxDecoration(
                                 color: isDark
                                     ? Colors.grey[800]!.withValues(alpha: 0.5)
-                                    : Colors.green.withValues(alpha: 0.05),
+                                    : Theme.of(context).colorScheme.primary
+                                          .withValues(alpha: 0.05),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: Colors.green.withValues(alpha: 0.3),
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.primary.withValues(alpha: 0.3),
                                   width: 2,
                                 ),
                               ),
@@ -463,7 +521,9 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
                                 color: Colors.red[50],
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: Colors.red[200]!,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.errorContainer,
                                   width: 2,
                                 ),
                               ),
@@ -473,7 +533,9 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
                                     children: [
                                       Icon(
                                         Icons.error_outline,
-                                        color: Colors.red[600],
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.errorContainer,
                                         size: 20,
                                       ),
                                       const SizedBox(width: 8),
@@ -481,7 +543,9 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
                                         'Error',
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.red[600],
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.errorContainer,
                                         ),
                                       ),
                                     ],
@@ -489,7 +553,11 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
                                   const SizedBox(height: 8),
                                   Text(
                                     state.message,
-                                    style: TextStyle(color: Colors.red[800]),
+                                    style: TextStyle(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.errorContainer,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -518,14 +586,23 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
                                     margin: const EdgeInsets.only(bottom: 12),
                                     decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: Colors.red),
-                                      color: Colors.red.withValues(alpha: 0.1),
+                                      border: Border.all(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.errorContainer,
+                                      ),
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .errorContainer
+                                          .withValues(alpha: 0.1),
                                     ),
                                     child: Row(
                                       children: [
-                                        const Icon(
+                                        Icon(
                                           Icons.warning_amber_rounded,
-                                          color: Colors.red,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.errorContainer,
                                           size: 16,
                                         ),
                                         const SizedBox(width: 8),
@@ -537,7 +614,9 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
                                               fontSize: 12,
                                               overflow: TextOverflow.ellipsis,
                                               fontWeight: FontWeight.bold,
-                                              color: Colors.red[700],
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.errorContainer,
                                             ),
                                           ),
                                         ),
@@ -548,7 +627,9 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
                                     children: [
                                       Icon(
                                         Icons.translate,
-                                        color: Colors.blue[700],
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
                                         size: 20,
                                       ),
                                       const SizedBox(width: 8),
@@ -559,7 +640,9 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
                                               fontSize: 12,
                                               overflow: TextOverflow.ellipsis,
                                               fontWeight: FontWeight.bold,
-                                              color: Colors.blue[800],
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
                                             ),
                                       ),
                                       const Spacer(),
@@ -570,7 +653,9 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
                                         ),
                                         icon: const Icon(Icons.copy, size: 18),
                                         tooltip: 'Copy translation',
-                                        color: Colors.grey[600],
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
                                         padding: EdgeInsets.zero,
                                         constraints: const BoxConstraints(),
                                       ),
@@ -581,10 +666,12 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
                                     state.translatedText,
                                     style: theme.textTheme.bodyLarge!.copyWith(
                                       height: 1.8,
-                                      fontSize: 16,
+                                      fontSize: 14,
                                       color: isDark
                                           ? Colors.white
-                                          : Colors.grey[800],
+                                          : Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
                                     ),
                                   ),
                                 ],
@@ -628,8 +715,8 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            Colors.greenAccent.withValues(alpha: 0.2),
-            Colors.green.withValues(alpha: 0.1),
+            Theme.of(context).colorScheme.primary.withValues(alpha: 0.2),
+            Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
           ],
         ),
         borderRadius: const BorderRadius.only(
@@ -659,7 +746,9 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
                           fontWeight: FontWeight.bold,
                           fontFamily: 'kufi',
                           fontSize: 14,
-                          color: isDark ? Colors.white : Colors.green[900],
+                          color: isDark
+                              ? Colors.white
+                              : Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
@@ -675,89 +764,94 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
                 IconButton(
                   onPressed: () => _shareReward(context),
                   visualDensity: VisualDensity.compact,
-                  icon: Badge(
-                    alignment: Alignment.topRight,
-                    label: Text("New".tr()),
-                    textColor: Colors.white,
-                    child: const Icon(Icons.share_outlined),
-                  ),
-                  color: Colors.green[700],
+                  icon: const Icon(Icons.share_outlined),
+                  color: Theme.of(context).colorScheme.primary,
                   tooltip: "Share".tr(),
                 ),
-                IconButton(
-                  onPressed: () => _scheduleReminder(context),
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.alarm_add),
-                  color: Colors.green[700],
-                  tooltip: "Schedule Reminder".tr(),
+                PulsingWrapper(
+                  child: IconButton(
+                    onPressed: () => _scheduleReminder(context),
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.alarm_add),
+                    color: Theme.of(context).colorScheme.primary,
+                    tooltip: "Schedule Reminder".tr(),
+                  ),
                 ),
                 IconButton(
                   onPressed: () {
-                    _launchUrl('https://wa.me/201121009270');
+                    _launchUrl(
+                      'https://wa.me/201121009270?text=${Uri.encodeComponent('يوجد مشكلة في هذا الذكر : ${widget.reward.title} و المعرف الخاص به ${widget.reward.id}')}',
+                    );
                     _logEvent('zikr_complain');
                   },
                   visualDensity: VisualDensity.compact,
                   icon: const Icon(Icons.report_gmailerrorred_outlined),
-                  color: Colors.red[700],
+                  color: Theme.of(context).colorScheme.errorContainer,
                   tooltip: "report".tr(),
                 ),
               ] else
-                PopupMenuButton<_HeaderAction>(
-                  icon: Icon(Icons.more_vert, color: Colors.green[700]),
-                  onSelected: (action) {
-                    if (action == _HeaderAction.share) {
-                      _shareReward(context);
-                    } else if (action == _HeaderAction.reminder) {
-                      _scheduleReminder(context);
-                    } else if (action == _HeaderAction.report) {
-                      _launchUrl('https://wa.me/201121009270');
-                      _logEvent('zikr_complain');
-                    }
-                  },
-                  itemBuilder: (_) => [
-                    PopupMenuItem(
-                      value: _HeaderAction.share,
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.share_outlined,
-                            color: Colors.green[700],
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text("Share".tr()),
-                        ],
+                PulsingWrapper(
+                  child: PopupMenuButton<_HeaderAction>(
+                    icon: Icon(Icons.more_vert, color: Colors.green[700]),
+                    onSelected: (action) {
+                      if (action == _HeaderAction.share) {
+                        _shareReward(context);
+                      } else if (action == _HeaderAction.reminder) {
+                        _scheduleReminder(context);
+                      } else if (action == _HeaderAction.report) {
+                        _launchUrl(
+                          'https://wa.me/201121009270?text=${Uri.encodeComponent('يوجد مشكلة في هذا الذكر : ${widget.reward.title} و المعرف الخاص به ${widget.reward.id}')}',
+                        );
+                        _logEvent('zikr_complain');
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      PopupMenuItem(
+                        value: _HeaderAction.share,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.share_outlined,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text("Share".tr()),
+                          ],
+                        ),
                       ),
-                    ),
-                    PopupMenuItem(
-                      value: _HeaderAction.reminder,
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.alarm_add,
-                            color: Colors.green[700],
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text("Schedule Reminder".tr()),
-                        ],
+                      PopupMenuItem(
+                        value: _HeaderAction.reminder,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.alarm_add,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text("Schedule Reminder".tr()),
+                          ],
+                        ),
                       ),
-                    ),
-                    PopupMenuItem(
-                      value: _HeaderAction.report,
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.report_gmailerrorred_outlined,
-                            color: Colors.red[700],
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text("report".tr()),
-                        ],
+                      PopupMenuItem(
+                        value: _HeaderAction.report,
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.report_gmailerrorred_outlined,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.errorContainer,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text("report".tr()),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
 
               // Close is always visible
@@ -765,7 +859,7 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
                 onPressed: () => Navigator.of(context).pop(),
                 visualDensity: VisualDensity.compact,
                 icon: const Icon(Icons.close),
-                color: Colors.grey[600],
+                color: Theme.of(context).colorScheme.primary,
               ),
             ],
           );
@@ -783,100 +877,118 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
     final iconSize = buttonSize * 0.5;
     final countFontSize = (screenWidth * 0.07).clamp(24.0, 40.0);
 
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: screenWidth * 0.04,
-        vertical: 14,
-      ),
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.grey[800]!.withValues(alpha: 0.6)
-            : primary.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: primary.withValues(alpha: 0.25), width: 1.5),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+    return Material(
+      color: Colors.transparent,
+      child: PulsingWrapper(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: _increment, // FULL CARD INCREMENT
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: screenWidth * 0.04,
+              vertical: 14,
+            ),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? Colors.grey[800]!.withValues(alpha: 0.6)
+                  : primary.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: primary.withValues(alpha: 0.25),
+                width: 1.5,
+              ),
+            ),
+            child: Row(
               children: [
-                Text(
-                  'zikr_done_count'.tr(),
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: isDark ? Colors.white60 : Colors.grey[600],
-                    fontWeight: FontWeight.w600,
-                    fontSize: (screenWidth * 0.028).clamp(10.0, 13.0),
+                /// COUNT DISPLAY
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'zikr_done_count'.tr(),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: isDark ? Colors.white60 : Colors.grey[600],
+                          fontWeight: FontWeight.w600,
+                          fontSize: (screenWidth * 0.028).clamp(10.0, 13.0),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Transform.scale(
+                        scale: _pulseAnimation.value,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '$_count',
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            color: primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: countFontSize,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 2),
-                Transform.scale(
-                  scale: _pulseAnimation.value,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    '$_count',
-                    style: theme.textTheme.headlineMedium?.copyWith(
-                      color: primary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: countFontSize,
-                      height: 1,
+
+                /// RESET BUTTON (excluded automatically)
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: _count > 0
+                      ? IconButton(
+                          key: const ValueKey('reset'),
+                          onPressed: _reset,
+                          icon: const Icon(Icons.refresh_rounded),
+                          color: Colors.grey[500],
+                          tooltip: 'reset'.tr(),
+                          iconSize: (screenWidth * 0.055).clamp(18.0, 24.0),
+                          padding: const EdgeInsets.all(6),
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                        )
+                      : SizedBox(
+                          key: const ValueKey('empty'),
+                          width: (screenWidth * 0.055).clamp(18.0, 24.0) + 12,
+                        ),
+                ),
+
+                const SizedBox(width: 8),
+
+                /// INCREMENT BUTTON (still works separately)
+                GestureDetector(
+                  onTap: _increment,
+                  child: Container(
+                    width: buttonSize,
+                    height: buttonSize,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [primary, primary.withValues(alpha: 0.75)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: primary.withValues(alpha: 0.35),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.add_rounded,
+                      color: Colors.white,
+                      size: iconSize,
                     ),
                   ),
                 ),
               ],
             ),
           ),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: _count > 0
-                ? IconButton(
-                    key: const ValueKey('reset'),
-                    onPressed: _reset,
-                    icon: const Icon(Icons.refresh_rounded),
-                    color: Colors.grey[500],
-                    tooltip: 'reset'.tr(),
-                    iconSize: (screenWidth * 0.055).clamp(18.0, 24.0),
-                    padding: const EdgeInsets.all(6),
-                    constraints: const BoxConstraints(
-                      minWidth: 32,
-                      minHeight: 32,
-                    ),
-                  )
-                : SizedBox(
-                    key: const ValueKey('empty'),
-                    width: (screenWidth * 0.055).clamp(18.0, 24.0) + 12,
-                  ),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: _increment,
-            child: Container(
-              width: buttonSize,
-              height: buttonSize,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [primary, primary.withValues(alpha: 0.75)],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: primary.withValues(alpha: 0.35),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Icon(
-                Icons.add_rounded,
-                color: Colors.white,
-                size: iconSize,
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -960,12 +1072,12 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
       decoration: BoxDecoration(
         color: isDark
             ? Colors.grey[800]!.withValues(alpha: 0.5)
-            : Colors.green.withValues(alpha: 0.05),
+            : Theme.of(context).colorScheme.primary.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: isDark
-              ? Colors.green.withValues(alpha: 0.2)
-              : Colors.green.withValues(alpha: 0.3),
+              ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.2)
+              : Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
           width: 2,
         ),
       ),
@@ -975,13 +1087,17 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
         children: [
           Row(
             children: [
-              Icon(Icons.source_rounded, color: Colors.green[700], size: 20),
+              Icon(
+                Icons.source_rounded,
+                color: Theme.of(context).colorScheme.primary,
+                size: 20,
+              ),
               const SizedBox(width: 8),
               Text(
                 'Source'.tr(),
                 style: theme.textTheme.titleMedium!.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Colors.green[800],
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               if (!isSharing) ...[
@@ -991,7 +1107,7 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
                       _copyToClipboard(context, widget.reward.source),
                   icon: const Icon(Icons.copy, size: 18),
                   tooltip: 'Copy source'.tr(),
-                  color: Colors.grey[600],
+                  color: Theme.of(context).colorScheme.primary,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
@@ -1020,9 +1136,11 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.green.withValues(alpha: 0.1),
+          color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.green.withValues(alpha: 0.3)),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.3),
+          ),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,

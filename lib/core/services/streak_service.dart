@@ -35,6 +35,11 @@ class StreakService {
   // Pending celebration key (for when app opens before HomeScreen is ready)
   static const String _pendingCelebrationKey = 'pendingCelebration';
 
+  // Streak saves keys
+  static const String _usedStreakSavesCountKey = 'usedStreakSavesCount';
+  static const String _usedStreakSavesMonthKey = 'usedStreakSavesMonth';
+  static const int maxStreakSavesPerMonth = 3;
+
   // Milestone thresholds
   static const List<int> milestones = [3, 7, 14, 30, 60, 90, 180, 365];
   static const Map<int, String> milestoneNames = {
@@ -83,6 +88,27 @@ class StreakService {
     }
   }
 
+  static int getUsedStreakSaves() {
+    final currentMonth = DateFormat('yyyy-MM').format(DateTime.now());
+    final savedMonth = CacheHelper.getString(_usedStreakSavesMonthKey);
+
+    if (savedMonth != currentMonth) {
+      return 0; // New month, 0 used
+    }
+    return CacheHelper.getInt(_usedStreakSavesCountKey);
+  }
+
+  static int getAvailableStreakSaves() {
+    return maxStreakSavesPerMonth - getUsedStreakSaves();
+  }
+
+  static void _useStreakSaves(int count) {
+    final currentMonth = DateFormat('yyyy-MM').format(DateTime.now());
+    int used = getUsedStreakSaves();
+    CacheHelper.setString(_usedStreakSavesMonthKey, currentMonth);
+    CacheHelper.setInt(_usedStreakSavesCountKey, used + count);
+  }
+
   static Future<void> handleAppOpen() async {
     debugPrint('🚀 handleAppOpen called');
     final now = DateTime.now();
@@ -120,8 +146,20 @@ class StreakService {
       // Consecutive day - increment streak
       await _handleConsecutiveDayOpen(now, todayDateOnly, currentstreakCount);
     } else if (daysDifference > 1) {
-      // Missed days - reset streak
-      await _handleMissedDaysOpen(now, todayDateOnly, daysDifference);
+      // Missed days - check if we can save the streak
+      int daysMissed = daysDifference - 1;
+      int availableSaves = getAvailableStreakSaves();
+
+      if (currentstreakCount > 0 && daysMissed <= availableSaves) {
+        await _handleStreakSavedOpen(
+          now,
+          todayDateOnly,
+          currentstreakCount,
+          daysMissed,
+        );
+      } else {
+        await _handleMissedDaysOpen(now, todayDateOnly, daysDifference);
+      }
     } else {
       // Negative difference (clock changed or timezone issue)
       debugPrint(
@@ -275,6 +313,47 @@ class StreakService {
       parameters: {
         'previous_count': currentStreakCount,
         'new_count': newStreakCount,
+        'date': DateFormat('yyyy-MM-dd').format(todayDateOnly),
+      },
+    );
+
+    // Schedule new notification for tomorrow
+    await _scheduleStreakWarning(todayDateOnly);
+  }
+
+  static Future<void> _handleStreakSavedOpen(
+    DateTime now,
+    DateTime todayDateOnly,
+    int currentStreakCount,
+    int daysMissed,
+  ) async {
+    _useStreakSaves(daysMissed);
+    final availableSaves = getAvailableStreakSaves();
+
+    final newStreakCount = currentStreakCount + 1;
+    debugPrint(
+      '🛡️ Streak saved! Missed $daysMissed days. Streak: $currentStreakCount → $newStreakCount. Saves remaining: $availableSaves',
+    );
+
+    CacheHelper.setString(_lastOpenKey, now.toIso8601String());
+    CacheHelper.setInt(_streakCountKey, newStreakCount);
+
+    // Update notifier
+    streakNotifier.value = newStreakCount;
+
+    // Update statistics
+    _updateStatistics(newStreakCount, true);
+
+    // Check for milestone achievement
+    checkMilestoneAchievement(newStreakCount);
+
+    _logEvent(
+      'streak_saved',
+      parameters: {
+        'previous_count': currentStreakCount,
+        'new_count': newStreakCount,
+        'days_missed': daysMissed,
+        'saves_remaining': availableSaves,
         'date': DateFormat('yyyy-MM-dd').format(todayDateOnly),
       },
     );
@@ -730,9 +809,12 @@ class StreakService {
     final achievedMilestones = getAchievedMilestones();
     final nextMilestone = getNextMilestone();
     final streakStartDate = getCurrentStreakStartDate();
+    final availableSaves = getAvailableStreakSaves();
 
     return {
       'currentStreak': currentStreak,
+      'availableSaves': availableSaves,
+      'maxSaves': maxStreakSavesPerMonth,
       'longestStreak': longestStreak,
       'totalActiveDays': totalActiveDays,
       'streakBreaks': streakBreaks,

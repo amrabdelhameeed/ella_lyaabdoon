@@ -11,7 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:ella_lyaabdoon/features/history/logic/history_cubit.dart';
 import 'package:ella_lyaabdoon/features/history/data/history_db_provider.dart';
 
-class TimelineRewardItem extends StatelessWidget {
+class TimelineRewardItem extends StatefulWidget {
   final TimelineReward reward;
   final bool isCurrent;
   final bool isLeftAligned;
@@ -27,14 +27,51 @@ class TimelineRewardItem extends StatelessWidget {
     required this.pulseAnimation,
   });
 
+  @override
+  State<TimelineRewardItem> createState() => _TimelineRewardItemState();
+}
+
+class _TimelineRewardItemState extends State<TimelineRewardItem> {
+  bool? _localOverride;
+
   void _showRewardDetails(BuildContext context) {
     Clarity.setCurrentScreenName('reward_dialog');
+    final historyCubit = context.read<HistoryCubit>();
     showDialog(
       context: context,
-      builder: (context) {
-        return RewardDetailDialog(reward: reward);
+      builder: (dialogContext) {
+        return BlocProvider.value(
+          value: historyCubit,
+          child: RewardDetailDialog(reward: widget.reward),
+        );
       },
     );
+  }
+
+  void _toggleCheck() async {
+    final currentlyChecked = HistoryDBProvider.isCheckedToday(widget.reward.id);
+    final historyCubit = context.read<HistoryCubit>();
+
+    if (currentlyChecked) {
+      historyCubit.toggleCheck(widget.reward.id);
+      await RewardWidgetService.updateWidget();
+      return;
+    }
+
+    setState(() {
+      _localOverride = true;
+    });
+
+    await Future.delayed(const Duration(milliseconds: 400));
+
+    if (mounted) {
+      setState(() {
+        _localOverride = null;
+      });
+    }
+
+    historyCubit.toggleCheck(widget.reward.id);
+    await RewardWidgetService.updateWidget();
   }
 
   @override
@@ -44,17 +81,22 @@ class TimelineRewardItem extends StatelessWidget {
 
     return BlocBuilder<HistoryCubit, HistoryState>(
       builder: (context, state) {
-        final isChecked = HistoryDBProvider.isCheckedToday(reward.id);
+        bool isChecked = HistoryDBProvider.isCheckedToday(widget.reward.id);
+        if (_localOverride != null) {
+          isChecked = _localOverride!;
+        }
 
         return LayoutBuilder(
           builder: (context, constraints) {
             final screenWidth = constraints.maxWidth;
             final centerX = screenWidth / 2;
-            final cardStart = isLeftAligned ? 16.0 : centerX + 14;
-            final cardEnd = isLeftAligned ? centerX - 14 : screenWidth - 16;
+            final cardStart = widget.isLeftAligned ? 16.0 : centerX + 14;
+            final cardEnd = widget.isLeftAligned
+                ? centerX - 14
+                : screenWidth - 16;
 
             final lineStart = centerX + 6;
-            final lineEnd = isLeftAligned ? cardEnd : cardStart;
+            final lineEnd = widget.isLeftAligned ? cardEnd : cardStart;
             final lineWidth = (lineEnd - lineStart).abs();
 
             return SizedBox(
@@ -66,14 +108,16 @@ class TimelineRewardItem extends StatelessWidget {
                   Positioned(
                     left: centerX - 1.5,
                     top: 0,
-                    bottom: isLast ? null : 0,
+                    bottom: widget.isLast ? null : 0,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       width: 3,
-                      height: isLast ? 35 : null,
+                      height: widget.isLast ? 35 : null,
                       color: isChecked
                           ? Colors.green
-                          : (isCurrent ? Colors.green : Colors.grey[300]),
+                          : (widget.isCurrent
+                                ? Colors.green
+                                : Colors.grey[300]),
                     ),
                   ),
 
@@ -81,9 +125,9 @@ class TimelineRewardItem extends StatelessWidget {
                   Positioned(
                     left: centerX - 6,
                     top: 44, // 50 (center) - 6 (half of 12 height) = 44
-                    child: isCurrent || isChecked
+                    child: widget.isCurrent || isChecked
                         ? FadeTransition(
-                            opacity: pulseAnimation,
+                            opacity: widget.pulseAnimation,
                             child: Container(
                               width: 12,
                               height: 12,
@@ -133,15 +177,15 @@ class TimelineRewardItem extends StatelessWidget {
 
                   // Horizontal line to card
                   Positioned(
-                    left: isLeftAligned ? null : lineStart,
-                    right: isLeftAligned ? (screenWidth / 2) : null,
+                    left: widget.isLeftAligned ? null : lineStart,
+                    right: widget.isLeftAligned ? (screenWidth / 2) : null,
 
                     top: 49,
                     width: lineWidth,
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 300),
                       height: 2,
-                      color: isChecked || isCurrent
+                      color: isChecked || widget.isCurrent
                           ? (isChecked ? Colors.green : Colors.greenAccent)
                                 .withValues(alpha: 0.5)
                           : Colors.grey[300],
@@ -167,7 +211,7 @@ class TimelineRewardItem extends StatelessWidget {
                           border: Border.all(
                             color: isChecked
                                 ? Colors.green.withValues(alpha: 0.5)
-                                : (isCurrent
+                                : (widget.isCurrent
                                       ? Colors.greenAccent.withValues(
                                           alpha: 0.3,
                                         )
@@ -176,7 +220,7 @@ class TimelineRewardItem extends StatelessWidget {
                                         ).dividerColor.withValues(alpha: 0.1)),
                             width: isChecked ? 2 : 1,
                           ),
-                          boxShadow: (isChecked || isCurrent)
+                          boxShadow: (isChecked || widget.isCurrent)
                               ? [
                                   BoxShadow(
                                     color:
@@ -204,12 +248,7 @@ class TimelineRewardItem extends StatelessWidget {
                             children: [
                               // Square Checkbox Button with enhanced colors
                               GestureDetector(
-                                onTap: () async {
-                                  context.read<HistoryCubit>().toggleCheck(
-                                    reward.id,
-                                  );
-                                  await RewardWidgetService.updateWidget();
-                                },
+                                onTap: _toggleCheck,
                                 child: Container(
                                   width: 28,
                                   height: double.infinity,
@@ -222,7 +261,7 @@ class TimelineRewardItem extends StatelessWidget {
                                               : Colors.green.withValues(
                                                   alpha: 0.15,
                                                 ))
-                                        : (isCurrent
+                                        : (widget.isCurrent
                                               ? (isDarkMode
                                                     ? Colors.greenAccent
                                                           .withValues(
@@ -259,12 +298,8 @@ class TimelineRewardItem extends StatelessWidget {
                                       child: Checkbox(
                                         value: isChecked,
                                         // Maintains your Cubit logic
-                                        onChanged: (bool? value) async {
-                                          context
-                                              .read<HistoryCubit>()
-                                              .toggleCheck(reward.id);
-                                          await RewardWidgetService.updateWidget();
-                                        },
+                                        onChanged: (bool? value) =>
+                                            _toggleCheck(),
                                         // Ensures the shape is slightly rounded like your original BoxDecoration
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
@@ -291,7 +326,7 @@ class TimelineRewardItem extends StatelessWidget {
                                         ),
                                         alignment: Alignment.centerRight,
                                         child: Text(
-                                          reward.title,
+                                          widget.reward.title,
                                           textDirection: ui.TextDirection.rtl,
                                           style: Theme.of(context)
                                               .textTheme
@@ -299,7 +334,9 @@ class TimelineRewardItem extends StatelessWidget {
                                               .copyWith(
                                                 fontFamily: 'kufi',
                                                 fontWeight: FontWeight.w600,
-                                                color: isChecked || isCurrent
+                                                color:
+                                                    isChecked ||
+                                                        widget.isCurrent
                                                     ? Theme.of(context)
                                                           .textTheme
                                                           .bodyMedium
@@ -332,12 +369,12 @@ class TimelineRewardItem extends StatelessWidget {
                                                 ? BannerLocation.topEnd
                                                 : BannerLocation.topEnd,
                                             message:
-                                                reward.zikrLevel ==
+                                                widget.reward.zikrLevel ==
                                                     ZikrLevel.easy
                                                 ? "easy".tr()
                                                 : "hard".tr(),
                                             color:
-                                                reward.zikrLevel ==
+                                                widget.reward.zikrLevel ==
                                                     ZikrLevel.easy
                                                 ? Colors.blue
                                                 : Colors.orange.withValues(

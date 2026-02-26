@@ -72,6 +72,30 @@ class AppServicesDBprovider {
   static Future<void> setMadhab(String value) async {
     await _box.put(AppDatabaseKeys.madhabKey, value);
   }
+
+  // ── View mode (normal timeline vs. reels) ─────────────────────────────
+  /// Returns true when the user has chosen the Reels view as their default.
+  static bool isReelsView() => _box.get(AppDatabaseKeys.reelsViewKey) == '1';
+
+  /// Persists the desired view mode.
+  static Future<void> setReelsView({required bool value}) async {
+    await _box.put(AppDatabaseKeys.reelsViewKey, value ? '1' : '0');
+  }
+
+  /// Convenience toggle – flips the current value and saves it.
+  static Future<void> switchViewMode() async {
+    await setReelsView(value: !isReelsView());
+  }
+
+  //APP Color
+  static int getAppColor() {
+    final value = _box.get(AppDatabaseKeys.appColorKey);
+    return value != null ? int.tryParse(value) ?? 0xFF2E7D32 : 0xFF2E7D32;
+  }
+
+  static Future<void> setAppColor(int colorValue) async {
+    await _box.put(AppDatabaseKeys.appColorKey, colorValue.toString());
+  }
 }
 
 class AppDatabaseKeys {
@@ -96,4 +120,9 @@ class AppDatabaseKeys {
 
   static const String calculationMethodKey = 'calculationMethodKey';
   static const String madhabKey = 'madhabKey';
+
+  static const String appColorKey = 'appColorKey';
+
+  /// Stores '1' for Reels view, '0' (or absent) for the normal Timeline view.
+  static const String reelsViewKey = 'reelsViewKey';
 }

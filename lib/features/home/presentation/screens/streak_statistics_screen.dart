@@ -32,6 +32,10 @@ class StreakStatisticsScreen extends StatelessWidget {
             _buildStatisticsGrid(context, stats),
             const SizedBox(height: 16),
 
+            // Streak Saves Card
+            _buildStreakSavesCard(context, stats),
+            const SizedBox(height: 16),
+
             // Achievements Section
             _buildAchievementsSection(context, stats),
             const SizedBox(height: 16),
@@ -428,6 +432,73 @@ class StreakStatisticsScreen extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStreakSavesCard(
+    BuildContext context,
+    Map<String, dynamic> stats,
+  ) {
+    final availableSaves = stats['availableSaves'] as int;
+    final maxSaves = stats['maxSaves'] as int;
+    final theme = Theme.of(context);
+
+    return Card(
+      elevation: 1,
+      color: theme.colorScheme.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.shield, color: Colors.blue),
+                const SizedBox(width: 8),
+                Text(
+                  'streak_saves'.tr(),
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'streak_saves_desc'.tr(),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.7),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(maxSaves, (index) {
+                final isAvailable = index < availableSaves;
+                return Icon(
+                  isAvailable ? Icons.shield : Icons.shield_outlined,
+                  color: isAvailable
+                      ? Colors.blue
+                      : theme.colorScheme.onSurface.withOpacity(0.3),
+                  size: 40,
+                );
+              }),
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: Text(
+                '$availableSaves / $maxSaves ${'available_this_month'.tr()}',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue,
+                ),
+              ),
             ),
           ],
         ),

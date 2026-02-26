@@ -16,6 +16,7 @@ class SettingsCubit extends Cubit<SettingsState> {
           playAyahReciter: AppServicesDBprovider.getAyahReciter(),
           calculationMethod: AppServicesDBprovider.getCalculationMethod(),
           madhab: AppServicesDBprovider.getMadhab(),
+          appColor: AppServicesDBprovider.getAppColor(),
         ),
       ) {
     checkWidgetStatus();
@@ -52,6 +53,11 @@ class SettingsCubit extends Cubit<SettingsState> {
   void setMadhab(String madhab) {
     AppServicesDBprovider.setMadhab(madhab);
     emit(state.copyWith(madhab: madhab));
+  }
+
+  void setAppColor(int color) {
+    AppServicesDBprovider.setAppColor(color);
+    emit(state.copyWith(appColor: color));
   }
 
   Future<void> checkWidgetStatus() async {

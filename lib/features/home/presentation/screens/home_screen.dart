@@ -8,6 +8,7 @@ import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart
 import 'package:ella_lyaabdoon/core/services/cache_helper.dart';
 import 'package:ella_lyaabdoon/core/services/prayer_widget_service.dart';
 import 'package:ella_lyaabdoon/core/utils/ramadan_zeena_permanent.dart';
+import 'package:ella_lyaabdoon/features/history/data/history_db_provider.dart';
 import 'package:ella_lyaabdoon/features/history/logic/history_cubit.dart';
 import 'package:ella_lyaabdoon/features/home/logic/home_cubit.dart';
 import 'package:ella_lyaabdoon/features/home/logic/home_state.dart';
@@ -90,9 +91,11 @@ class _HomeScreenState extends State<HomeScreen>
 
     await remoteConfig.fetchAndActivate();
 
-    setState(() {
-      isZeenaEnabled = remoteConfig.getBool('enable_zeena');
-    });
+    if (mounted) {
+      setState(() {
+        isZeenaEnabled = remoteConfig.getBool('enable_zeena');
+      });
+    }
   }
 
   // ADD THIS: Cache shuffled rewards
@@ -121,6 +124,15 @@ class _HomeScreenState extends State<HomeScreen>
     _initializeHomeWidget();
     _shuffleRewardsOnce(); // ADD THIS LINE
     _confettiController = StreakConfettiController();
+
+    // Auto-navigate to Reels if the user has chosen that as default view
+    if (AppServicesDBprovider.isReelsView()) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          AppRouter.router.goNamed(AppRoutes.reels);
+        }
+      });
+    }
 
     // Check for milestone achievements after initialization
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -418,11 +430,11 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
+        BlocProvider<HistoryCubit>(create: (_) => HistoryCubit()), // ← MOVED UP
         // BlocProvider(create: (_) => QuranAudioCubit()),
         BlocProvider(create: (_) => TranslationCubit()),
         BlocProvider(create: (_) => LocationCubit()),
         BlocProvider(create: (context) => HomeCubit()..initialize()),
-        BlocProvider(create: (_) => HistoryCubit()),
       ],
       child: BlocListener<LocationCubit, LocationState>(
         listener: (context, state) {
@@ -464,8 +476,13 @@ class _HomeScreenState extends State<HomeScreen>
   Widget _buildScaffold(BuildContext showcaseContext) {
     return Scaffold(
       // floatingActionButton: FloatingActionButton.extended(
-      //   onPressed: _navigateToReelsView,
-      //   icon: const Icon(Icons.play_circle_outline),
+      //   onPressed: () async {
+      //     await AppServicesDBprovider.switchViewMode();
+      //     if (AppServicesDBprovider.isReelsView()) {
+      //       _navigateToReelsView();
+      //     }
+      //   },
+      //   icon: const Icon(Icons.view_stream_outlined),
       //   label: Text('reels_view'.tr()),
       //   tooltip: 'switch_to_reels'.tr(),
       // ),
@@ -546,6 +563,15 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         ),
+        // Switch to Reels view
+        IconButton(
+          tooltip: 'switch_to_reels'.tr(),
+          icon: const Icon(Icons.view_stream_outlined),
+          onPressed: () async {
+            await AppServicesDBprovider.setReelsView(value: true);
+            AppRouter.router.goNamed(AppRoutes.reels);
+          },
+        ),
         _buildShowcaseButton(
           key: _historyKey,
           title: 'showcase_history_title'.tr(),
@@ -618,22 +644,33 @@ class _HomeScreenState extends State<HomeScreen>
             return Center(child: Text(state.errorMessage ?? 'Unknown error'));
           }
 
-          return _buildTimeline(state, showcaseContext);
+          return BlocBuilder<HistoryCubit, HistoryState>(
+            builder: (context, historyState) {
+              return _buildTimeline(state, historyState, showcaseContext);
+            },
+          );
         },
       ),
     );
   }
 
-  Widget _buildTimeline(HomeState state, BuildContext showcaseContext) {
+  Widget _buildTimeline(
+    HomeState state,
+    HistoryState historyState,
+    BuildContext showcaseContext,
+  ) {
     return SingleChildScrollView(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Column(children: _buildTimelineItems(state, showcaseContext)),
+      child: Column(
+        children: _buildTimelineItems(state, historyState, showcaseContext),
+      ),
     );
   }
 
   List<Widget> _buildTimelineItems(
     HomeState state,
+    HistoryState historyState,
     BuildContext showcaseContext,
   ) {
     int rewardCounter = 0;
@@ -648,27 +685,48 @@ class _HomeScreenState extends State<HomeScreen>
       final isLast = index == AppLists.timelineItems.length - 1;
       final isExpanded = state.expandedPeriods.contains(item.period);
 
-      // USE CACHED SHUFFLED REWARDS instead of item.rewards
+      // Shuffled base list
       final shuffledRewards = _shuffledRewards[item.period] ?? item.rewards;
 
+      // Sort: unchecked first, checked → end of list
+      final sortedRewards = _sortRewardsByCompletion(shuffledRewards);
+
       final visibleRewards = _getVisibleRewardsFromList(
-        shuffledRewards,
+        sortedRewards,
         isCurrent,
         isExpanded,
       );
-      final hasMore = shuffledRewards.length > 3;
+      final hasMore = sortedRewards.length > 3;
       final showMoreButton = !isCurrent && hasMore;
+
+      // Completion stats for the progress bar
+      final totalCount = sortedRewards.length;
+      final doneCount = sortedRewards
+          .where((r) => HistoryDBProvider.isCheckedToday(r.id))
+          .length;
 
       return Container(
         key: _periodKeys[item.period],
         child: StickyHeader(
-          header: TimelineHeader(
-            titleKey: item.title,
-            time: timeText,
-            isCurrent: isCurrent,
-            isLeftAligned: isLeftAligned,
-            isFirst: isFirst,
-            pulseAnimation: _pulseAnimation,
+          header: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TimelineHeader(
+                titleKey: item.title,
+                time: timeText,
+                isCurrent: isCurrent,
+                isLeftAligned: isLeftAligned,
+                isFirst: isFirst,
+                pulseAnimation: _pulseAnimation,
+              ),
+              // ── Completion progress bar ──────────────────────────
+              _buildCompletionBar(
+                doneCount: doneCount,
+                totalCount: totalCount,
+                isCurrent: isCurrent,
+                isLeftAligned: isLeftAligned,
+              ),
+            ],
           ),
           content: Column(
             children: [
@@ -688,7 +746,7 @@ class _HomeScreenState extends State<HomeScreen>
                   builder: (context, state) {
                     return TimelineShowMoreButton(
                       isExpanded: isExpanded,
-                      remainingCount: shuffledRewards.length - 3,
+                      remainingCount: sortedRewards.length - 3,
                       isLeftAligned: isLeftAligned,
                       isCurrent: isCurrent,
                       isLast: isLast,
@@ -707,6 +765,85 @@ class _HomeScreenState extends State<HomeScreen>
 
     _startShowcase(showcaseContext);
     return items;
+  }
+
+  /// Sorts rewards so unchecked items come first and checked ones sink to the
+  /// bottom — preserving relative order within each group.
+  List<dynamic> _sortRewardsByCompletion(List<dynamic> rewards) {
+    final unchecked = <dynamic>[];
+    final checked = <dynamic>[];
+    for (final r in rewards) {
+      if (HistoryDBProvider.isCheckedToday(r.id)) {
+        checked.add(r);
+      } else {
+        unchecked.add(r);
+      }
+    }
+    return [...unchecked, ...checked];
+  }
+
+  /// A compact progress bar shown below each period header.
+  Widget _buildCompletionBar({
+    required int doneCount,
+    required int totalCount,
+    required bool isCurrent,
+    required bool isLeftAligned,
+  }) {
+    if (totalCount == 0) return const SizedBox.shrink();
+
+    final progress = doneCount / totalCount;
+    final isComplete = doneCount == totalCount;
+    final colorScheme = Theme.of(context).colorScheme;
+    // final barColor = isComplete
+    //     ? Colors.green
+    //     : isCurrent
+    //     ? colorScheme.primary
+    //     : colorScheme.primary.withOpacity(0.55);
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: isLeftAligned ? 56 : 16,
+        right: isLeftAligned ? 16 : 56,
+        bottom: 4,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: progress),
+                duration: const Duration(milliseconds: 500),
+                curve: Curves.easeOut,
+                builder: (_, value, __) => LinearProgressIndicator(
+                  value: value,
+                  minHeight: 6,
+                  backgroundColor: colorScheme.surfaceContainerHighest,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            isComplete
+                ? '✅ $doneCount/$totalCount '
+                      '(${totalCount == 0 ? 0 : ((doneCount / totalCount) * 100).round()}%)'
+                : '$doneCount/$totalCount '
+                      '(${totalCount == 0 ? 0 : ((doneCount / totalCount) * 100).round()}%)',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: isComplete
+                  ? Theme.of(context).colorScheme.primary
+                  : colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   List<dynamic> _getVisibleRewardsFromList(

@@ -7,6 +7,7 @@ import 'package:ella_lyaabdoon/core/constants/app_lists.dart';
 import 'package:ella_lyaabdoon/core/di/di.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
 import 'package:ella_lyaabdoon/core/services/cache_helper.dart';
+import 'package:ella_lyaabdoon/core/services/dynamic_app_theme/color_picker_dialog.dart';
 import 'package:ella_lyaabdoon/core/services/streak_service.dart';
 import 'package:ella_lyaabdoon/features/settings/logic/location_cubit.dart';
 import 'package:ella_lyaabdoon/features/settings/logic/location_state.dart';
@@ -17,6 +18,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:ella_lyaabdoon/core/constants/app_routes.dart';
+import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:in_app_review/in_app_review.dart';
@@ -153,7 +156,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          backgroundColor: Colors.green,
+          // backgroundColor: Colors.green,
           content: Text('Error loading notifications: $e'),
         ),
       );
@@ -214,8 +217,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            backgroundColor: Colors.green,
-
+            // backgroundColor: Colors.green,
             content: Text('thank_you_for_rating'.tr()),
             duration: const Duration(seconds: 2),
           ),
@@ -391,8 +393,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         context,
                                       ).showSnackBar(
                                         SnackBar(
-                                          backgroundColor: Colors.green,
-
+                                          // backgroundColor: Colors.green,
                                           content: Text(
                                             'Notification cancelled'.tr(),
                                           ),
@@ -505,6 +506,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ),
                             ),
+                          ),
+                          Divider(height: 1, indent: 16, endIndent: 16),
+                          // ── View mode toggle ──────────────────────────
+                          StatefulBuilder(
+                            builder: (context, setTileState) {
+                              final isReels =
+                                  AppServicesDBprovider.isReelsView();
+                              return SwitchListTile(
+                                secondary: Icon(
+                                  isReels
+                                      ? Icons.view_day_outlined
+                                      : Icons.view_stream_outlined,
+                                  color: colorScheme.primary,
+                                ),
+                                title: Text('view_mode'.tr()),
+                                subtitle: Text(
+                                  isReels
+                                      ? 'view_mode_reels'.tr()
+                                      : 'view_mode_normal'.tr(),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: Colors.grey),
+                                ),
+                                value: isReels,
+                                onChanged: (value) async {
+                                  await AppServicesDBprovider.setReelsView(
+                                    value: value,
+                                  );
+                                  setTileState(() {});
+                                  // Navigate immediately — no restart needed
+                                  if (context.mounted) {
+                                    context.goNamed(
+                                      value ? AppRoutes.reels : AppRoutes.home,
+                                    );
+                                  }
+                                },
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -828,6 +866,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 16),
 
+                    /// APP THEME COLOR SECTION
+                    // _buildSectionHeader(context, 'appearance_settings'.tr()),
+                    // Card(
+                    //   margin: const EdgeInsets.symmetric(
+                    //     horizontal: 16,
+                    //     vertical: 4,
+                    //   ),
+                    //   child: BlocBuilder<SettingsCubit, SettingsState>(
+                    //     builder: (context, state) {
+                    //       final currentColor = Color(state.appColor);
+
+                    //       return ListTile(
+                    //         leading: Icon(Icons.palette, color: currentColor),
+                    //         title: Text('primary_color'.tr()),
+                    //         subtitle: Text(
+                    //           'customize_app_theme'.tr(),
+                    //           style: Theme.of(context).textTheme.bodySmall
+                    //               ?.copyWith(color: Colors.grey),
+                    //         ),
+                    //         trailing: Container(
+                    //           width: 24,
+                    //           height: 24,
+                    //           decoration: BoxDecoration(
+                    //             color: currentColor,
+                    //             shape: BoxShape.circle,
+                    //             border: Border.all(color: Colors.grey.shade300),
+                    //           ),
+                    //         ),
+                    //         onTap: () async {
+                    //           final selectedColorValue =
+                    //               await showColorPickerDialog(
+                    //                 context,
+                    //                 initialColor: Color(state.appColor),
+                    //               );
+
+                    //           if (selectedColorValue != null) {
+                    //             // Update the Cubit (which updates DB and emits new state)
+                    //             context.read<SettingsCubit>().setAppColor(
+                    //               selectedColorValue.value,
+                    //             );
+
+                    //             // Log event if you have analytics
+                    //             _logEvent('theme_color_changed');
+                    //           }
+                    //         },
+                    //       );
+                    //     },
+                    //   ),
+                    // ),
+
                     /// WIDGET SECTION
                     if (!state.isWidgetInstalled) ...[
                       _buildSectionHeader(context, 'home_widget_settings'.tr()),
@@ -874,7 +962,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       ).showSnackBar(
                                         SnackBar(
                                           content: Text('widget_added'.tr()),
-                                          backgroundColor: Colors.green,
+                                          // backgroundColor: Colors.green,
                                         ),
                                       );
                                     });
@@ -967,7 +1055,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text('جزاك الله خيراً'),
-                                    backgroundColor: Colors.green,
+                                    // backgroundColor: Colors.green,
                                   ),
                                 );
                                 _logEvent('share_app_success');

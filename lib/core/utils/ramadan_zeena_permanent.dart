@@ -157,13 +157,13 @@ class RamadanZeena extends StatefulWidget {
   State<RamadanZeena> createState() => _RamadanZeenaState();
 }
 
+// ... [ZeenaItem and _defaultZeenas remain the same] ...
+
 class _RamadanZeenaState extends State<RamadanZeena>
     with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
-  bool _isHiding = false; // triggers animation
-  bool _removed = false; // actually removes widget
   bool _isDimmed = false;
-  @override
+
   @override
   void initState() {
     super.initState();
@@ -173,14 +173,11 @@ class _RamadanZeenaState extends State<RamadanZeena>
       duration: const Duration(seconds: 3),
     )..repeat(reverse: true);
 
-    if (!widget.animate || widget.isWillBeHidden) {
+    if (widget.isWillBeHidden) {
       Future.delayed(const Duration(seconds: 6), () {
         if (!mounted) return;
-
-        _ctrl.stop();
-
         setState(() {
-          _isDimmed = true; // trigger opacity reduction
+          _isDimmed = true;
         });
       });
     }
@@ -197,111 +194,81 @@ class _RamadanZeenaState extends State<RamadanZeena>
     final items = widget.items ?? _defaultZeenas;
 
     return AnimatedOpacity(
-      duration: const Duration(milliseconds: 800),
+      duration: const Duration(milliseconds: 1500),
       curve: Curves.easeInOut,
       opacity: _isDimmed ? 0.3 : 1.0,
-      child: RepaintBoundary(
-        child: SizedBox(
-          height: widget.height,
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final w = constraints.maxWidth;
+      child: TweenAnimationBuilder<double>(
+        duration: const Duration(milliseconds: 1500),
+        curve: Curves.fastOutSlowIn,
+        tween: Tween<double>(begin: 1.0, end: _isDimmed ? 0.5 : 1.0),
+        builder: (context, shrinkFactor, child) {
+          // Calculate sway intensity: 1.0 when full, 0.0 when shrunk
+          // (Using a simple linear mapping)
+          final swayIntensity = (shrinkFactor - 0.5) * 2.0;
 
-              return Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  widget.isWithRope
-                      ? Positioned(
-                          top: 2,
-                          left: 0,
-                          right: 0,
-                          child: CustomPaint(
-                            size: Size(w, 6),
-                            painter: _RopeLinePainter(),
-                          ),
-                        )
-                      : const SizedBox.shrink(),
-                  ...items.map((item) {
-                    final x = w * item.xFraction;
-                    return _SwayingZeena(
-                      controller: _ctrl,
-                      item: item,
-                      x: x,
-                      animate: widget.animate && !_isDimmed,
-                    );
-                  }),
-                ],
-              );
-            },
-          ),
-        ),
-      ),
-    );
-  }
-}
+          return SizedBox(
+            height: widget.height * shrinkFactor,
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final w = constraints.maxWidth;
+                return Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    if (widget.isWithRope)
+                      Positioned(
+                        top: 2,
+                        left: 0,
+                        right: 0,
+                        child: CustomPaint(
+                          size: Size(w, 6),
+                          painter: _RopeLinePainter(),
+                        ),
+                      ),
+                    ...items.map((item) {
+                      return AnimatedBuilder(
+                        animation: _ctrl,
+                        builder: (context, _) {
+                          final phase = (_ctrl.value + item.swayDelay) % 1.0;
+                          final baseSway = sin(phase * 2 * pi) * 6.0;
 
-// ── Individual swaying zeena ────────────────────────────────────
-class _SwayingZeena extends StatelessWidget {
-  final AnimationController controller;
-  final ZeenaItem item;
-  final double x;
-  final bool animate;
+                          // The magic line: sway reduces as it shrinks
+                          final currentAngle =
+                              (baseSway * swayIntensity) * (pi / 180);
 
-  const _SwayingZeena({
-    required this.controller,
-    required this.item,
-    required this.x,
-    required this.animate,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (!animate) {
-      return AnimatedBuilder(
-        animation: controller,
-        builder: (_, __) {
-          final phase = (controller.value + item.swayDelay) % 1.0;
-          final sway = sin(phase * 2 * pi) * 6.0;
-          final angle = sway * (pi / 180);
-
-          return Positioned(
-            left: x - item.moonRadius - 5,
-            top: 0,
-            child: RepaintBoundary(
-              // ✅ isolate repaint
-              child: CustomPaint(
-                size: Size(
-                  item.moonRadius * 2 + 10,
-                  item.ropeLength + item.moonRadius * 2 + 8,
-                ),
-                painter: _ZeenaPainter(item: item, swayAngle: angle),
-              ),
+                          return Positioned(
+                            left: (w * item.xFraction) - item.moonRadius - 5,
+                            top: 0,
+                            child: CustomPaint(
+                              size: Size(
+                                item.moonRadius * 2 + 10,
+                                (item.ropeLength * shrinkFactor) +
+                                    item.moonRadius * 2 +
+                                    8,
+                              ),
+                              painter: _ZeenaPainter(
+                                // Pass the scaled rope length and reduced angle
+                                item: ZeenaItem(
+                                  xFraction: item.xFraction,
+                                  ropeLength: item.ropeLength * shrinkFactor,
+                                  color: item.color,
+                                  hasStar: item.hasStar,
+                                  moonRadius: item.moonRadius,
+                                  swayDelay: item.swayDelay,
+                                ),
+                                swayAngle: currentAngle,
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }),
+                  ],
+                );
+              },
             ),
           );
         },
-      );
-    }
-
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (_, __) {
-        // Each item sways at slightly different phase
-        final phase = (controller.value + item.swayDelay) % 1.0;
-        final sway = sin(phase * 2 * pi) * 6.0; // max ±6 degrees
-        final angle = sway * (pi / 180);
-
-        return Positioned(
-          left: x - item.moonRadius - 5,
-          top: 0,
-          child: CustomPaint(
-            size: Size(
-              item.moonRadius * 2 + 10,
-              item.ropeLength + item.moonRadius * 2 + 8,
-            ),
-            painter: _ZeenaPainter(item: item, swayAngle: angle),
-          ),
-        );
-      },
+      ),
     );
   }
 }

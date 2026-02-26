@@ -7,6 +7,7 @@ class SettingsState {
   final String playAyahReciter; // store reciter id, empty string means OFF
   final String calculationMethod;
   final String madhab;
+  final int appColor;
 
   SettingsState({
     required this.isDarkMode,
@@ -15,6 +16,7 @@ class SettingsState {
     required this.playAyahReciter,
     required this.calculationMethod,
     required this.madhab,
+    required this.appColor,
   });
 
   SettingsState copyWith({
@@ -24,6 +26,7 @@ class SettingsState {
     String? playAyahReciter,
     String? calculationMethod,
     String? madhab,
+    int? appColor,
   }) {
     return SettingsState(
       isDarkMode: isDarkMode ?? this.isDarkMode,
@@ -32,6 +35,7 @@ class SettingsState {
       playAyahReciter: playAyahReciter ?? this.playAyahReciter,
       calculationMethod: calculationMethod ?? this.calculationMethod,
       madhab: madhab ?? this.madhab,
+      appColor: appColor ?? this.appColor,
     );
   }
 }
