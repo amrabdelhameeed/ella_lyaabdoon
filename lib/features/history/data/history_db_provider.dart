@@ -1,3 +1,5 @@
+import 'package:ella_lyaabdoon/core/constants/app_lists.dart';
+import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
 class HistoryDBProvider {
@@ -5,13 +7,16 @@ class HistoryDBProvider {
 
   static const String _boxName = 'zikrHistoryBox';
   static const String _counterBoxName = 'zikrCounterBox';
+  static const String _appOpensBoxName = 'appOpensBox';
   static Box<List<String>>? _box;
   static Box<int>? _counterBox;
+  static Box<List<String>>? _appOpensBox;
 
   /// Initialize Hive box
   static Future<void> init() async {
     _box = await Hive.openBox<List<String>>(_boxName);
     _counterBox = await Hive.openBox<int>(_counterBoxName);
+    _appOpensBox = await Hive.openBox<List<String>>(_appOpensBoxName);
   }
 
   static Box<List<String>> get _safeBox {
@@ -23,21 +28,24 @@ class HistoryDBProvider {
 
   /// Add a check for a zikr (prevents duplicates for the same day)
   static Future<void> addCheck(String zikrId, DateTime date) async {
-    final List<String> currentChecks = _safeBox.get(zikrId) ?? [];
+    // ✅ Copy to avoid mutating Hive's in-memory reference directly
+    final List<String> currentChecks = List<String>.from(
+      _safeBox.get(zikrId) ?? [],
+    );
     final today = DateTime(date.year, date.month, date.day);
 
-    // ✅ Remove ANY existing entries for today first
+    // Remove ANY existing entries for today first
     currentChecks.removeWhere((dateStr) {
       try {
         final d = DateTime.parse(dateStr);
         final dYMD = DateTime(d.year, d.month, d.day);
         return dYMD.isAtSameMomentAs(today);
       } catch (e) {
-        return false; // Keep invalid entries for now
+        return false;
       }
     });
 
-    // ✅ Now add the new entry
+    // Add the new entry
     final dateStr = date.toIso8601String();
     currentChecks.add(dateStr);
 
@@ -46,17 +54,19 @@ class HistoryDBProvider {
 
   /// Remove today's check (removes ALL entries for the given date)
   static Future<void> removeCheck(String zikrId, DateTime date) async {
-    final List<String> currentChecks = _safeBox.get(zikrId) ?? [];
+    // ✅ Copy to avoid mutating Hive's in-memory reference directly
+    final List<String> currentChecks = List<String>.from(
+      _safeBox.get(zikrId) ?? [],
+    );
     final today = DateTime(date.year, date.month, date.day);
 
-    // ✅ Remove ALL entries for this date
     currentChecks.removeWhere((dateStr) {
       try {
         final d = DateTime.parse(dateStr);
         final dYMD = DateTime(d.year, d.month, d.day);
         return dYMD.isAtSameMomentAs(today);
       } catch (e) {
-        return false; // Keep invalid entries
+        return false;
       }
     });
 
@@ -68,7 +78,7 @@ class HistoryDBProvider {
     final List<String>? checkStrings = _box?.get(zikrId);
     if (checkStrings == null) return [];
 
-    // ✅ Parse and deduplicate by date (not timestamp)
+    // Parse and deduplicate by date (not timestamp)
     final Map<String, DateTime> uniqueDates = {};
 
     for (final dateStr in checkStrings) {
@@ -76,7 +86,7 @@ class HistoryDBProvider {
         final date = DateTime.parse(dateStr);
         final dateKey = '${date.year}-${date.month}-${date.day}';
 
-        // Keep only one entry per day (the first one encountered)
+        // Keep only the first entry encountered per day
         if (!uniqueDates.containsKey(dateKey)) {
           uniqueDates[dateKey] = date;
         }
@@ -88,7 +98,7 @@ class HistoryDBProvider {
     return uniqueDates.values.toList()..sort();
   }
 
-  /// ✅ Synchronous check if zikr is checked today
+  /// Synchronous check if zikr is checked today
   static bool isCheckedToday(String zikrId) {
     if (_box == null || !_box!.isOpen) return false;
 
@@ -108,7 +118,7 @@ class HistoryDBProvider {
     return isCheckedToday(zikrId);
   }
 
-  /// Optional: save check state explicitly (used in widget)
+  /// Save check state explicitly (used in widget)
   static Future<void> saveCheckState(String zikrId, bool state) async {
     if (state) {
       await addCheck(zikrId, DateTime.now());
@@ -117,7 +127,7 @@ class HistoryDBProvider {
     }
   }
 
-  /// ✅ Cleanup method to remove all duplicates from existing data
+  /// Cleanup method to remove all duplicates from existing data
   static Future<void> cleanupDuplicates() async {
     final allKeys = _safeBox.keys;
 
@@ -127,7 +137,6 @@ class HistoryDBProvider {
       final List<String>? checkStrings = _safeBox.get(key);
       if (checkStrings == null || checkStrings.isEmpty) continue;
 
-      // Deduplicate
       final Map<String, String> uniqueDates = {};
       for (final dateStr in checkStrings) {
         try {
@@ -142,13 +151,15 @@ class HistoryDBProvider {
         }
       }
 
-      // Save cleaned data
       await _safeBox.put(key, uniqueDates.values.toList());
     }
   }
 
-  /// ✅ Counters logic
+  // ──────────────────────────────────────────────────────────
+  // Counters logic
+  // ──────────────────────────────────────────────────────────
 
+  /// Returns a key scoped to today's date for a given zikrId
   static String _getCounterKey(String zikrId) {
     final today = DateTime.now();
     return '${zikrId}_${today.year}_${today.month}_${today.day}';
@@ -172,5 +183,215 @@ class HistoryDBProvider {
   static Future<void> resetCounter(String zikrId) async {
     if (_counterBox == null || !_counterBox!.isOpen) return;
     await _counterBox!.delete(_getCounterKey(zikrId));
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // App Opens Tracking
+  // ──────────────────────────────────────────────────────────
+
+  static const String _appOpensKey = 'app_opens_dates';
+
+  /// Record that the app was opened today (prevents duplicate for the same day)
+  static Future<void> recordAppOpen() async {
+    if (_appOpensBox == null || !_appOpensBox!.isOpen) return;
+
+    final now = DateTime.now();
+    final todayStr =
+        '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+    // ✅ Always copy the list — never mutate the object Hive holds in memory.
+    // Hive tracks changes by reference: if you mutate the same list instance
+    // it returned, it may skip the disk write → data lost on hot restart / kill.
+    final List<String> opens = List<String>.from(
+      _appOpensBox!.get(_appOpensKey) ?? [],
+    );
+
+    if (!opens.contains(todayStr)) {
+      opens.add(todayStr);
+      await _appOpensBox!.put(_appOpensKey, opens);
+    }
+  }
+
+  /// Get app opens count for a date range (inclusive)
+  static int getAppOpensForDateRange(DateTime start, DateTime end) {
+    if (_appOpensBox == null || !_appOpensBox!.isOpen) return 0;
+
+    final opens = _appOpensBox!.get(_appOpensKey) ?? [];
+    final startDate = DateTime(start.year, start.month, start.day);
+    final endDate = DateTime(end.year, end.month, end.day);
+
+    int count = 0;
+    for (final dateStr in opens) {
+      try {
+        final parts = dateStr.split('-');
+        final date = DateTime(
+          int.parse(parts[0]),
+          int.parse(parts[1]),
+          int.parse(parts[2]),
+        );
+        if (!date.isBefore(startDate) && !date.isAfter(endDate)) {
+          count++;
+        }
+      } catch (_) {}
+    }
+    return count;
+  }
+
+  /// ✅ Get daily app opens for the last N days as a map of dayIndex → 1/0
+  /// Index 0 = oldest day, index N-1 = today
+  static Map<int, int> getDailyAppOpens(int days) =>
+      getDailyAppOpensRange(days);
+
+  /// ✅ [New] Get daily app opens for an arbitrary range (N days back from today)
+  /// Returns map of dayIndex → 1 (opened) or 0 (not opened)
+  /// Index 0 = N-1 days ago, index N-1 = today
+  static Map<int, int> getDailyAppOpensRange(int days) {
+    final result = <int, int>{};
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final opens = _appOpensBox?.get(_appOpensKey) ?? [];
+
+    for (int i = 0; i < days; i++) {
+      // i=0 is the oldest day (days-1 days ago), i=days-1 is today
+      final date = today.subtract(Duration(days: days - 1 - i));
+      final dateStr =
+          '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+      result[i] = opens.contains(dateStr) ? 1 : 0;
+    }
+    return result;
+  }
+
+  /// Get this week's total app opens (Mon–today)
+  static int getAppOpensThisWeek() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    // weekday: Mon=1 … Sun=7
+    final weekStart = today.subtract(Duration(days: today.weekday - 1));
+    return getAppOpensForDateRange(weekStart, today);
+  }
+
+  /// Get last week's total app opens (Mon–Sun)
+  static int getAppOpensLastWeek() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final thisWeekStart = today.subtract(Duration(days: today.weekday - 1));
+    final lastWeekStart = thisWeekStart.subtract(const Duration(days: 7));
+    final lastWeekEnd = thisWeekStart.subtract(const Duration(days: 1));
+    return getAppOpensForDateRange(lastWeekStart, lastWeekEnd);
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // Daily Zikr Completion Aggregation
+  // ──────────────────────────────────────────────────────────
+
+  /// Get total zikrs completed for a specific date across all rewards
+  static int getTotalZikrsCompletedForDate(DateTime date) {
+    if (_box == null || !_box!.isOpen) return 0;
+
+    final targetDate = DateTime(date.year, date.month, date.day);
+    int total = 0;
+
+    // ✅ Correct: collect all reward IDs from timeline
+    final allRewards = AppLists.timelineItems
+        .expand((item) => item.rewards)
+        .toList();
+
+    for (final reward in allRewards) {
+      final checks = getChecks(reward.id);
+      for (final check in checks) {
+        final checkDate = DateTime(check.year, check.month, check.day);
+        if (checkDate.isAtSameMomentAs(targetDate)) {
+          total++; // Count one per reward per day (duplicates already removed in getChecks)
+          break;
+        }
+      }
+    }
+    return total;
+  }
+
+  /// ✅ Get daily zikr counts for the last N days
+  /// Index 0 = oldest day (N-1 days ago), index N-1 = today
+  static Map<int, int> getDailyZikrCounts(int days) =>
+      getDailyZikrCountsRange(days);
+
+  /// ✅ [New] Get daily zikr counts for an arbitrary range (N days back from today)
+  /// Returns map of dayIndex → zikr count
+  /// Index 0 = N-1 days ago, index N-1 = today
+  static Map<int, int> getDailyZikrCountsRange(int days) {
+    final result = <int, int>{};
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    for (int i = 0; i < days; i++) {
+      // i=0 → oldest (days-1 days ago), i=days-1 → today
+      final date = today.subtract(Duration(days: days - 1 - i));
+      result[i] = getTotalZikrsCompletedForDate(date);
+    }
+    return result;
+  }
+
+  /// Get this week's total zikrs completed (Mon–today)
+  static int getZikrsThisWeek() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    // weekday: Mon=1 … Sun=7
+    final weekStart = today.subtract(Duration(days: today.weekday - 1));
+    final daysElapsed = today.difference(weekStart).inDays; // 0..6
+
+    int total = 0;
+    for (int i = 0; i <= daysElapsed; i++) {
+      total += getTotalZikrsCompletedForDate(weekStart.add(Duration(days: i)));
+    }
+    return total;
+  }
+
+  /// Get last week's total zikrs completed (Mon–Sun)
+  static int getZikrsLastWeek() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final thisWeekStart = today.subtract(Duration(days: today.weekday - 1));
+    final lastWeekStart = thisWeekStart.subtract(const Duration(days: 7));
+
+    int total = 0;
+    for (int i = 0; i < 7; i++) {
+      total += getTotalZikrsCompletedForDate(
+        lastWeekStart.add(Duration(days: i)),
+      );
+    }
+    return total;
+  }
+
+  // ──────────────────────────────────────────────────────────
+  // ✅ [New] Today's Statistics convenience method
+  // ──────────────────────────────────────────────────────────
+
+  /// Returns a map with:
+  ///   'zikrsToday'  → int: number of zikrs completed today
+  ///   'openedToday' → bool: whether the app was opened today
+  ///
+  /// NOTE: openedToday is always true here — if this method is being
+  /// called, the app is open right now. We do NOT read from the box
+  /// because recordAppOpen() is async and may not have flushed yet,
+  /// which would cause a false-negative on the very first build.
+  static Map<String, dynamic> getTodayStats() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final zikrsToday = getTotalZikrsCompletedForDate(today);
+
+    return {
+      'zikrsToday': zikrsToday,
+      'openedToday': true, // app is running → it was opened today by definition
+    };
+  }
+
+  static void debugPrintAppOpens() {
+    final opens = _appOpensBox?.get(_appOpensKey) ?? [];
+    debugPrint('=== APP OPENS BOX ===');
+    debugPrint('Total entries: ${opens.length}');
+    for (final s in opens) {
+      debugPrint('  → "$s"');
+    }
+    debugPrint('This week: ${getAppOpensThisWeek()}');
+    debugPrint('=====================');
   }
 }

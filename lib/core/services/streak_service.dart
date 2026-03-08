@@ -3,6 +3,8 @@ import 'dart:async';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:ella_lyaabdoon/core/services/cache_helper.dart';
+import 'package:ella_lyaabdoon/core/services/motivational_notification_service.dart';
+import 'package:ella_lyaabdoon/features/history/data/history_db_provider.dart';
 import 'package:ella_lyaabdoon/utils/notification_helper.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/foundation.dart';
@@ -111,6 +113,15 @@ class StreakService {
 
   static Future<void> handleAppOpen() async {
     debugPrint('🚀 handleAppOpen called');
+
+    // NEW: Record app open for statistics
+    try {
+      await HistoryDBProvider.recordAppOpen();
+      await MotivationalNotificationService.checkAndSchedule();
+    } catch (e) {
+      debugPrint('❌ Error recording app open or checking motivational: $e');
+    }
+
     final now = DateTime.now();
     final todayDateOnly = _getDateOnly(now);
 
@@ -669,7 +680,7 @@ class StreakService {
 
     // ✅ Enhanced Firebase Analytics logging for milestone achievement
     if (kReleaseMode) {
-      final milestoneName = milestoneNames[newStreak] ?? 'unknown';
+      final milestoneName = (milestoneNames[newStreak] ?? 'unknown').tr();
 
       _logEvent(
         'streak_milestone_achieved',
@@ -701,7 +712,7 @@ class StreakService {
 
     final celebrationData = {
       'milestone': newStreak,
-      'name': milestoneNames[newStreak] ?? 'milestone',
+      'name': (milestoneNames[newStreak] ?? 'milestone').tr(),
       'shouldCelebrate': true,
     };
 

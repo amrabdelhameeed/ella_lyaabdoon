@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -23,6 +22,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:in_app_review/in_app_review.dart';
+import 'package:ella_lyaabdoon/features/settings/presentation/widgets/suggest_zikr_dialog.dart';
 import 'package:showcaseview/showcaseview.dart';
 
 import 'package:ella_lyaabdoon/utils/notification_helper.dart';
@@ -38,6 +38,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
   List<PendingNotificationRequest> _scheduledNotifications = [];
   bool _isLoadingNotifications = true;
   final InAppReview _inAppReview = InAppReview.instance;
+
+  void _launchUrl(String url) async {
+    _logEvent('url_launched', parameters: {'url': url});
+    final uri = Uri.parse(url);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  void _showVideoDialog(BuildContext context) {
+    _logEvent('app_idea_video_opened');
+
+    final controller = YoutubePlayerController(
+      initialVideoId: 'Hxz9g5Z6MMg',
+      flags: YoutubePlayerFlags(
+        autoPlay: true,
+        mute: false,
+        enableCaption: AppServicesDBprovider.currentLocale() == 'en',
+        useHybridComposition: true,
+      ),
+    );
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Video',
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (_, __, ___) {
+        return Scaffold(
+          backgroundColor: Colors.black,
+          body: SafeArea(
+            child: Center(
+              child: AspectRatio(
+                aspectRatio: 9 / 16,
+                child: YoutubePlayer(
+                  controller: controller,
+                  showVideoProgressIndicator: true,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _handleReviewRequest() async {
+    _logEvent('rate_app_clicked');
+
+    final isAvailable = await _inAppReview.isAvailable();
+
+    if (isAvailable) {
+      await _inAppReview.requestReview();
+      _logEvent('rate_app_shown');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            // backgroundColor: Colors.green,
+            content: Text('thank_you_for_rating'.tr()),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } else {
+      _logEvent('store_listing_opened');
+      await _inAppReview.openStoreListing();
+    }
+  }
 
   // Showcase Keys
   final GlobalKey _scheduledKey = GlobalKey();
@@ -55,7 +121,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
 
-    _loadScheduledNotifications();
     _logScreenView();
   }
 
@@ -131,104 +196,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         : null;
   }
 
-  Future<void> _loadScheduledNotifications() async {
-    if (!mounted) return;
-
-    setState(() => _isLoadingNotifications = true);
-
-    try {
-      final notifications = await NotificationHelper.getPendingNotifications();
-
-      if (!mounted) return;
-
-      final filtered = notifications
-          .where((n) => n.id != StreakService.notificationId)
-          .toList();
-
-      setState(() {
-        _scheduledNotifications = filtered;
-        _isLoadingNotifications = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() => _isLoadingNotifications = false);
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          // backgroundColor: Colors.green,
-          content: Text('Error loading notifications: $e'),
-        ),
-      );
-    }
-  }
-
-  void _launchUrl(String url) async {
-    _logEvent('url_launched', parameters: {'url': url});
-    final uri = Uri.parse(url);
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-
-  void _showVideoDialog(BuildContext context) {
-    _logEvent('app_idea_video_opened');
-
-    final controller = YoutubePlayerController(
-      initialVideoId: 'Hxz9g5Z6MMg',
-      flags: YoutubePlayerFlags(
-        autoPlay: true,
-        mute: false,
-        enableCaption: AppServicesDBprovider.currentLocale() == 'en',
-        useHybridComposition: true,
-      ),
-    );
-
-    showGeneralDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Video',
-      transitionDuration: const Duration(milliseconds: 200),
-      pageBuilder: (_, __, ___) {
-        return Scaffold(
-          backgroundColor: Colors.black,
-          body: SafeArea(
-            child: Center(
-              child: AspectRatio(
-                aspectRatio: 9 / 16,
-                child: YoutubePlayer(
-                  controller: controller,
-                  showVideoProgressIndicator: true,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Future<void> _handleReviewRequest() async {
-    _logEvent('rate_app_clicked');
-
-    final isAvailable = await _inAppReview.isAvailable();
-
-    if (isAvailable) {
-      await _inAppReview.requestReview();
-      _logEvent('rate_app_shown');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            // backgroundColor: Colors.green,
-            content: Text('thank_you_for_rating'.tr()),
-            duration: const Duration(seconds: 2),
-          ),
-        );
-      }
-    } else {
-      _logEvent('store_listing_opened');
-      await _inAppReview.openStoreListing();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -265,151 +232,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 return ListView(
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   children: [
-                    /// SCHEDULED NOTIFICATIONS SECTION
-                    if (_isLoadingNotifications)
-                      ListTile(
-                        leading: Icon(Icons.alarm, color: colorScheme.primary),
-                        title: Text("Loading scheduled reminders...".tr()),
-                        trailing: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        ),
-                      )
-                    else if (_scheduledNotifications.isNotEmpty) ...[
-                      _buildSectionHeader(context, 'reminders'.tr()),
-                      Showcase(
-                        key: _scheduledKey,
-                        title: 'showcase_reminders_title'.tr(),
-                        description: 'showcase_reminders_desc'.tr(),
-                        child: Card(
-                          margin: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 4,
-                          ),
-                          child: ExpansionTile(
-                            title: Text(
-                              "${"Scheduled Reminders".tr()} (${_scheduledNotifications.length})",
-                              style: Theme.of(context).textTheme.titleMedium,
-                            ),
-                            leading: Icon(
-                              Icons.alarm,
-                              color: colorScheme.primary,
-                            ),
-                            children: _scheduledNotifications.map((notif) {
-                              return ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 4,
-                                ),
-                                leading: SizedBox(
-                                  width: 80,
-                                  child: Builder(
-                                    builder: (context) {
-                                      try {
-                                        if (notif.payload == null ||
-                                            notif.payload!.isEmpty) {
-                                          return const SizedBox.shrink();
-                                        }
-
-                                        final payloadData = jsonDecode(
-                                          notif.payload!,
-                                        );
-                                        final timestamp =
-                                            payloadData['timestamp'];
-
-                                        if (timestamp == null) {
-                                          return const SizedBox.shrink();
-                                        }
-
-                                        // Handle both int and string timestamps
-                                        final milliseconds = timestamp is int
-                                            ? timestamp
-                                            : int.tryParse(
-                                                timestamp.toString(),
-                                              );
-
-                                        if (milliseconds == null) {
-                                          return const SizedBox.shrink();
-                                        }
-
-                                        final dateTime =
-                                            DateTime.fromMillisecondsSinceEpoch(
-                                              milliseconds,
-                                            );
-                                        final formattedDate = DateFormat(
-                                          'yyyy-MM-dd\nhh:mm a',
-                                          AppServicesDBprovider.currentLocale(),
-                                        ).format(dateTime);
-
-                                        return Text(
-                                          formattedDate,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall
-                                              ?.copyWith(
-                                                color: colorScheme.primary,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                          textAlign: TextAlign.center,
-                                        );
-                                      } catch (e) {
-                                        debugPrint(
-                                          'Error parsing notification payload: $e',
-                                        );
-                                        return const SizedBox.shrink();
-                                      }
-                                    },
-                                  ),
-                                ),
-                                title: Text(
-                                  notif.title ?? 'No Title',
-                                  style: Theme.of(context).textTheme.bodyLarge,
-                                ),
-                                subtitle: Text(
-                                  notif.body ?? 'No Description',
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.bodyMedium
-                                      ?.copyWith(
-                                        color: colorScheme.onSurfaceVariant,
-                                      ),
-                                ),
-                                trailing: IconButton(
-                                  icon: Icon(
-                                    Icons.delete_outline,
-                                    color: colorScheme.error,
-                                  ),
-                                  tooltip: 'delete_reminder'.tr(),
-                                  onPressed: () async {
-                                    _logEvent(
-                                      'notification_deleted',
-                                      parameters: {'notification_id': notif.id},
-                                    );
-                                    await NotificationHelper.cancel(notif.id);
-                                    await _loadScheduledNotifications();
-                                    if (mounted) {
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          // backgroundColor: Colors.green,
-                                          content: Text(
-                                            'Notification cancelled'.tr(),
-                                          ),
-                                          duration: const Duration(seconds: 2),
-                                        ),
-                                      );
-                                    }
-                                  },
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
+                    /// NOTIFICATION SETTINGS SECTION
+                    // _buildSectionHeader(context, 'notifications'.tr()),
+                    // Card(
+                    //   margin: const EdgeInsets.symmetric(
+                    //     horizontal: 16,
+                    //     vertical: 4,
+                    //   ),
+                    //   child: ListTile(
+                    //     leading: Icon(
+                    //       Icons.notifications_active_outlined,
+                    //       color: colorScheme.primary,
+                    //     ),
+                    //     title: Text('notification_settings'.tr()),
+                    //     subtitle: Text(
+                    //       'notification_settings_desc'.tr(),
+                    //       style: Theme.of(
+                    //         context,
+                    //       ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                    //     ),
+                    //     trailing: const Icon(Icons.chevron_right),
+                    //     onTap: () =>
+                    //         context.pushNamed(AppRoutes.notificationSettings),
+                    //   ),
+                    // ),
+                    // const SizedBox(height: 16),
 
                     /// APPEARANCE SECTION
                     _buildSectionHeader(context, 'appearance'.tr()),
@@ -441,7 +288,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     'is_dark_mode': value ? 'true' : 'false',
                                   },
                                 );
-                                setState(() {});
+                                // setState(() {});
                                 cubit.toggleTheme(value);
                               },
                               secondary: Icon(
@@ -650,6 +497,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     //   ),
                     // ),
                     // const SizedBox(height: 16),
+                    /// COMMUNITY SUGGESTIONS SECTION
+                    _buildSectionHeader(context, 'community'.tr()),
+                    Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.lightbulb_outline,
+                          color: colorScheme.primary,
+                        ),
+                        title: Text('suggest_zikr_title'.tr()),
+                        subtitle: Text(
+                          'suggest_zikr_subtitle'.tr(),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () {
+                          showDialog(
+                            context: context,
+                            builder: (context) => const SuggestZikrDialog(),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
                     /// PRAYER CALCULATION SECTION
                     _buildSectionHeader(
                       context,

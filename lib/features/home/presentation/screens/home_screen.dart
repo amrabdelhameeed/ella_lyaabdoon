@@ -1,4 +1,5 @@
-﻿import 'package:easy_localization/easy_localization.dart' as easy;
+﻿import 'package:confetti/confetti.dart';
+import 'package:easy_localization/easy_localization.dart' as easy;
 import 'package:ella_lyaabdoon/app_router.dart';
 import 'package:ella_lyaabdoon/core/constants/app_lists.dart';
 import 'package:ella_lyaabdoon/core/constants/app_routes.dart';
@@ -6,6 +7,7 @@ import 'package:ella_lyaabdoon/core/models/azan_day_period.dart';
 import 'package:ella_lyaabdoon/core/models/timeline_item.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
 import 'package:ella_lyaabdoon/core/services/cache_helper.dart';
+import 'package:ella_lyaabdoon/core/services/period_notification_reschedule_service.dart';
 import 'package:ella_lyaabdoon/core/services/prayer_widget_service.dart';
 import 'package:ella_lyaabdoon/core/utils/ramadan_zeena_permanent.dart';
 import 'package:ella_lyaabdoon/features/history/data/history_db_provider.dart';
@@ -20,7 +22,6 @@ import 'package:ella_lyaabdoon/features/settings/logic/location_state.dart';
 import 'package:ella_lyaabdoon/features/home/presentation/widgets/timeline_header.dart';
 import 'package:ella_lyaabdoon/features/home/presentation/widgets/timeline_reward_item.dart';
 import 'package:ella_lyaabdoon/features/home/presentation/widgets/timeline_show_more_button.dart';
-
 import 'package:ella_lyaabdoon/features/home/presentation/widgets/streak_animation_widget.dart';
 import 'package:ella_lyaabdoon/features/home/presentation/widgets/streak_confetti_controller.dart';
 import 'package:ella_lyaabdoon/utils/constants/app_colors.dart';
@@ -50,6 +51,9 @@ class _HomeScreenState extends State<HomeScreen>
   final ScrollController _scrollController = ScrollController();
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  static const String _notificationShowcaseKey =
+      'notification_settings_showcase_v1';
+  final GlobalKey _notificationKey = GlobalKey();
 
   // Keys
   final Map<AzanDayPeriod, GlobalKey> _periodKeys = {};
@@ -57,14 +61,16 @@ class _HomeScreenState extends State<HomeScreen>
   final GlobalKey _settingsKey = GlobalKey();
   final GlobalKey _streakKey = GlobalKey();
 
-  // final GlobalKey _firstRewardKey = GlobalKey();
   final String _streakShowcaseKey = 'streak_showcase_shown21';
 
   // Services
-  // Services
   final InAppReview _inAppReview = InAppReview.instance;
   late RateMyApp _rateMyApp;
-  late StreakConfettiController _confettiController;
+
+  // ── Streak confetti (consecutive days only) ──────────────────────────────
+  final StreakConfettiController _streakConfettiController =
+      StreakConfettiController();
+
   StreamSubscription? _milestoneSubscription;
 
   // State
@@ -77,8 +83,9 @@ class _HomeScreenState extends State<HomeScreen>
   static const int _reviewMinLaunches = 5;
   static const int _reviewRemindDays = 7;
   static const int _reviewRemindLaunches = 10;
-  // ADD THIS NEW METHOD
+
   bool isZeenaEnabled = false;
+
   Future<void> loadConfig() async {
     final remoteConfig = FirebaseRemoteConfig.instance;
     await remoteConfig.setConfigSettings(
@@ -88,7 +95,6 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
     await remoteConfig.setDefaults({'enable_zeena': true});
-
     await remoteConfig.fetchAndActivate();
 
     if (mounted) {
@@ -98,12 +104,11 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  // ADD THIS: Cache shuffled rewards
+  // Cache shuffled rewards
   final Map<AzanDayPeriod, List<dynamic>> _shuffledRewards = {};
-  // MODIFY THIS METHOD
+
   void _shuffleRewardsOnce() {
     for (var item in AppLists.timelineItems) {
-      // Create a shuffled copy and store it in our cache
       final shuffledList = List<dynamic>.from(item.rewards)..shuffle();
       _shuffledRewards[item.period] = shuffledList;
     }
@@ -112,73 +117,59 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  final Set<String> _celebratedPeriodMilestones = {};
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this); // ADD THIS LINE
+    WidgetsBinding.instance.addObserver(this);
+
     _initializeKeys();
     loadConfig();
     _initializePulseAnimation();
-    // _playSavedReciterAyah();
     _initializeRateMyApp();
     _initializeHomeWidget();
-    _shuffleRewardsOnce(); // ADD THIS LINE
-    _confettiController = StreakConfettiController();
+    _shuffleRewardsOnce();
 
-    // Auto-navigate to Reels if the user has chosen that as default view
-    if (AppServicesDBprovider.isReelsView()) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          AppRouter.router.goNamed(AppRoutes.reels);
-        }
-      });
-    }
-
-    // Check for milestone achievements after initialization
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Initialize streak confetti controller with context
+      _streakConfettiController.initialize(context);
       _checkAndCelebrateMilestone();
     });
 
-    // Listen for new milestone achievements
+    // Listen for new milestone achievements from the stream (consecutive days)
     _milestoneSubscription = StreakService.milestoneStream.listen((data) {
       if (mounted) {
         debugPrint('🎉 HomeScreen: Received milestone event!');
-        _confettiController.initialize(context);
-        _confettiController.celebrateMilestone(data);
+        _streakConfettiController.celebrateMilestone(data);
       }
     });
 
-    // Add this to test
-    Future.delayed(Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 2), () {
       PrayerWidgetService.updateWidget();
       debugPrint('🔴 Widget update called from initState');
     });
+    PeriodNotificationRescheduleService.rescheduleAll();
   }
 
   void _checkAndCelebrateMilestone() {
-    // Check if there's a pending celebration from handleAppOpen()
     final milestoneData = StreakService.getPendingCelebration();
 
     if (milestoneData != null && mounted) {
       debugPrint(
-        '\ud83c\udf8a HomeScreen: Found pending celebration, triggering confetti!',
+        '🎊 HomeScreen: Found pending celebration, triggering confetti!',
       );
-      _confettiController.initialize(context);
-      // Delay celebration to ensure UI is ready
+
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) {
-          _confettiController.celebrateMilestone(milestoneData);
+          _streakConfettiController.celebrateMilestone(milestoneData);
         }
       });
-    } else {
-      debugPrint('\u2139\ufe0f HomeScreen: No pending celebration found');
     }
   }
 
   void _initializeHomeWidget() {
     HomeWidget.setAppGroupId('group.com.amrabdelhameed.ella_lyaabdoon');
-    // Callback is now registered in main.dart, not here
-
     PrayerWidgetService.updateWidget();
   }
 
@@ -186,9 +177,7 @@ class _HomeScreenState extends State<HomeScreen>
   static Future<void> _handleWidgetClick(Uri? uri) async {
     if (uri != null) {
       debugPrint('Widget clicked with URI: $uri');
-
       if (uri.path == '/refresh') {
-        // Update widget with new random reward
         await PrayerWidgetService.updateWidget();
       }
     }
@@ -275,24 +264,6 @@ class _HomeScreenState extends State<HomeScreen>
     debugPrint(actions[button]);
   }
 
-  // void _playSavedReciterAyah() {
-  //   final String reciterId = AppServicesDBprovider.getAyahReciter();
-
-  //   if (reciterId.isEmpty) {
-  //     debugPrint('Reciter is OFF. Not playing any ayah.');
-  //     return;
-  //   }
-
-  //   final validReciter = AppLists.reciters.firstWhere(
-  //     (r) => r['id'] == reciterId,
-  //     orElse: () =>
-  //         AppLists.reciters.firstWhere((r) => r['id'] == 'ar.muhammadayyoub'),
-  //   );
-
-  //   QuranAudioCubit().playAyah(validReciter['id']!, 4731);
-  //   debugPrint('Playing Reciter: ${validReciter['name']}');
-  // }
-
   void _scrollToCurrentPeriod(AzanDayPeriod period) {
     final key = _periodKeys[period];
     if (key?.currentContext != null) {
@@ -343,7 +314,7 @@ class _HomeScreenState extends State<HomeScreen>
 
   void _attemptShowcaseStart(BuildContext showcaseContext, int attempt) {
     if (attempt > 10) {
-      debugPrint('Failed to start showcase after 10 attempts');
+      debugPrint('❌ Showcase gave up after 10 attempts');
       return;
     }
 
@@ -351,51 +322,60 @@ class _HomeScreenState extends State<HomeScreen>
       Future.delayed(Duration(milliseconds: 200 * (attempt + 1)), () {
         if (!mounted) return;
 
-        if (_streakKey.currentContext != null &&
-            _historyKey.currentContext != null &&
-            _settingsKey.currentContext != null) {
-          _hasStartedShowcase = true;
+        debugPrint('🔍 Showcase attempt $attempt — key contexts:');
+        debugPrint(
+          '  streak:       ${_streakKey.currentContext != null ? "✅" : "❌ null"}',
+        );
+        debugPrint(
+          '  notification: ${_notificationKey.currentContext != null ? "✅" : "❌ null"}',
+        );
+        debugPrint(
+          '  settings:     ${_settingsKey.currentContext != null ? "✅" : "❌ null"}',
+        );
 
-          final homeShown = CacheHelper.getBool(_showcaseKey);
-          final streakShown = CacheHelper.getBool(_streakShowcaseKey);
+        final appBarKeysReady =
+            _streakKey.currentContext != null &&
+            _notificationKey.currentContext != null &&
+            _settingsKey.currentContext != null;
 
-          final List<GlobalKey> showcaseTargets = [];
-
-          // Add streak only if not shown before
-          if (!streakShown) {
-            showcaseTargets.add(_streakKey);
-          }
-
-          // Add old ones only if home showcase not fully shown
-          if (!homeShown) {
-            showcaseTargets.addAll([_historyKey, _settingsKey]);
-          }
-
-          if (showcaseTargets.isEmpty) {
-            return; // Nothing new to show
-          }
-
-          ShowCaseWidget.of(showcaseContext).startShowCase(showcaseTargets);
-
-          // Mark keys as shown
-          if (!streakShown) {
-            CacheHelper.setBool(_streakShowcaseKey, true);
-          }
-
-          if (!homeShown) {
-            CacheHelper.setBool(_showcaseKey, true);
-          }
-        } else {
+        if (!appBarKeysReady) {
+          debugPrint('⏳ AppBar keys not ready — retrying (attempt $attempt)');
           _attemptShowcaseStart(showcaseContext, attempt + 1);
+          return;
         }
+
+        _hasStartedShowcase = true;
+
+        final homeShown = CacheHelper.getBool(_showcaseKey);
+        final notifShown = CacheHelper.getBool(_notificationShowcaseKey);
+
+        final List<GlobalKey> showcaseTargets = [];
+
+        if (homeShown && !notifShown) {
+          showcaseTargets.add(_notificationKey);
+        } else if (!homeShown) {
+          showcaseTargets.addAll([_streakKey, _notificationKey, _settingsKey]);
+        }
+
+        if (showcaseTargets.isEmpty) {
+          debugPrint('⏭️ No showcase targets — already seen everything');
+          return;
+        }
+
+        debugPrint(
+          '🎯 Starting showcase with ${showcaseTargets.length} targets',
+        );
+        ShowCaseWidget.of(showcaseContext).startShowCase(showcaseTargets);
+
+        CacheHelper.setBool(_notificationShowcaseKey, true);
+        CacheHelper.setBool(_streakShowcaseKey, true);
+        if (!homeShown) CacheHelper.setBool(_showcaseKey, true);
       });
     });
   }
 
   void _onShowcaseComplete() {
-    // Scroll to current period header after showcase completes
     if (_currentPeriodForScroll != null) {
-      // Add a small delay to ensure smooth transition after showcase
       Future.delayed(const Duration(milliseconds: 300), () {
         if (mounted) {
           _scrollToCurrentPeriod(_currentPeriodForScroll!);
@@ -410,12 +390,11 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this); // ADD THIS LINE
-
+    WidgetsBinding.instance.removeObserver(this);
+    _streakConfettiController.dispose();
     _milestoneSubscription?.cancel();
     _scrollController.dispose();
     _pulseController.dispose();
-    _confettiController.dispose();
     super.dispose();
   }
 
@@ -430,8 +409,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<HistoryCubit>(create: (_) => HistoryCubit()), // ← MOVED UP
-        // BlocProvider(create: (_) => QuranAudioCubit()),
+        BlocProvider<HistoryCubit>(create: (_) => HistoryCubit()),
         BlocProvider(create: (_) => TranslationCubit()),
         BlocProvider(create: (_) => LocationCubit()),
         BlocProvider(create: (context) => HomeCubit()..initialize()),
@@ -451,13 +429,11 @@ class _HomeScreenState extends State<HomeScreen>
         child: UpgradeAlert(
           barrierDismissible: false,
           showIgnore: false,
-          showLater: false,
+          showLater: true,
           showReleaseNotes: true,
           upgrader: Upgrader(
             languageCode: AppServicesDBprovider.currentLocale(),
-            // debugDisplayAlways: kDebugMode,
-            durationUntilAlertAgain: const Duration(hours: 1),
-            // debugLogging: true,
+            durationUntilAlertAgain: const Duration(days: 2),
           ),
           child: ShowCaseWidget(
             onComplete: (_, __) => _onShowcaseComplete(),
@@ -475,110 +451,44 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildScaffold(BuildContext showcaseContext) {
     return Scaffold(
-      // floatingActionButton: FloatingActionButton.extended(
-      //   onPressed: () async {
-      //     await AppServicesDBprovider.switchViewMode();
-      //     if (AppServicesDBprovider.isReelsView()) {
-      //       _navigateToReelsView();
-      //     }
-      //   },
-      //   icon: const Icon(Icons.view_stream_outlined),
-      //   label: Text('reels_view'.tr()),
-      //   tooltip: 'switch_to_reels'.tr(),
-      // ),
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: _buildAppBar(),
+      appBar: _buildAppBar(showcaseContext),
       body: Stack(
         children: [
           _buildBody(showcaseContext),
-          isZeenaEnabled
-              ? Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: RamadanZeena(animate: false, height: 20),
-                )
-              : SizedBox.shrink(),
-          // Confetti overlay
-          _confettiController.getConfettiWidget(),
+
+          // Streak confetti overlay (consecutive days only)
+          _streakConfettiController.getConfettiWidget(),
         ],
       ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar() {
+  PreferredSizeWidget _buildAppBar(BuildContext showcaseContext) {
     return AppBar(
-      title: Stack(
-        children: [
-          Text('app_title'.tr()),
-          isZeenaEnabled
-              ? RamadanZeena(
-                  isWithRope: false,
-                  animate: true,
-                  isWillBeHidden: false,
-                  height: 20,
-                  items: [
-                    ZeenaItem(
-                      xFraction: 0.4,
-                      ropeLength: 25,
-                      color: AppColors.greenDark,
-                      hasStar: true,
-                      moonRadius: 10,
-                      swayDelay: 0.1,
-                    ),
-                    ZeenaItem(
-                      xFraction: 0.05,
-                      ropeLength: 26,
-                      color: Colors.deepOrange,
-                      hasStar: false,
-                      moonRadius: 9,
-                      swayDelay: 0.4,
-                    ),
-                  ],
-                )
-              : SizedBox.shrink(),
-        ],
-      ),
+      title: Text('app_title'.tr()),
       actions: [
-        // Animated Streak Widget
         Showcase(
           key: _streakKey,
           title: 'showcase_streak_title'.tr(),
           description: 'showcase_streak_desc'.tr(),
           child: Hero(
             tag: 'streak_icon',
-            child: Material(
-              color: Colors.transparent,
-              child: ValueListenableBuilder<int>(
-                valueListenable: StreakService.streakNotifier,
-                builder: (context, count, child) {
-                  return StreakAnimationWidget(
-                    streakCount: count,
-                    onTap: () {
-                      context.pushNamed(AppRoutes.streakStatistics);
-                    },
-                  );
-                },
+            child: ValueListenableBuilder<int>(
+              valueListenable: StreakService.streakNotifier,
+              builder: (showcaseContext, count, child) => StreakAnimationWidget(
+                streakCount: count,
+                onTap: () => showcaseContext.pushNamed(AppRoutes.statistics),
               ),
             ),
           ),
         ),
-        // Switch to Reels view
-        IconButton(
-          tooltip: 'switch_to_reels'.tr(),
-          icon: const Icon(Icons.view_stream_outlined),
-          onPressed: () async {
-            await AppServicesDBprovider.setReelsView(value: true);
-            AppRouter.router.goNamed(AppRoutes.reels);
-          },
-        ),
         _buildShowcaseButton(
-          key: _historyKey,
-          title: 'showcase_history_title'.tr(),
-          description: 'showcase_history_desc'.tr(),
-          icon: Icons.history,
-          tooltip: 'history'.tr(),
-          onPressed: () => context.pushNamed(AppRoutes.history),
+          key: _notificationKey,
+          title: 'notifications'.tr(),
+          description: 'manage_your_notifications'.tr(),
+          icon: Icons.notifications_active_outlined,
+          onPressed: () => context.pushNamed(AppRoutes.notificationSettings),
         ),
         _buildShowcaseButton(
           key: _settingsKey,
@@ -624,10 +534,8 @@ class _HomeScreenState extends State<HomeScreen>
             PrayerWidgetService.updateWidget();
           }
           if (state.currentPeriod != null) {
-            // Store the current period for later scrolling
             _currentPeriodForScroll = state.currentPeriod;
 
-            // Only scroll immediately if showcase has already been shown
             if (CacheHelper.getBool(_showcaseKey)) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 _scrollToCurrentPeriod(state.currentPeriod!);
@@ -685,12 +593,8 @@ class _HomeScreenState extends State<HomeScreen>
       final isLast = index == AppLists.timelineItems.length - 1;
       final isExpanded = state.expandedPeriods.contains(item.period);
 
-      // Shuffled base list
       final shuffledRewards = _shuffledRewards[item.period] ?? item.rewards;
-
-      // Sort: unchecked first, checked → end of list
       final sortedRewards = _sortRewardsByCompletion(shuffledRewards);
-
       final visibleRewards = _getVisibleRewardsFromList(
         sortedRewards,
         isCurrent,
@@ -699,7 +603,6 @@ class _HomeScreenState extends State<HomeScreen>
       final hasMore = sortedRewards.length > 3;
       final showMoreButton = !isCurrent && hasMore;
 
-      // Completion stats for the progress bar
       final totalCount = sortedRewards.length;
       final doneCount = sortedRewards
           .where((r) => HistoryDBProvider.isCheckedToday(r.id))
@@ -719,7 +622,6 @@ class _HomeScreenState extends State<HomeScreen>
                 isFirst: isFirst,
                 pulseAnimation: _pulseAnimation,
               ),
-              // ── Completion progress bar ──────────────────────────
               _buildCompletionBar(
                 doneCount: doneCount,
                 totalCount: totalCount,
@@ -740,6 +642,7 @@ class _HomeScreenState extends State<HomeScreen>
                       !showMoreButton &&
                       isLast,
                   isFirstRewardOfFirstPrayer: rewardCounter++ == 0,
+                  period: item.period,
                 ),
               if (showMoreButton)
                 BlocBuilder<HomeCubit, HomeState>(
@@ -767,8 +670,6 @@ class _HomeScreenState extends State<HomeScreen>
     return items;
   }
 
-  /// Sorts rewards so unchecked items come first and checked ones sink to the
-  /// bottom — preserving relative order within each group.
   List<dynamic> _sortRewardsByCompletion(List<dynamic> rewards) {
     final unchecked = <dynamic>[];
     final checked = <dynamic>[];
@@ -782,7 +683,6 @@ class _HomeScreenState extends State<HomeScreen>
     return [...unchecked, ...checked];
   }
 
-  /// A compact progress bar shown below each period header.
   Widget _buildCompletionBar({
     required int doneCount,
     required int totalCount,
@@ -794,11 +694,6 @@ class _HomeScreenState extends State<HomeScreen>
     final progress = doneCount / totalCount;
     final isComplete = doneCount == totalCount;
     final colorScheme = Theme.of(context).colorScheme;
-    // final barColor = isComplete
-    //     ? Colors.green
-    //     : isCurrent
-    //     ? colorScheme.primary
-    //     : colorScheme.primary.withOpacity(0.55);
 
     return Padding(
       padding: EdgeInsets.only(
@@ -863,26 +758,112 @@ class _HomeScreenState extends State<HomeScreen>
     required bool isLeftAligned,
     required bool isLast,
     required bool isFirstRewardOfFirstPrayer,
+    required AzanDayPeriod period,
   }) {
-    final rewardWidget = TimelineRewardItem(
+    return TimelineRewardItem(
       reward: reward,
       isCurrent: isCurrent,
       isLeftAligned: isLeftAligned,
       isLast: isLast,
       pulseAnimation: _pulseAnimation,
+      onChecked: () {
+        _checkZikrMilestone();
+        final shuffledRewards = _shuffledRewards[period] ?? [];
+        final totalCount = shuffledRewards.length;
+        final doneCount = shuffledRewards
+            .where((r) => HistoryDBProvider.isCheckedToday(r.id))
+            .length;
+        _checkPeriodMilestone(period, doneCount, totalCount);
+      },
+    );
+  }
+
+  /// Zikr daily milestone — SnackBar only, no confetti.
+  void _checkZikrMilestone() {
+    final todayZikrs = HistoryDBProvider.getTotalZikrsCompletedForDate(
+      DateTime.now(),
     );
 
-    // Wrap only the first reward of the first prayer with Showcase
-    if (isFirstRewardOfFirstPrayer) {
-      // return Showcase(
-      //   key: _firstRewardKey,
-      //   title: 'showcase_reward_title'.tr(),
-      //   description: 'showcase_reward_desc'.tr(),
-      //   child: rewardWidget,
-      // );
-      return rewardWidget;
+    final milestones = [10, 25, 50, 100, 250, 500, 1000];
+
+    if (milestones.contains(todayZikrs)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.emoji_events_rounded, color: Colors.amber),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'daily_zikr_milestone'.tr(
+                    namedArgs: {'count': '$todayZikrs'},
+                  ),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.greenDark,
+          duration: const Duration(seconds: 3),
+          margin: const EdgeInsets.all(12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Period completion milestone — SnackBar only, no confetti.
+  void _checkPeriodMilestone(
+    AzanDayPeriod period,
+    int doneCount,
+    int totalCount,
+  ) {
+    if (totalCount <= 0) return;
+
+    final percentage = (doneCount / totalCount * 100).round();
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    final thresholds = [25, 50, 75, 100];
+    int? achievedThreshold;
+
+    for (final t in thresholds) {
+      if (percentage >= t) achievedThreshold = t;
     }
 
-    return rewardWidget;
+    if (achievedThreshold == null) return;
+
+    final milestoneKey = "${today}_${period.name}_$achievedThreshold";
+    if (_celebratedPeriodMilestones.contains(milestoneKey)) return;
+
+    _celebratedPeriodMilestones.add(milestoneKey);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.auto_awesome, color: Colors.amber),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'period_${achievedThreshold}_celebration'.tr(),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.greenDark,
+        duration: const Duration(seconds: 3),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
   }
 }

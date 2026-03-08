@@ -17,6 +17,7 @@ class TimelineRewardItem extends StatefulWidget {
   final bool isLeftAligned;
   final bool isLast;
   final Animation<double> pulseAnimation;
+  final VoidCallback? onChecked;
 
   const TimelineRewardItem({
     super.key,
@@ -25,6 +26,7 @@ class TimelineRewardItem extends StatefulWidget {
     required this.isLeftAligned,
     required this.isLast,
     required this.pulseAnimation,
+    this.onChecked,
   });
 
   @override
@@ -36,6 +38,7 @@ class _TimelineRewardItemState extends State<TimelineRewardItem> {
 
   void _showRewardDetails(BuildContext context) {
     Clarity.setCurrentScreenName('reward_dialog');
+
     final historyCubit = context.read<HistoryCubit>();
     showDialog(
       context: context,
@@ -71,6 +74,9 @@ class _TimelineRewardItemState extends State<TimelineRewardItem> {
     }
 
     historyCubit.toggleCheck(widget.reward.id);
+    if (!currentlyChecked) {
+      widget.onChecked?.call();
+    }
     await RewardWidgetService.updateWidget();
   }
 

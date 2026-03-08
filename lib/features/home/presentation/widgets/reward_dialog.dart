@@ -73,6 +73,10 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
     }
   }
 
+  void setScreenName() async {
+    await FirebaseAnalytics.instance.logScreenView(screenName: 'reward_dialog');
+  }
+
   @override
   void initState() {
     super.initState();

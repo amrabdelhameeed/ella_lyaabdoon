@@ -585,6 +585,15 @@ class AppLists {
           isWithCounter: true,
         ),
         TimelineReward(
+          id: 'asr_4_before',
+          title: 'رحمة الله للعبد',
+          description:
+              'عن ابن عمر رضي الله عنهما قال: قال رسول الله ﷺ: «رَحِمَ اللَّهُ امْرَأً صَلَّى قَبْلَ العَصْرِ أَرْبَعًا».',
+          source: 'رواه الترمذي (430) وأبو داود (1271).',
+          isWithCounter: false,
+          zikrLevel: ZikrLevel.hard,
+        ),
+        TimelineReward(
           id: 'duhr_hawqala',
           title: 'كنز من كنوز الجنة',
           description:
@@ -623,15 +632,6 @@ class AppLists {
           source: 'رواه البخاري (553).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
-        ),
-        TimelineReward(
-          id: 'asr_4_before',
-          title: 'رحمة الله للعبد',
-          description:
-              'عن ابن عمر رضي الله عنهما قال: قال رسول الله ﷺ: «رَحِمَ اللَّهُ امْرَأً صَلَّى قَبْلَ العَصْرِ أَرْبَعًا».',
-          source: 'رواه الترمذي (430) وأبو داود (1271).',
-          isWithCounter: false,
-          zikrLevel: ZikrLevel.hard,
         ),
 
         ///FYI

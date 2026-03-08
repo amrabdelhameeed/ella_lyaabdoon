@@ -9,4 +9,6 @@ class AppRoutes {
   static const settings = '/settings';
   static const history = '/history';
   static const streakStatistics = '/streak-statistics';
+  static const statistics = '/statistics';
+  static const notificationSettings = '/notification-settings';
 }

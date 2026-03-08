@@ -1,13 +1,15 @@
 import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:ella_lyaabdoon/features/home/presentation/screens/home_screen.dart';
 import 'package:ella_lyaabdoon/features/home/presentation/screens/reels_view_screen.dart';
-import 'package:ella_lyaabdoon/features/home/presentation/screens/streak_statistics_screen.dart';
+
+import 'package:ella_lyaabdoon/features/statistics/presentation/statistics_screen.dart';
+import 'package:ella_lyaabdoon/features/settings/presentation/screens/notification_settings_screen.dart';
 import 'package:ella_lyaabdoon/features/intro/presentation/intro_screen.dart';
 import 'package:ella_lyaabdoon/features/settings/presentation/settings_screen.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
 import 'package:ella_lyaabdoon/core/constants/app_routes.dart';
 import 'package:ella_lyaabdoon/core/services/location_storage.dart';
-import 'package:ella_lyaabdoon/features/history/presentation/history_screen.dart';
+
 import 'package:ella_lyaabdoon/features/settings/presentation/screens/location_permission_screen.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/material.dart';
@@ -103,8 +105,8 @@ class AppRouter {
         parentNavigatorKey: _rootNavigatorKey,
         path: AppRoutes.history,
         name: AppRoutes.history,
-        builder: (context, state) => const HistoryScreen(),
-        pageBuilder: defaultPageBuilder(const HistoryScreen()),
+        builder: (context, state) => const StatisticsScreen(),
+        pageBuilder: defaultPageBuilder(const StatisticsScreen()),
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
@@ -117,8 +119,22 @@ class AppRouter {
         parentNavigatorKey: _rootNavigatorKey,
         path: AppRoutes.streakStatistics,
         name: AppRoutes.streakStatistics,
-        builder: (context, state) => const StreakStatisticsScreen(),
-        pageBuilder: defaultPageBuilder(const StreakStatisticsScreen()),
+        builder: (context, state) => const StatisticsScreen(),
+        pageBuilder: defaultPageBuilder(const StatisticsScreen()),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: AppRoutes.statistics,
+        name: AppRoutes.statistics,
+        builder: (context, state) => const StatisticsScreen(),
+        pageBuilder: defaultPageBuilder(const StatisticsScreen()),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: AppRoutes.notificationSettings,
+        name: AppRoutes.notificationSettings,
+        builder: (context, state) => const NotificationSettingsScreen(),
+        pageBuilder: defaultPageBuilder(const NotificationSettingsScreen()),
       ),
     ],
   );
