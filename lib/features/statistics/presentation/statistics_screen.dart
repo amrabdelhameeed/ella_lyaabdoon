@@ -897,7 +897,11 @@ class _ZikrLineChartCardState extends State<_ZikrLineChartCard> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'weekly_zikr_chart'.tr(),
+                    _selectedDays == 30
+                        ? 'zikr_chart_30_days'.tr()
+                        : _selectedDays == 14
+                        ? 'zikr_chart_14_days'.tr()
+                        : 'zikr_chart_7_days'.tr(),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.onSurface,
@@ -1111,7 +1115,11 @@ class _AppOpensLineChartCardState extends State<_AppOpensLineChartCard> {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'weekly_opens_chart'.tr(),
+                    _selectedDays == 30
+                        ? 'zikr_chart_30_days'.tr()
+                        : _selectedDays == 14
+                        ? 'zikr_chart_14_days'.tr()
+                        : 'zikr_chart_7_days'.tr(),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: theme.colorScheme.onSurface,
@@ -1317,7 +1325,11 @@ class _RangeSelector extends StatelessWidget {
     final theme = Theme.of(context);
     final color = accentColor ?? theme.colorScheme.primary;
     const options = [7, 14, 30];
-    const labels = ['7d', '14d', '30d'];
+    final labels = [
+      'zikr_chart_7_days_label'.tr(),
+      'zikr_chart_14_days_label'.tr(),
+      'zikr_chart_30_days_label'.tr(),
+    ];
 
     return Container(
       padding: const EdgeInsets.all(2),
