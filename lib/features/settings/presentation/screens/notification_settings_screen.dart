@@ -99,7 +99,6 @@ class _NotificationSettingsScreenState
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
-          // ── Period Time Notifications ──────────────────
           _buildSectionHeader(context, 'period_notifications'.tr()),
           Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -121,12 +120,35 @@ class _NotificationSettingsScreenState
                   return StatefulBuilder(
                     builder: (context, setTileState) {
                       final enabled = _isPeriodNotifEnabled(item.period);
+
+                      final prayerTime = _getPeriodTime(item.period);
+                      String? formattedTime;
+                      if (prayerTime != null) {
+                        formattedTime = DateFormat(
+                          'hh:mm a',
+                          AppServicesDBprovider.currentLocale(),
+                        ).format(prayerTime);
+                      }
+
                       return SwitchListTile(
                         secondary: Icon(
                           _getPeriodIcon(item.period),
                           color: colorScheme.primary,
                         ),
-                        title: Text(item.title.tr()),
+                        title: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(item.title.tr()),
+                            if (formattedTime != null)
+                              Text(
+                                formattedTime,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: colorScheme.primary.withOpacity(0.6),
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                          ],
+                        ),
                         value: enabled,
                         onChanged: (value) async {
                           CacheHelper.setBool(
@@ -136,7 +158,6 @@ class _NotificationSettingsScreenState
                           if (value) {
                             final prayerTime = _getPeriodTime(item.period);
                             if (prayerTime == null) {
-                              // Location not configured — can't calculate prayer times
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
@@ -148,7 +169,6 @@ class _NotificationSettingsScreenState
                                   ),
                                 );
                               }
-                              // Revert the toggle
                               CacheHelper.setBool(
                                 _periodNotifKey(item.period),
                                 false,
@@ -168,13 +188,6 @@ class _NotificationSettingsScreenState
                               body: 'period_notif_body'.tr(),
                               time: notifTime,
                             );
-                            debugPrint(
-                              '🔔 Scheduled period notification: '
-                              '${item.period.name} → '
-                              '${notifTime.hour.toString().padLeft(2, '0')}:'
-                              '${notifTime.minute.toString().padLeft(2, '0')} '
-                              '(id: ${_periodNotifId(item.period)})',
-                            );
                           } else {
                             await NotificationHelper.cancel(
                               _periodNotifId(item.period),
@@ -190,7 +203,6 @@ class _NotificationSettingsScreenState
               ],
             ),
           ),
-          const SizedBox(height: 16),
 
           // ── Motivational Notifications Toggle ──────────
           _buildSectionHeader(context, 'motivational_notifications'.tr()),
@@ -403,6 +415,7 @@ class _NotificationSettingsScreenState
   DateTime? _getPeriodTime(AzanDayPeriod period) {
     final helper = _azanHelper;
     if (helper == null) return null;
+    final now = DateTime.now();
     switch (period) {
       case AzanDayPeriod.fajr:
         return helper.fajr;
@@ -417,8 +430,7 @@ class _NotificationSettingsScreenState
       case AzanDayPeriod.isha:
         return helper.isha;
       case AzanDayPeriod.night:
-        // Night starts after Isha — use Isha + 1h as a reasonable anchor
-        return helper.isha.add(const Duration(hours: 1));
+        return DateTime(now.year, now.month, now.day, 22, 0);
     }
   }
 }
