@@ -83,26 +83,27 @@ class _HomeScreenState extends State<HomeScreen>
   static const int _reviewMinLaunches = 5;
   static const int _reviewRemindDays = 7;
   static const int _reviewRemindLaunches = 10;
+  late ConfettiController _zikrConfettiController;
 
-  bool isZeenaEnabled = false;
+  // bool isZeenaEnabled = false;
 
-  Future<void> loadConfig() async {
-    final remoteConfig = FirebaseRemoteConfig.instance;
-    await remoteConfig.setConfigSettings(
-      RemoteConfigSettings(
-        fetchTimeout: const Duration(seconds: 10),
-        minimumFetchInterval: const Duration(days: 1),
-      ),
-    );
-    await remoteConfig.setDefaults({'enable_zeena': true});
-    await remoteConfig.fetchAndActivate();
+  // Future<void> loadConfig() async {
+  //   final remoteConfig = FirebaseRemoteConfig.instance;
+  //   await remoteConfig.setConfigSettings(
+  //     RemoteConfigSettings(
+  //       fetchTimeout: const Duration(seconds: 10),
+  //       minimumFetchInterval: const Duration(days: 1),
+  //     ),
+  //   );
+  //   await remoteConfig.setDefaults({'enable_zeena': true});
+  //   await remoteConfig.fetchAndActivate();
 
-    if (mounted) {
-      setState(() {
-        isZeenaEnabled = remoteConfig.getBool('enable_zeena');
-      });
-    }
-  }
+  //   if (mounted) {
+  //     setState(() {
+  //       isZeenaEnabled = remoteConfig.getBool('enable_zeena');
+  //     });
+  //   }
+  // }
 
   // Cache shuffled rewards
   final Map<AzanDayPeriod, List<dynamic>> _shuffledRewards = {};
@@ -123,9 +124,12 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _zikrConfettiController = ConfettiController(
+      duration: const Duration(seconds: 2),
+    );
 
     _initializeKeys();
-    loadConfig();
+    // loadConfig();
     _initializePulseAnimation();
     _initializeRateMyApp();
     _initializeHomeWidget();
@@ -456,9 +460,27 @@ class _HomeScreenState extends State<HomeScreen>
       body: Stack(
         children: [
           _buildBody(showcaseContext),
-
-          // Streak confetti overlay (consecutive days only)
-          _streakConfettiController.getConfettiWidget(),
+          _streakConfettiController
+              .getConfettiWidget(), // existing streak confetti
+          // Zikr confetti — centered, short burst
+          Align(
+            alignment: Alignment.topCenter,
+            child: ConfettiWidget(
+              confettiController: _zikrConfettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              numberOfParticles: 18,
+              maxBlastForce: 30,
+              minBlastForce: 10,
+              emissionFrequency: 0.05,
+              gravity: 0.3,
+              colors: const [
+                Colors.amber,
+                Colors.green,
+                Colors.teal,
+                Colors.orange,
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -787,6 +809,8 @@ class _HomeScreenState extends State<HomeScreen>
     final milestones = [10, 25, 50, 100, 250, 500, 1000];
 
     if (milestones.contains(todayZikrs)) {
+      _zikrConfettiController.play();
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
@@ -841,6 +865,7 @@ class _HomeScreenState extends State<HomeScreen>
     if (_celebratedPeriodMilestones.contains(milestoneKey)) return;
 
     _celebratedPeriodMilestones.add(milestoneKey);
+    if (achievedThreshold == 100) _zikrConfettiController.play();
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
