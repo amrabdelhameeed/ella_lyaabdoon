@@ -74,7 +74,7 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
   List<RewardItem> _allRewards = [];
 
   // ── Remote config ────────────────────────────────────────────────────
-  bool _isZeenaEnabled = false;
+  // bool _isZeenaEnabled = false;
 
   // ── Counter ──────────────────────────────────────────────────────────
   final Map<int, int> _counters = {};
@@ -113,7 +113,7 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeOut),
     )..addListener(() => setState(() {}));
 
-    _loadRemoteConfig();
+    // _loadRemoteConfig();
     _maybeShowDoubleTapHint();
   }
 
@@ -128,18 +128,18 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
   // Remote config
   // ─────────────────────────────────────────────────────────────────────
 
-  Future<void> _loadRemoteConfig() async {
-    final rc = FirebaseRemoteConfig.instance;
-    await rc.setConfigSettings(
-      RemoteConfigSettings(
-        fetchTimeout: const Duration(seconds: 10),
-        minimumFetchInterval: const Duration(days: 1),
-      ),
-    );
-    await rc.setDefaults({'enable_zeena': true});
-    await rc.fetchAndActivate();
-    if (mounted) setState(() => _isZeenaEnabled = rc.getBool('enable_zeena'));
-  }
+  // Future<void> _loadRemoteConfig() async {
+  //   final rc = FirebaseRemoteConfig.instance;
+  //   await rc.setConfigSettings(
+  //     RemoteConfigSettings(
+  //       fetchTimeout: const Duration(seconds: 10),
+  //       minimumFetchInterval: const Duration(days: 1),
+  //     ),
+  //   );
+  //   await rc.setDefaults({'enable_zeena': true});
+  //   await rc.fetchAndActivate();
+  //   if (mounted) setState(() => _isZeenaEnabled = rc.getBool('enable_zeena'));
+  // }
 
   // ─────────────────────────────────────────────────────────────────────
   // Analytics
@@ -418,13 +418,13 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
           Positioned.fill(child: _buildDoubleTapHintOverlay()),
 
         // ── Ramadan decoration ─────────────────────────────────────────
-        if (_isZeenaEnabled)
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: RamadanZeena(animate: false, height: 15),
-          ),
+        // if (_isZeenaEnabled)
+        //   Positioned(
+        //     top: 0,
+        //     left: 0,
+        //     right: 0,
+        //     child: RamadanZeena(animate: false, height: 15),
+        //   ),
       ],
     );
   }
@@ -876,7 +876,7 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
               Text(
                 state.translatedText,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.9),
+                  // color: Colors.white.withOpacity(0.9),
                   fontSize: _getFontSize(state.translatedText.length),
                   height: 1.6,
                 ),
