@@ -48,7 +48,9 @@ class AppRouter {
     // initialLocation: AppRoutes.intro,
     initialLocation: !AppServicesDBprovider.isOpenedBefore()
         ? AppRoutes.intro
-        : AppRoutes.home,
+        : (AppServicesDBprovider.isReelsView()
+              ? AppRoutes.reels
+              : AppRoutes.home),
 
     // debugLogDiagnostics: true,
     navigatorKey: _rootNavigatorKey,
