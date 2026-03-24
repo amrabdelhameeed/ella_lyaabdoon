@@ -34,19 +34,19 @@ dependencies:
   bloc: ^9.2.0
   cache_audio_player_plus: ^1.1.1+1
   cached_network_image: ^3.4.1
-  clarity_flutter: ^1.7.0
+  clarity_flutter: ^1.7.1
+  cloud_firestore: 6.1.2
   confetti: ^0.7.0
   cupertino_icons: ^1.0.8
   dio: ^5.4.0
   easy_localization: ^3.0.8
   equatable: ^2.0.8
-  fl_chart: ^0.70.2
-  cloud_firestore: 6.1.2
   firebase_analytics: ^12.1.0
   firebase_core: ^4.3.0
   firebase_crashlytics: ^5.0.6
   firebase_messaging: ^16.1.0
   firebase_remote_config: ^6.1.4
+  fl_chart: ^0.70.2
   flutter:
     sdk: flutter
   flutter_bloc: ^9.1.1
