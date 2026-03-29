@@ -45,7 +45,10 @@ class _TimelineRewardItemState extends State<TimelineRewardItem> {
       builder: (dialogContext) {
         return BlocProvider.value(
           value: historyCubit,
-          child: RewardDetailDialog(reward: widget.reward),
+          child: RewardDetailDialog(
+            reward: widget.reward,
+            onChecked: widget.onChecked,
+          ),
         );
       },
     );

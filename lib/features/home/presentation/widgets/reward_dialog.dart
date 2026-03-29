@@ -20,8 +20,8 @@ import 'package:url_launcher/url_launcher.dart';
 
 class RewardDetailDialog extends StatelessWidget {
   final TimelineReward reward;
-
-  const RewardDetailDialog({super.key, required this.reward});
+  final VoidCallback? onChecked;
+  const RewardDetailDialog({super.key, required this.reward, this.onChecked});
 
   @override
   Widget build(BuildContext context) {
@@ -30,15 +30,15 @@ class RewardDetailDialog extends StatelessWidget {
         BlocProvider<TranslationCubit>(create: (_) => TranslationCubit()),
         // BlocProvider<HistoryCubit>(create: (_) => HistoryCubit()),
       ],
-      child: _RewardDetailDialogContent(reward: reward),
+      child: _RewardDetailDialogContent(reward: reward, onChecked: onChecked),
     );
   }
 }
 
 class _RewardDetailDialogContent extends StatefulWidget {
   final TimelineReward reward;
-
-  const _RewardDetailDialogContent({required this.reward});
+  final VoidCallback? onChecked;
+  const _RewardDetailDialogContent({required this.reward, this.onChecked});
 
   @override
   State<_RewardDetailDialogContent> createState() =>
@@ -431,6 +431,7 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
                               widget.reward.id,
                             );
                             await RewardWidgetService.updateWidget();
+                            widget.onChecked?.call();
                           },
                           title: Text(
                             isChecked
