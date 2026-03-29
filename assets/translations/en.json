@@ -292,5 +292,13 @@
   "app_opened_today": "App Opened Today",
   "stats_not_opened": "Not opened today",
   "zikrs": "Azkar",
-  "today": "Today"
+  "today": "Today",
+  "motivational_improved_title": "🌟 You're Growing!",
+  "motivational_improved_body": "MashaAllah! You completed {count} azkar this week — {percent}% more than last week. Keep it up!",
+  "motivational_same_title": "💚 Stay Consistent!",
+  "motivational_same_body": "You completed {count} azkar this week, same as last week. Consistency is a great virtue — keep going!",
+  "motivational_declined_title": "🤲 We Miss You!",
+  "motivational_declined_body": "Last week you completed {lastWeek} azkar, but this week only {thisWeek}. Every dhikr counts — come back stronger!",
+  "motivational_inactive_title": "☀️ A New Start Awaits!",
+  "motivational_inactive_body": "You haven't opened the app this week. Even one dhikr is a light in your day — start now!"
 }

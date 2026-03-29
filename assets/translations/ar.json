@@ -292,5 +292,13 @@
   "app_opened_today": "عدد مرات فتح التطبيق اليوم",
   "stats_not_opened": "لم يتم فتح التطبيق اليوم",
   "zikrs": "أذكار",
-  "today": "اليوم"
+  "today": "اليوم",
+  "motivational_improved_title": "🌟 أنت تتقدم!",
+  "motivational_improved_body": "ما شاء الله! أتممت {count} ذكر هذا الأسبوع — بزيادة {percent}% عن الأسبوع الماضي. واصل!",
+  "motivational_same_title": "💚 داوم على الذكر!",
+  "motivational_same_body": "أتممت {count} ذكر هذا الأسبوع، مثل الأسبوع الماضي تمامًا. المداومة كنز — استمر!",
+  "motivational_declined_title": "🤲 اشتقنا إليك!",
+  "motivational_declined_body": "الأسبوع الماضي أتممت {lastWeek} ذكر، وهذا الأسبوع {thisWeek} فقط. كل ذكر له وزن — عُد أقوى!",
+  "motivational_inactive_title": "☀️ ابدأ من جديد!",
+  "motivational_inactive_body": "لم تفتح التطبيق هذا الأسبوع. حتى ذكر واحد نور في يومك — ابدأ الآن!"
 }
