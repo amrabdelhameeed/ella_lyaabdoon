@@ -285,6 +285,26 @@ class NotificationHelper {
     );
   }
 
+  static Future<void> scheduleOnce({
+    required int notificationId,
+    required String title,
+    required String body,
+    required DateTime dateTime,
+    Map<String, dynamic>? payload,
+  }) async {
+    final tzDate = tz.TZDateTime.from(dateTime, tz.local);
+    await _local.zonedSchedule(
+      notificationId,
+      title,
+      body,
+      tzDate,
+      _details(bigText: body),
+      payload: payload == null ? null : jsonEncode(payload),
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+      // No matchDateTimeComponents = fires once only
+    );
+  }
+
   static Future<void> scheduleAt({
     required int notificationId,
     required String title,

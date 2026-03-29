@@ -25,29 +25,42 @@ class MotivationalNotificationService {
     }
   }
 
-  /// Called from app open — checks weekly and schedules a motivational notification
   static Future<void> checkAndSchedule() async {
     if (!isEnabled()) return;
 
+    if (kDebugMode) {
+      debugPrint('📬 [DEBUG] checkAndSchedule called');
+      final message = _generateMotivationalMessage();
+      if (message == null) return;
+      final scheduledTime = DateTime.now().add(const Duration(seconds: 5));
+      await NotificationHelper.scheduleOnce(
+        notificationId: _notificationId,
+        title: message['title']!,
+        body: message['body']!,
+        dateTime: scheduledTime,
+      );
+      debugPrint('📬 [DEBUG] Motivational notification scheduled in 5 seconds');
+      return;
+    }
+
+    // ── Release mode ────────────────────────────────────────────────
     final lastCheck = CacheHelper.getString(_lastMotivationalCheckKey);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final todayStr = today.toIso8601String();
 
-    // Only check once per day
     if (lastCheck == todayStr) return;
     CacheHelper.setString(_lastMotivationalCheckKey, todayStr);
 
-    // Only send on Fridays (day 5) for weekly summary
     if (now.weekday != DateTime.friday) return;
 
     final message = _generateMotivationalMessage();
     if (message == null) return;
 
     try {
-      // Schedule for 2 hours from now (afternoon on Friday)
-      final scheduledTime = now.add(const Duration(hours: 2));
-      await NotificationHelper.scheduleAt(
+      final scheduledTime = DateTime(now.year, now.month, now.day, 14, 0);
+      if (now.isAfter(scheduledTime)) return;
+      await NotificationHelper.scheduleOnce(
         notificationId: _notificationId,
         title: message['title']!,
         body: message['body']!,
