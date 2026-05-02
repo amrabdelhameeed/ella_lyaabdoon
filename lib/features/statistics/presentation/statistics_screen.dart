@@ -57,42 +57,87 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final color = StreakService.getStreakColor(currentStreak);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('statistics_title'.tr()),
-        // actions: [
-        //   IconButton(
-        //     icon: const Icon(Icons.refresh_rounded),
-        //     onPressed: _loadData,
-        //     tooltip: 'Refresh',
-        //   ),
-        // ],
-      ),
+      appBar: AppBar(title: Text('statistics_title'.tr())),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // ════════════════════════════════════════════════════
+            // SECTION 1 — STREAK
+            // Everything streak-related together: current, longest,
+            // active days, saves, next milestone.
+            // ════════════════════════════════════════════════════
             Hero(
               tag: 'streak_icon',
               child: _buildCurrentStreakCard(context, _stats, color),
             ),
-            const SizedBox(height: 20),
-            const _ZikrLineChartCard(),
-            const SizedBox(height: 16),
-            // const _AppOpensLineChartCard(),
-            // const SizedBox(height: 16),
-            _buildZikrCard(context),
-            const SizedBox(height: 16),
-            _buildStatisticsGrid(context, _stats),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildSimpleStatCard(
+                    context,
+                    icon: Icons.emoji_events_rounded,
+                    title: 'longest_streak'.tr(),
+                    value: '${_stats['longestStreak']}',
+                    unit: 'days'.tr().toLowerCase(),
+                    color: Colors.amber,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildSimpleStatCard(
+                    context,
+                    icon: Icons.calendar_today_rounded,
+                    title: 'total_active_days'.tr(),
+                    value: '${_stats['totalActiveDays']}',
+                    unit: 'days'.tr().toLowerCase(),
+                    color: Colors.green,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             _buildStreakSavesCard(context, _stats),
-            const SizedBox(height: 16),
-            _buildAchievementsSection(context, _stats),
-            const SizedBox(height: 16),
-            if (_stats['nextMilestone'] != null)
+            if (_stats['nextMilestone'] != null) ...[
+              const SizedBox(height: 8),
               _buildNextMilestoneCard(context, _stats, color),
-            const SizedBox(height: 16),
-            _buildActivityHeatmap(context, _stats),
+            ],
+
+            const SizedBox(height: 24),
+            _sectionLabel(context, 'stats_section_azkar'.tr()),
+            const SizedBox(height: 8),
+
+            // ════════════════════════════════════════════════════
+            // SECTION 2 — AZKAR COUNTS (numbers only, no graphs)
+            // Today, week, month comparison, 3m/6m/all-time.
+            // ════════════════════════════════════════════════════
+            _buildAzkarCountsSection(context),
+
+            const SizedBox(height: 24),
+            _sectionLabel(context, 'stats_section_trends'.tr()),
+            const SizedBox(height: 8),
+
+            // ════════════════════════════════════════════════════
+            // SECTION 3 — TRENDS (graphs only)
+            // Insight pills, single toggleable chart, heatmap.
+            // ════════════════════════════════════════════════════
+            _buildInsightRow(context),
+            const SizedBox(height: 8),
+            const _ZikrChartCard(),
+            const SizedBox(height: 8),
+            _buildSmartActivityHeatmap(context, _stats),
+
+            const SizedBox(height: 24),
+            _sectionLabel(context, 'stats_section_achievements'.tr()),
+            const SizedBox(height: 8),
+
+            // ════════════════════════════════════════════════════
+            // SECTION 4 — ACHIEVEMENTS
+            // ════════════════════════════════════════════════════
+            _buildAchievementsSection(context, _stats),
+
             const SizedBox(height: 24),
           ],
         ),
@@ -100,9 +145,25 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     );
   }
 
-  // ──────────────────────────────────────────────────────────
-  // Current Streak Card
-  // ──────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────
+  // Helpers shared across sections
+  // ─────────────────────────────────────────
+
+  Widget _sectionLabel(BuildContext context, String text) => Padding(
+    padding: const EdgeInsets.only(left: 2),
+    child: Text(
+      text.toUpperCase(),
+      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.45),
+        letterSpacing: 1.2,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
+
+  // ─────────────────────────────────────────
+  // SECTION 1 — Streak widgets
+  // ─────────────────────────────────────────
 
   Widget _buildCurrentStreakCard(
     BuildContext context,
@@ -118,382 +179,143 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       margin: EdgeInsets.zero,
       color: theme.colorScheme.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(24),
-        side: BorderSide(color: color.withOpacity(0.1), width: 1),
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: color.withOpacity(0.15), width: 1),
       ),
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [color.withOpacity(0.08), color.withOpacity(0.02)],
           ),
         ),
-        child: SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.local_fire_department_rounded,
-                  size: 32,
-                  color: color,
-                ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                shape: BoxShape.circle,
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'current_streak'.tr(),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.8),
-                        fontWeight: FontWeight.w500,
+              child: Icon(
+                Icons.local_fire_department_rounded,
+                size: 32,
+                color: color,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'current_streak'.tr(),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.8),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (streakStartDate != null)
+                    ClarityUnmask(
+                      child: Text(
+                        easy.DateFormat(
+                          'd MMM yyyy',
+                          AppServicesDBprovider.currentLocale(),
+                        ).format(streakStartDate),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurface.withOpacity(0.4),
+                        ),
                       ),
                     ),
-                    if (streakStartDate != null)
-                      ClarityUnmask(
+                ],
+              ),
+            ),
+            ClarityUnmask(
+              child: RichText(
+                text: TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '$currentStreak',
+                      style: theme.textTheme.displayMedium?.copyWith(
+                        color: color,
+                        fontWeight: FontWeight.w300,
+                        letterSpacing: -1,
+                      ),
+                    ),
+                    WidgetSpan(
+                      child: Padding(
+                        padding: const EdgeInsets.only(left: 4, bottom: 8),
                         child: Text(
-                          easy.DateFormat(
-                            'd MMM yyyy',
-                            AppServicesDBprovider.currentLocale(),
-                          ).format(streakStartDate),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurface.withOpacity(0.4),
+                          'days'.tr().toLowerCase(),
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: color.withOpacity(0.6),
+                            fontWeight: FontWeight.w500,
                           ),
                         ),
                       ),
+                    ),
                   ],
                 ),
               ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSimpleStatCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String value,
+    required String unit,
+    required Color color,
+  }) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      color: color.withOpacity(0.08),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text(
+                    title,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.55),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   ClarityUnmask(
-                    child: RichText(
-                      text: TextSpan(
-                        children: [
-                          TextSpan(
-                            text: '$currentStreak',
-                            style: theme.textTheme.displayMedium?.copyWith(
-                              color: color,
-                              fontWeight: FontWeight.w300,
-                              letterSpacing: -1,
-                            ),
-                          ),
-                          WidgetSpan(
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                left: 4,
-                                bottom: 8,
-                              ),
-                              child: Text(
-                                'days'.tr().toLowerCase(),
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: color.withOpacity(0.6),
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                    child: Text(
+                      '$value $unit',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: color,
                       ),
                     ),
                   ),
                 ],
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ──────────────────────────────────────────────────────────
-  // Comparison Section
-  // ──────────────────────────────────────────────────────────
-
-  Widget _buildZikrCard(BuildContext context) {
-    final todayStats = HistoryDBProvider.getTodayStats();
-    final zikrsToday = todayStats['zikrsToday'] as int;
-    final zikrsThisWeek = HistoryDBProvider.getZikrsThisWeek();
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'zikrs_completed'.tr(),
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: _buildZikrStat(
-                    context,
-                    icon: Icons.today_rounded,
-                    label: 'today'.tr(),
-                    value: zikrsToday,
-                    color: colorScheme.primary,
-                  ),
-                ),
-                Container(
-                  width: 1,
-                  height: 48,
-                  color: colorScheme.outlineVariant,
-                ),
-                Expanded(
-                  child: _buildZikrStat(
-                    context,
-                    icon: Icons.calendar_month_rounded,
-                    label: 'this_week'.tr(),
-                    value: zikrsThisWeek,
-                    color: colorScheme.tertiary,
-                  ),
-                ),
-              ],
             ),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildZikrStat(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required int value,
-    required Color color,
-  }) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 28, color: color),
-        const SizedBox(height: 6),
-        Text(
-          value.toString(),
-          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: color,
-          ),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildComparisonCard(
-    BuildContext context, {
-    required String title,
-    required int thisWeek,
-    required int lastWeek,
-    required IconData icon,
-  }) {
-    final theme = Theme.of(context);
-    final diff = thisWeek - lastWeek;
-    final percentChange = lastWeek > 0
-        ? ((diff / lastWeek) * 100).round()
-        : (thisWeek > 0 ? 100 : 0);
-    final isImproved = diff > 0;
-    final isSame = diff == 0;
-    final changeColor = isSame
-        ? Colors.grey
-        : (isImproved ? Colors.green : Colors.red);
-    final changeIcon = isSame
-        ? Icons.remove
-        : (isImproved ? Icons.trending_up : Icons.trending_down);
-
-    return Card(
-      elevation: 1,
-      color: theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 16, color: theme.colorScheme.primary),
-                const SizedBox(width: 4),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            ClarityUnmask(
-              child: Text(
-                '$thisWeek',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface,
-                ),
-              ),
-            ),
-            Text(
-              'this_week'.tr(),
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.5),
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Icon(changeIcon, size: 16, color: changeColor),
-                const SizedBox(width: 4),
-                Text(
-                  isSame
-                      ? 'stats_same'.tr()
-                      : '${isImproved ? '+' : ''}$percentChange%',
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: changeColor,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ──────────────────────────────────────────────────────────
-  // Statistics Grid
-  // ──────────────────────────────────────────────────────────
-
-  Widget _buildStatisticsGrid(
-    BuildContext context,
-    Map<String, dynamic> stats,
-  ) {
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 1,
-      children: [
-        _buildStatCard(
-          context,
-          icon: Icons.emoji_events,
-          title: 'longest_streak'.tr(),
-          value: '${stats['longestStreak']}',
-          color: Colors.amber,
-        ),
-        _buildStatCard(
-          context,
-          icon: Icons.calendar_today,
-          title: 'total_active_days'.tr(),
-          value: '${stats['totalActiveDays']}',
-          color: Colors.green,
-        ),
-        // _buildStatCard(
-        //   context,
-        //   icon: Icons.broken_image,
-        //   title: 'streak_breaks'.tr(),
-        //   value: '${stats['streakBreaks']}',
-        //   color: Colors.red,
-        // ),
-        // _buildStatCard(
-        //   context,
-        //   icon: Icons.analytics,
-        //   title: 'average_streak'.tr(),
-        //   value: (stats['averageStreak'] as double).toStringAsFixed(1),
-        //   color: Colors.blue,
-        // ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(
-    BuildContext context, {
-    required IconData icon,
-    required String title,
-    required String value,
-    required Color color,
-  }) {
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 1,
-      color: theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [color.withOpacity(0.1), color.withOpacity(0.03)],
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 8),
-            ClarityUnmask(
-              child: Text(
-                value,
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              title,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.8),
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ──────────────────────────────────────────────────────────
-  // Streak Saves Card
-  // ──────────────────────────────────────────────────────────
 
   Widget _buildStreakSavesCard(
     BuildContext context,
@@ -503,176 +325,56 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final maxSaves = stats['maxSaves'] as int;
     final theme = Theme.of(context);
     return Card(
-      elevation: 1,
-      color: theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
           children: [
-            Row(
-              children: [
-                const Icon(Icons.shield, color: Colors.blue),
-                const SizedBox(width: 8),
-                Text(
-                  'streak_saves'.tr(),
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
+            const Icon(Icons.shield_rounded, color: Colors.blue, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'streak_saves'.tr(),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'streak_saves_desc'.tr(),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurface.withOpacity(0.7),
+                  Text(
+                    'streak_saves_desc'.tr(),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.55),
+                    ),
+                    maxLines: 2,
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(width: 12),
             Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(maxSaves, (index) {
-                final isAvailable = index < availableSaves;
-                return Icon(
-                  isAvailable ? Icons.shield : Icons.shield_outlined,
-                  color: isAvailable
-                      ? Colors.blue
-                      : theme.colorScheme.onSurface.withOpacity(0.3),
-                  size: 40,
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(maxSaves, (i) {
+                final active = i < availableSaves;
+                return Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: Icon(
+                    active ? Icons.shield_rounded : Icons.shield_outlined,
+                    color: active
+                        ? Colors.blue
+                        : theme.colorScheme.onSurface.withOpacity(0.25),
+                    size: 28,
+                  ),
                 );
               }),
             ),
-            const SizedBox(height: 8),
-            Center(
-              child: Text(
-                '$availableSaves / $maxSaves ${'available_this_month'.tr()}',
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
-                ),
-              ),
-            ),
           ],
         ),
       ),
     );
   }
-
-  // ──────────────────────────────────────────────────────────
-  // Achievements
-  // ──────────────────────────────────────────────────────────
-
-  Widget _buildAchievementsSection(
-    BuildContext context,
-    Map<String, dynamic> stats,
-  ) {
-    final achievedMilestones = stats['achievedMilestones'] as List<int>;
-    final theme = Theme.of(context);
-    return Card(
-      elevation: 1,
-      color: theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.military_tech, color: theme.colorScheme.primary),
-                const SizedBox(width: 8),
-                Text(
-                  'achievements'.tr(),
-                  style: theme.textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: theme.colorScheme.onSurface,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: StreakService.milestones.map((milestone) {
-                final isAchieved = achievedMilestones.contains(milestone);
-                final color = StreakService.getStreakColor(milestone);
-                final milestoneName =
-                    StreakService.milestoneNames[milestone] ?? 'milestone';
-                return _buildAchievementBadge(
-                  context,
-                  milestone: milestone,
-                  name: milestoneName.tr(),
-                  isAchieved: isAchieved,
-                  color: color,
-                );
-              }).toList(),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAchievementBadge(
-    BuildContext context, {
-    required int milestone,
-    required String name,
-    required bool isAchieved,
-    required Color color,
-  }) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    return Opacity(
-      opacity: isAchieved ? 1.0 : 0.4,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: isAchieved
-              ? color.withOpacity(isDark ? 0.15 : 0.2)
-              : theme.colorScheme.surface.withOpacity(0.5),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isAchieved
-                ? color
-                : theme.colorScheme.onSurface.withOpacity(0.3),
-            width: 2,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              isAchieved ? Icons.check_circle : Icons.lock,
-              size: 16,
-              color: isAchieved
-                  ? color
-                  : theme.colorScheme.onSurface.withOpacity(0.5),
-            ),
-            const SizedBox(width: 4),
-            ClarityUnmask(
-              child: Text(
-                '$milestone ${'days'.tr()}',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: isAchieved
-                      ? color
-                      : theme.colorScheme.onSurface.withOpacity(0.5),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ──────────────────────────────────────────────────────────
-  // Next Milestone
-  // ──────────────────────────────────────────────────────────
 
   Widget _buildNextMilestoneCard(
     BuildContext context,
@@ -682,56 +384,66 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     final nextMilestone = stats['nextMilestone'] as int;
     final daysToGo = stats['daysToNextMilestone'] as int;
     final currentStreak = stats['currentStreak'] as int;
-    final progress = currentStreak / nextMilestone;
+    final progress = (currentStreak / nextMilestone).clamp(0.0, 1.0);
     final theme = Theme.of(context);
     return Card(
-      elevation: 1,
-      color: theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'next_milestone'.tr(),
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurface,
+            Row(
+              children: [
+                Icon(Icons.flag_rounded, color: color, size: 18),
+                const SizedBox(width: 6),
+                Text(
+                  'next_milestone'.tr(),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Spacer(),
+                ClarityUnmask(
+                  child: Text(
+                    '$daysToGo ${'days_to_go'.tr()}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.55),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: LinearProgressIndicator(
+                value: progress,
+                minHeight: 8,
+                backgroundColor: color.withOpacity(0.15),
+                valueColor: AlwaysStoppedAnimation<Color>(color),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 6),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 ClarityUnmask(
                   child: Text(
-                    '$nextMilestone ${'days'.tr()}',
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      color: color,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    '$currentStreak ${'days'.tr().toLowerCase()}',
+                    style: theme.textTheme.labelSmall?.copyWith(color: color),
                   ),
                 ),
                 ClarityUnmask(
                   child: Text(
-                    '$daysToGo ${'days_to_go'.tr()}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    '$nextMilestone ${'days'.tr().toLowerCase()}',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.45),
                     ),
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 12,
-                backgroundColor: color.withOpacity(0.2),
-                valueColor: AlwaysStoppedAnimation<Color>(color),
-              ),
             ),
           ],
         ),
@@ -739,63 +451,411 @@ class _StatisticsScreenState extends State<StatisticsScreen>
     );
   }
 
-  // ──────────────────────────────────────────────────────────
-  // Activity Heatmap
-  // ──────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────
+  // SECTION 2 — Azkar counts (numeric only)
+  // ─────────────────────────────────────────
 
-  Widget _buildActivityHeatmap(
+  Widget _buildAzkarCountsSection(BuildContext context) {
+    final todayStats = HistoryDBProvider.getTodayStats();
+    final zikrsToday = todayStats['zikrsToday'] as int;
+    final zikrsThisWeek = HistoryDBProvider.getZikrsThisWeek();
+    final zikrsThisMonth = HistoryDBProvider.getZikrsThisMonth();
+    final zikrsLastMonth = HistoryDBProvider.getZikrsLastMonth();
+    final zikrs3Months = HistoryDBProvider.getZikrsLast3Months();
+    final zikrs6Months = HistoryDBProvider.getZikrsLast6Months();
+    final zikrsAllTime = HistoryDBProvider.getZikrsAllTime();
+
+    final monthDiff = zikrsThisMonth - zikrsLastMonth;
+    final monthPercent = zikrsLastMonth > 0
+        ? ((monthDiff / zikrsLastMonth) * 100).round()
+        : (zikrsThisMonth > 0 ? 100 : 0);
+    final isImproved = monthDiff > 0;
+    final isSame = monthDiff == 0;
+
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+
+    return Column(
+      children: [
+        // Row 1: today + this week
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildCountTile(
+                  context,
+                  label: 'today'.tr(),
+                  value: zikrsToday,
+                  icon: Icons.today_rounded,
+                  color: cs.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildCountTile(
+                  context,
+                  label: 'this_week'.tr(),
+                  value: zikrsThisWeek,
+                  icon: Icons.view_week_rounded,
+                  color: cs.tertiary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Row 2: this month ↔ last month with delta
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'this_month'.tr(),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: cs.onSurface.withOpacity(0.55),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      ClarityUnmask(
+                        child: Text(
+                          '$zikrsThisMonth',
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: cs.primary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSame
+                        ? cs.onSurface.withOpacity(0.07)
+                        : (isImproved
+                              ? Colors.green.withOpacity(0.12)
+                              : Colors.red.withOpacity(0.12)),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isSame
+                            ? Icons.remove_rounded
+                            : (isImproved
+                                  ? Icons.trending_up_rounded
+                                  : Icons.trending_down_rounded),
+                        size: 14,
+                        color: isSame
+                            ? cs.onSurface.withOpacity(0.4)
+                            : (isImproved ? Colors.green : Colors.red),
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        isSame
+                            ? 'stats_same'.tr()
+                            : '${isImproved ? '+' : ''}$monthPercent%',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: isSame
+                              ? cs.onSurface.withOpacity(0.4)
+                              : (isImproved ? Colors.green : Colors.red),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        'last_month'.tr(),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: cs.onSurface.withOpacity(0.55),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      ClarityUnmask(
+                        child: Text(
+                          '$zikrsLastMonth',
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: cs.onSurface.withOpacity(0.6),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        // Row 3: 3m / 6m / all-time
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: _buildCountTile(
+                  context,
+                  label: 'stats_3_months'.tr(),
+                  value: zikrs3Months,
+                  icon: Icons.date_range_rounded,
+                  color: Colors.purple,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildCountTile(
+                  context,
+                  label: 'stats_6_months'.tr(),
+                  value: zikrs6Months,
+                  icon: Icons.date_range_rounded,
+                  color: Colors.indigo,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildCountTile(
+                  context,
+                  label: 'stats_all_time'.tr(),
+                  value: zikrsAllTime,
+                  icon: Icons.all_inclusive_rounded,
+                  color: Colors.amber.shade700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCountTile(
+    BuildContext context, {
+    required String label,
+    required int value,
+    required IconData icon,
+    required Color color,
+  }) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      color: color.withOpacity(0.08),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 6),
+            ClarityUnmask(
+              child: Text(
+                '$value',
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.55),
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────
+  // SECTION 3 — Trends
+  // ─────────────────────────────────────────
+
+  Widget _buildInsightRow(BuildContext context) {
+    final weeklyAvg = HistoryDBProvider.getWeeklyAverageZikrs();
+    final completionRate30 = HistoryDBProvider.getCompletionRate(30);
+    final bestDayIndex = HistoryDBProvider.getBestDayOfWeek();
+    final locale = AppServicesDBprovider.currentLocale();
+    final now = DateTime.now();
+    final bestDayName = bestDayIndex >= 0
+        ? easy.DateFormat('EEE', locale).format(
+            DateTime(
+              now.year,
+              now.month,
+              now.day,
+            ).subtract(Duration(days: now.weekday - 1 - bestDayIndex)),
+          )
+        : '–';
+
+    // Use IntrinsicHeight so all three pills have equal height
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: _buildInsightPill(
+              context,
+              icon: Icons.show_chart_rounded,
+              label: 'stats_weekly_avg'.tr(),
+              value: weeklyAvg.toStringAsFixed(1),
+              color: Colors.teal,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _buildInsightPill(
+              context,
+              icon: Icons.percent_rounded,
+              label: 'stats_completion_30d'.tr(),
+              value: '$completionRate30%',
+              color: Colors.orange,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _buildInsightPill(
+              context,
+              icon: Icons.star_rounded,
+              label: 'stats_best_day'.tr(),
+              value: bestDayName,
+              color: Colors.pink,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInsightPill(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 0,
+      color: color.withOpacity(0.08),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 5),
+            ClarityUnmask(
+              child: Text(
+                value,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onSurface.withOpacity(0.5),
+                fontSize: 10,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 2,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSmartActivityHeatmap(
     BuildContext context,
     Map<String, dynamic> stats,
   ) {
-    final last30Days = stats['last30Days'] as List<DateTime>;
+    final totalActiveDays = stats['totalActiveDays'] as int;
     final theme = Theme.of(context);
+    final use90Day = totalActiveDays > 30;
+    final title = use90Day
+        ? 'activity_last_90_days'.tr()
+        : 'activity_last_30_days'.tr();
+
     return Card(
-      elevation: 1,
-      color: theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'activity_last_30_days'.tr(),
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: theme.colorScheme.onSurface,
+              title,
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 16),
-            _buildHeatmapGrid(context, last30Days),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ClarityUnmask(
+            const SizedBox(height: 14),
+            if (use90Day)
+              _build90DayHeatmap(context)
+            else
+              _build30DayHeatmap(
+                context,
+                stats['last30Days'] as List<DateTime>,
+              ),
+            if (!use90Day) ...[
+              const SizedBox(height: 10),
+              Center(
+                child: ClarityUnmask(
                   child: Text(
-                    '${last30Days.length} / 30 ${'days'.tr()}',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
+                    '${(stats['last30Days'] as List<DateTime>).length} / 30 ${'days'.tr().toLowerCase()}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withOpacity(0.55),
                     ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeatmapGrid(BuildContext context, List<DateTime> activeDays) {
+  Widget _build30DayHeatmap(BuildContext context, List<DateTime> activeDays) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    // final rtl = _isRtl();
-
-    // In RTL: reverse index so today is on the right (index 0 visually = today)
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -806,10 +866,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
       ),
       itemCount: 30,
       itemBuilder: (context, index) {
-        // LTR: index 0 = 29 days ago, index 29 = today
-        // RTL: index 0 = today, index 29 = 29 days ago
-        final adjustedIndex = index;
-        final date = today.subtract(Duration(days: 29 - adjustedIndex));
+        final date = today.subtract(Duration(days: 29 - index));
         final isActive = activeDays.any(
           (d) =>
               d.year == date.year && d.month == date.month && d.day == date.day,
@@ -817,58 +874,302 @@ class _StatisticsScreenState extends State<StatisticsScreen>
         return Container(
           decoration: BoxDecoration(
             color: isActive
-                ? theme.colorScheme.primary.withOpacity(isDark ? 0.6 : 0.7)
-                : theme.colorScheme.onSurface.withOpacity(0.1),
+                ? theme.colorScheme.primary.withOpacity(isDark ? 0.65 : 0.75)
+                : theme.colorScheme.onSurface.withOpacity(0.08),
             borderRadius: BorderRadius.circular(4),
           ),
         );
       },
     );
   }
+
+  Widget _build90DayHeatmap(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final rawCounts = HistoryDBProvider.getDailyZikrCountsRange(90);
+    final maxCount = rawCounts.values.fold(0, (m, v) => v > m ? v : m);
+
+    Color cellColor(int count) {
+      if (count == 0) {
+        return isDark
+            ? Colors.white.withOpacity(0.07)
+            : Colors.black.withOpacity(0.07);
+      }
+      final t = maxCount > 0 ? count / maxCount : 0.0;
+      final p = theme.colorScheme.primary;
+      if (t <= 0.25) return p.withOpacity(0.25);
+      if (t <= 0.50) return p.withOpacity(0.45);
+      if (t <= 0.75) return p.withOpacity(0.65);
+      return p.withOpacity(0.90);
+    }
+
+    final startDate = today.subtract(const Duration(days: 89));
+    final paddedStart = startDate.subtract(
+      Duration(days: startDate.weekday - 1),
+    );
+    final weeks = <List<Map<String, dynamic?>>>[];
+    var cursor = paddedStart;
+    while (!cursor.isAfter(today)) {
+      final week = <Map<String, dynamic?>>[];
+      for (int d = 0; d < 7; d++) {
+        final cellDate = cursor.add(Duration(days: d));
+        if (cellDate.isBefore(startDate) || cellDate.isAfter(today)) {
+          week.add({'date': null, 'count': 0});
+        } else {
+          final daysAgo = today.difference(cellDate).inDays;
+          final idx = 89 - daysAgo;
+          week.add({
+            'date': cellDate,
+            'count': idx >= 0 && idx < 90 ? (rawCounts[idx] ?? 0) : 0,
+          });
+        }
+      }
+      weeks.add(week);
+      cursor = cursor.add(const Duration(days: 7));
+    }
+
+    final locale = AppServicesDBprovider.currentLocale();
+    final dayLabels = List.generate(7, (i) {
+      final ref = today.subtract(Duration(days: today.weekday - 1 - i));
+      return easy.DateFormat('EEEEE', locale).format(ref);
+    });
+    final monthLabels = <int, String>{};
+    for (int w = 0; w < weeks.length; w++) {
+      final firstReal = weeks[w].firstWhere(
+        (c) => c['date'] != null,
+        orElse: () => {'date': null, 'count': 0},
+      );
+      if (firstReal['date'] == null) continue;
+      final d = firstReal['date'] as DateTime;
+      if (d.day <= 7) {
+        monthLabels[w] = easy.DateFormat('MMM', locale).format(d);
+      }
+    }
+
+    const cellSize = 13.0;
+    const cellGap = 3.0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(width: 22),
+            ...List.generate(
+              weeks.length,
+              (w) => SizedBox(
+                width: cellSize + cellGap,
+                child: monthLabels.containsKey(w)
+                    ? Text(
+                        monthLabels[w]!,
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          fontSize: 9,
+                          color: theme.colorScheme.onSurface.withOpacity(0.45),
+                        ),
+                      )
+                    : const SizedBox.shrink(),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        ...List.generate(7, (dayIndex) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: cellGap),
+            child: Row(
+              children: [
+                SizedBox(
+                  width: 22,
+                  child: Text(
+                    dayIndex % 2 == 1 ? dayLabels[dayIndex] : '',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontSize: 9,
+                      color: theme.colorScheme.onSurface.withOpacity(0.4),
+                    ),
+                    textAlign: TextAlign.right,
+                  ),
+                ),
+                const SizedBox(width: 3),
+                ...List.generate(weeks.length, (w) {
+                  final cell = weeks[w][dayIndex];
+                  final date = cell['date'] as DateTime?;
+                  final count = cell['count'] as int;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: cellGap),
+                    child: Tooltip(
+                      message: date != null
+                          ? '${easy.DateFormat('d MMM', locale).format(date)}: $count ${'zikrs'.tr()}'
+                          : '',
+                      child: Container(
+                        width: cellSize,
+                        height: cellSize,
+                        decoration: BoxDecoration(
+                          color: date != null
+                              ? cellColor(count)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          );
+        }),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            Text(
+              'stats_legend_none'.tr(),
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontSize: 9,
+                color: theme.colorScheme.onSurface.withOpacity(0.45),
+              ),
+            ),
+            const SizedBox(width: 4),
+            ...[0.07, 0.25, 0.45, 0.65, 0.90].map(
+              (o) => Padding(
+                padding: const EdgeInsets.only(right: 3),
+                child: Container(
+                  width: cellSize,
+                  height: cellSize,
+                  decoration: BoxDecoration(
+                    color: o == 0.07
+                        ? (isDark
+                              ? Colors.white.withOpacity(0.07)
+                              : Colors.black.withOpacity(0.07))
+                        : theme.colorScheme.primary.withOpacity(o),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+            ),
+            Text(
+              'stats_legend_high'.tr(),
+              style: theme.textTheme.labelSmall?.copyWith(
+                fontSize: 9,
+                color: theme.colorScheme.onSurface.withOpacity(0.45),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────
+  // SECTION 4 — Achievements
+  // ─────────────────────────────────────────
+
+  Widget _buildAchievementsSection(
+    BuildContext context,
+    Map<String, dynamic> stats,
+  ) {
+    final achievedMilestones = stats['achievedMilestones'] as List<int>;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: StreakService.milestones.map((milestone) {
+            final isAchieved = achievedMilestones.contains(milestone);
+            final color = StreakService.getStreakColor(milestone);
+            return Opacity(
+              opacity: isAchieved ? 1.0 : 0.35,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: isAchieved
+                      ? color.withOpacity(isDark ? 0.15 : 0.12)
+                      : theme.colorScheme.onSurface.withOpacity(0.05),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isAchieved
+                        ? color
+                        : theme.colorScheme.onSurface.withOpacity(0.2),
+                    width: 1.5,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isAchieved
+                          ? Icons.check_circle_rounded
+                          : Icons.lock_rounded,
+                      size: 14,
+                      color: isAchieved
+                          ? color
+                          : theme.colorScheme.onSurface.withOpacity(0.4),
+                    ),
+                    const SizedBox(width: 5),
+                    ClarityUnmask(
+                      child: Text(
+                        '$milestone ${'days'.tr().toLowerCase()}',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: isAchieved
+                              ? color
+                              : theme.colorScheme.onSurface.withOpacity(0.4),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
 }
 
-// ──────────────────────────────────────────────────────────
-// Shared chart helpers
-// ──────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+// Shared helpers (top-level, used by _ZikrChartCard)
+// ══════════════════════════════════════════════════════════════════
 
-/// Builds axis-label text for bottom titles, locale-aware.
-/// [index] is the fl_chart x-value (always 0..days-1, LTR internal).
-/// [days] total days in range.
-/// [rtl] whether to mirror the date mapping.
 String _chartDateLabel(int index, int days, bool rtl, DateTime today) {
-  // In RTL mode the chart is still rendered LTR internally but we
-  // mirror the date so index 0 maps to "today" and index days-1 to oldest.
   final dateIndex = rtl ? (days - 1 - index) : index;
   final date = today.subtract(Duration(days: days - 1 - dateIndex));
   final locale = AppServicesDBprovider.currentLocale();
-  if (days <= 7) {
-    return easy.DateFormat('EEE', locale).format(date);
+  if (days <= 7) return easy.DateFormat('EEE', locale).format(date);
+  if (days <= 30) return easy.DateFormat('d/M', locale).format(date);
+  if (date.day == 1 || index == 0) {
+    return easy.DateFormat('MMM', locale).format(date);
   }
-  return easy.DateFormat('d/M', locale).format(date);
+  return '';
 }
 
-/// Mirrors the data map for RTL so today is on the right side of the chart.
 Map<int, int> _maybeReverseData(Map<int, int> data, int days, bool rtl) {
   if (!rtl) return data;
-  final reversed = <int, int>{};
-  for (int i = 0; i < days; i++) {
-    reversed[i] = data[days - 1 - i] ?? 0;
-  }
-  return reversed;
+  return {for (int i = 0; i < days; i++) i: data[days - 1 - i] ?? 0};
 }
 
-// ──────────────────────────────────────────────────────────
-// Zikr Line Chart Card
-// ──────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+// Zikr Chart Card — single card, 7/14/30 = line chart, 90 = bar chart
+// ══════════════════════════════════════════════════════════════════
 
-class _ZikrLineChartCard extends StatefulWidget {
-  const _ZikrLineChartCard();
-
+class _ZikrChartCard extends StatefulWidget {
+  const _ZikrChartCard();
   @override
-  State<_ZikrLineChartCard> createState() => _ZikrLineChartCardState();
+  State<_ZikrChartCard> createState() => _ZikrChartCardState();
 }
 
-class _ZikrLineChartCardState extends State<_ZikrLineChartCard> {
+class _ZikrChartCardState extends State<_ZikrChartCard> {
   int _selectedDays = 7;
 
   @override
@@ -877,229 +1178,17 @@ class _ZikrLineChartCardState extends State<_ZikrLineChartCard> {
     final rtl = _isRtl();
     final rawData = HistoryDBProvider.getDailyZikrCountsRange(_selectedDays);
     final data = _maybeReverseData(rawData, _selectedDays, rtl);
-
-    return Card(
-      elevation: 1,
-      color: theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.auto_graph_rounded,
-                  color: theme.colorScheme.primary,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    _selectedDays == 30
-                        ? 'zikr_chart_30_days'.tr()
-                        : _selectedDays == 14
-                        ? 'zikr_chart_14_days'.tr()
-                        : 'zikr_chart_7_days'.tr(),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
-                    ),
-                  ),
-                ),
-                _RangeSelector(
-                  selected: _selectedDays,
-                  onChanged: (v) => setState(() => _selectedDays = v),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            // ✅ Force LTR on fl_chart — RTL is handled via data mirroring above
-            Directionality(
-              textDirection: TextDirection.rtl,
-              child: _buildZikrLineChart(context, data, _selectedDays, rtl),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildZikrLineChart(
-    BuildContext context,
-    Map<int, int> data,
-    int days,
-    bool rtl,
-  ) {
-    final theme = Theme.of(context);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final primaryColor = theme.colorScheme.primary;
-
-    final spots = List.generate(days, (i) {
-      return FlSpot(i.toDouble(), (data[i] ?? 0).toDouble());
-    });
-
-    final maxY = spots.map((s) => s.y).reduce((a, b) => a > b ? a : b);
-
-    return SizedBox(
-      height: 200,
-      child: LineChart(
-        LineChartData(
-          minX: 0,
-          maxX: (days - 1).toDouble(),
-          minY: 0,
-          maxY: maxY < 1 ? 5 : maxY + 2,
-          clipData: const FlClipData.all(),
-          lineTouchData: LineTouchData(
-            enabled: true,
-            touchTooltipData: LineTouchTooltipData(
-              getTooltipItems: (touchedSpots) {
-                return touchedSpots.map((spot) {
-                  // Reverse date mapping for tooltip too
-                  final dateIndex = rtl
-                      ? spot.x.toInt()
-                      : (days - 1 - spot.x.toInt());
-                  final date = today.subtract(Duration(days: dateIndex));
-                  final label = easy.DateFormat(
-                    'd MMM',
-                    AppServicesDBprovider.currentLocale(),
-                  ).format(date);
-                  return LineTooltipItem(
-                    '$label\n${spot.y.toInt()} ${'zikrs'.tr()}',
-                    TextStyle(
-                      color: theme.colorScheme.onPrimary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  );
-                }).toList();
-              },
-            ),
-          ),
-          titlesData: FlTitlesData(
-            show: true,
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 30,
-                interval: days <= 7 ? 1 : (days <= 30 ? 5 : 10),
-                getTitlesWidget: (value, meta) {
-                  final label = _chartDateLabel(
-                    value.toInt(),
-                    days,
-                    rtl,
-                    today,
-                  );
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      label,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 9,
-                        color: theme.colorScheme.onSurface.withOpacity(0.5),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 28,
-                getTitlesWidget: (value, meta) {
-                  if (value == 0) return const SizedBox.shrink();
-                  return Text(
-                    '${value.toInt()}',
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      fontSize: 9,
-                      color: theme.colorScheme.onSurface.withOpacity(0.4),
-                    ),
-                  );
-                },
-              ),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-          ),
-          borderData: FlBorderData(show: false),
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: maxY < 1 ? 1 : (maxY / 4).ceilToDouble(),
-            getDrawingHorizontalLine: (value) => FlLine(
-              color: theme.colorScheme.onSurface.withOpacity(0.07),
-              strokeWidth: 1,
-            ),
-          ),
-          lineBarsData: [
-            LineChartBarData(
-              spots: spots,
-              isCurved: true,
-              curveSmoothness: 0.35,
-              color: primaryColor,
-              barWidth: 2.5,
-              isStrokeCapRound: true,
-              dotData: FlDotData(
-                show: days <= 14,
-                getDotPainter: (spot, percent, bar, index) =>
-                    FlDotCirclePainter(
-                      radius: 4,
-                      color: primaryColor,
-                      strokeWidth: 2,
-                      strokeColor: theme.colorScheme.surface,
-                    ),
-              ),
-              belowBarData: BarAreaData(
-                show: true,
-                gradient: LinearGradient(
-                  colors: [
-                    primaryColor.withOpacity(0.25),
-                    primaryColor.withOpacity(0.0),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+    final maxY = data.values.fold(
+      0.0,
+      (a, b) => b.toDouble() > a ? b.toDouble() : a,
     );
-  }
-}
-
-// ──────────────────────────────────────────────────────────
-// App Opens Line Chart Card
-// ──────────────────────────────────────────────────────────
-
-class _AppOpensLineChartCard extends StatefulWidget {
-  const _AppOpensLineChartCard();
-
-  @override
-  State<_AppOpensLineChartCard> createState() => _AppOpensLineChartCardState();
-}
-
-class _AppOpensLineChartCardState extends State<_AppOpensLineChartCard> {
-  int _selectedDays = 7;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final rtl = _isRtl();
-    final rawData = HistoryDBProvider.getDailyAppOpensRange(_selectedDays);
-    final data = _maybeReverseData(rawData, _selectedDays, rtl);
+    final primary = theme.colorScheme.primary;
 
     return Card(
-      elevation: 1,
-      color: theme.colorScheme.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -1107,37 +1196,55 @@ class _AppOpensLineChartCardState extends State<_AppOpensLineChartCard> {
           children: [
             Row(
               children: [
-                const Icon(
-                  Icons.phone_android_rounded,
-                  color: Colors.green,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
+                Icon(Icons.auto_graph_rounded, color: primary, size: 18),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Text(
-                    _selectedDays == 30
-                        ? 'zikr_chart_30_days'.tr()
-                        : _selectedDays == 14
-                        ? 'zikr_chart_14_days'.tr()
-                        : 'zikr_chart_7_days'.tr(),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.onSurface,
+                    'stats_zikr_over_time'.tr(),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: 8),
                 _RangeSelector(
                   selected: _selectedDays,
+                  options: const [7, 14, 30, 90],
+                  labelKeys: const [
+                    'zikr_chart_7_days_label',
+                    'zikr_chart_14_days_label',
+                    'zikr_chart_30_days_label',
+                    'zikr_chart_90_days_label',
+                  ],
                   onChanged: (v) => setState(() => _selectedDays = v),
-                  accentColor: Colors.green,
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            // ✅ Force LTR on fl_chart — RTL handled via data mirroring
+            const SizedBox(height: 16),
+            // Force LTR for fl_chart — RTL handled via data mirroring
             Directionality(
               textDirection: TextDirection.ltr,
-              child: _buildAppOpensLineChart(context, data, _selectedDays, rtl),
+              child: SizedBox(
+                height: 200,
+                child: _selectedDays == 90
+                    ? _buildBarChart(
+                        context,
+                        data,
+                        _selectedDays,
+                        rtl,
+                        today,
+                        maxY: maxY,
+                      )
+                    : _buildLineChart(
+                        context,
+                        data,
+                        _selectedDays,
+                        rtl,
+                        today,
+                        maxY: maxY,
+                      ),
+              ),
             ),
           ],
         ),
@@ -1145,177 +1252,210 @@ class _AppOpensLineChartCardState extends State<_AppOpensLineChartCard> {
     );
   }
 
-  Widget _buildAppOpensLineChart(
+  Widget _buildLineChart(
     BuildContext context,
     Map<int, int> data,
     int days,
     bool rtl,
-  ) {
+    DateTime today, {
+    required double maxY,
+  }) {
     final theme = Theme.of(context);
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    const lineColor = Colors.green;
+    final primary = theme.colorScheme.primary;
+    final locale = AppServicesDBprovider.currentLocale();
+    final spots = List.generate(
+      days,
+      (i) => FlSpot(i.toDouble(), (data[i] ?? 0).toDouble()),
+    );
 
-    final spots = List.generate(days, (i) {
-      final val = (data[i] ?? 0).toDouble().clamp(0.0, 1.0);
-      return FlSpot(i.toDouble(), val);
-    });
-
-    return SizedBox(
-      height: 160,
-      child: LineChart(
-        LineChartData(
-          minX: 0,
-          maxX: (days - 1).toDouble(),
-          minY: -0.1,
-          maxY: 1.4,
-          clipData: const FlClipData.all(),
-          lineTouchData: LineTouchData(
-            enabled: true,
-            touchTooltipData: LineTouchTooltipData(
-              getTooltipItems: (touchedSpots) {
-                return touchedSpots.map((spot) {
-                  final dateIndex = rtl
-                      ? spot.x.toInt()
-                      : (days - 1 - spot.x.toInt());
-                  final date = today.subtract(Duration(days: dateIndex));
-                  final label = easy.DateFormat(
-                    'd MMM',
-                    AppServicesDBprovider.currentLocale(),
-                  ).format(date);
-                  final opened = spot.y >= 1;
-                  return LineTooltipItem(
-                    '$label\n${opened ? 'stats_opened'.tr() : 'stats_not_opened'.tr()}',
-                    TextStyle(
-                      color: theme.colorScheme.onPrimary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 12,
-                    ),
-                  );
-                }).toList();
-              },
-            ),
-          ),
-          titlesData: FlTitlesData(
-            show: true,
-            bottomTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 30,
-                interval: days <= 7 ? 1 : (days <= 30 ? 5 : 10),
-                getTitlesWidget: (value, meta) {
-                  final label = _chartDateLabel(
-                    value.toInt(),
-                    days,
-                    rtl,
-                    today,
-                  );
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      label,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 9,
-                        color: theme.colorScheme.onSurface.withOpacity(0.5),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            leftTitles: AxisTitles(
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 40,
-                getTitlesWidget: (value, meta) {
-                  if (value == 1.0) {
-                    return Text(
-                      'stats_opened'.tr(),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 8,
-                        color: Colors.green.withOpacity(0.8),
-                      ),
-                    );
-                  }
-                  if (value == 0.0) {
-                    return Text(
-                      'stats_not_opened'.tr(),
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        fontSize: 8,
-                        color: theme.colorScheme.onSurface.withOpacity(0.4),
-                      ),
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-          ),
-          borderData: FlBorderData(show: false),
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            horizontalInterval: 1,
-            getDrawingHorizontalLine: (value) => FlLine(
-              color: theme.colorScheme.onSurface.withOpacity(0.07),
-              strokeWidth: 1,
-            ),
-          ),
-          lineBarsData: [
-            LineChartBarData(
-              spots: spots,
-              isCurved: false,
-              color: lineColor,
-              barWidth: 2.5,
-              isStrokeCapRound: true,
-              dotData: FlDotData(
-                show: true,
-                getDotPainter: (spot, percent, bar, index) {
-                  final isOpened = spot.y >= 1;
-                  return FlDotCirclePainter(
-                    radius: 5,
-                    color: isOpened ? Colors.green : Colors.grey.shade400,
-                    strokeWidth: 2,
-                    strokeColor: theme.colorScheme.surface,
-                  );
-                },
-              ),
-              belowBarData: BarAreaData(
-                show: true,
-                gradient: LinearGradient(
-                  colors: [
-                    Colors.green.withOpacity(0.2),
-                    Colors.green.withOpacity(0.0),
-                  ],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+    return LineChart(
+      LineChartData(
+        minX: 0,
+        maxX: (days - 1).toDouble(),
+        minY: 0,
+        maxY: maxY < 1 ? 5 : maxY + 2,
+        clipData: const FlClipData.all(),
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipItems: (spots) => spots.map((spot) {
+              final dIdx = rtl ? spot.x.toInt() : (days - 1 - spot.x.toInt());
+              final date = today.subtract(Duration(days: dIdx));
+              return LineTooltipItem(
+                '${easy.DateFormat('d MMM', locale).format(date)}\n${spot.y.toInt()} ${'zikrs'.tr()}',
+                TextStyle(
+                  color: theme.colorScheme.onPrimary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
                 ),
+              );
+            }).toList(),
+          ),
+        ),
+        titlesData: _titlesData(
+          context,
+          days,
+          rtl,
+          today,
+          interval: days <= 7 ? 1.0 : 5.0,
+        ),
+        borderData: FlBorderData(show: false),
+        gridData: _gridData(context, maxY),
+        lineBarsData: [
+          LineChartBarData(
+            spots: spots,
+            isCurved: true,
+            curveSmoothness: 0.35,
+            color: primary,
+            barWidth: 2.5,
+            isStrokeCapRound: true,
+            dotData: FlDotData(
+              show: days <= 14,
+              getDotPainter: (s, p, b, i) => FlDotCirclePainter(
+                radius: 4,
+                color: primary,
+                strokeWidth: 2,
+                strokeColor: theme.colorScheme.surface,
               ),
             ),
-          ],
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                colors: [primary.withOpacity(0.22), primary.withOpacity(0.0)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBarChart(
+    BuildContext context,
+    Map<int, int> data,
+    int days,
+    bool rtl,
+    DateTime today, {
+    required double maxY,
+  }) {
+    final theme = Theme.of(context);
+    final primary = theme.colorScheme.primary;
+    final locale = AppServicesDBprovider.currentLocale();
+
+    return BarChart(
+      BarChartData(
+        minY: 0,
+        maxY: maxY < 1 ? 5 : maxY + 1,
+        barGroups: List.generate(
+          days,
+          (i) => BarChartGroupData(
+            x: i,
+            barRods: [
+              BarChartRodData(
+                toY: (data[i] ?? 0).toDouble(),
+                color: primary.withOpacity(0.7),
+                width: 3,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ],
+          ),
         ),
+        titlesData: _titlesData(context, days, rtl, today, interval: 1),
+        borderData: FlBorderData(show: false),
+        gridData: _gridData(context, maxY),
+        barTouchData: BarTouchData(
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipItem: (group, _, rod, __) {
+              final dIdx = rtl ? group.x : (days - 1 - group.x);
+              final date = today.subtract(Duration(days: dIdx));
+              return BarTooltipItem(
+                '${easy.DateFormat('d MMM', locale).format(date)}\n${rod.toY.toInt()} ${'zikrs'.tr()}',
+                TextStyle(
+                  color: theme.colorScheme.onPrimary,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  FlTitlesData _titlesData(
+    BuildContext context,
+    int days,
+    bool rtl,
+    DateTime today, {
+    required double interval,
+  }) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodySmall?.copyWith(
+      fontSize: 9,
+      color: theme.colorScheme.onSurface.withOpacity(0.5),
+    );
+    return FlTitlesData(
+      bottomTitles: AxisTitles(
+        sideTitles: SideTitles(
+          showTitles: true,
+          reservedSize: 28,
+          interval: interval,
+          getTitlesWidget: (v, _) {
+            final label = _chartDateLabel(v.toInt(), days, rtl, today);
+            if (label.isEmpty) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(label, style: style),
+            );
+          },
+        ),
+      ),
+      leftTitles: AxisTitles(
+        sideTitles: SideTitles(
+          showTitles: true,
+          reservedSize: 28,
+          getTitlesWidget: (v, _) {
+            if (v == 0) return const SizedBox.shrink();
+            return Text('${v.toInt()}', style: style);
+          },
+        ),
+      ),
+      topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+      rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+    );
+  }
+
+  FlGridData _gridData(BuildContext context, double maxY) {
+    final theme = Theme.of(context);
+    return FlGridData(
+      show: true,
+      drawVerticalLine: false,
+      horizontalInterval: maxY < 1 ? 1 : (maxY / 4).ceilToDouble(),
+      getDrawingHorizontalLine: (_) => FlLine(
+        color: theme.colorScheme.onSurface.withOpacity(0.07),
+        strokeWidth: 1,
       ),
     );
   }
 }
 
-// ──────────────────────────────────────────────────────────
-// Reusable Range Selector Widget
-// ──────────────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+// Range Selector
+// ══════════════════════════════════════════════════════════════════
 
 class _RangeSelector extends StatelessWidget {
   final int selected;
+  final List<int> options;
+  final List<String> labelKeys;
   final ValueChanged<int> onChanged;
   final Color? accentColor;
 
   const _RangeSelector({
     required this.selected,
+    required this.options,
+    required this.labelKeys,
     required this.onChanged,
     this.accentColor,
   });
@@ -1324,13 +1464,6 @@ class _RangeSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final color = accentColor ?? theme.colorScheme.primary;
-    const options = [7, 14, 30];
-    final labels = [
-      'zikr_chart_7_days_label'.tr(),
-      'zikr_chart_14_days_label'.tr(),
-      'zikr_chart_30_days_label'.tr(),
-    ];
-
     return Container(
       padding: const EdgeInsets.all(2),
       decoration: BoxDecoration(
@@ -1345,13 +1478,13 @@ class _RangeSelector extends StatelessWidget {
             onTap: () => onChanged(options[i]),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: isSelected ? color : Colors.transparent,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
-                labels[i],
+                labelKeys[i].tr(),
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: isSelected
                       ? Colors.white

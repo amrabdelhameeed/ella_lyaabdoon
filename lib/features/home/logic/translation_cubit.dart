@@ -7,7 +7,7 @@ part 'translation_state.dart';
 class TranslationCubit extends Cubit<TranslationState> {
   TranslationCubit() : super(TranslationInitial());
 
-  Future<void> translate(String arabicText) async {
+  Future<String> translate(String arabicText) async {
     emit(TranslationLoading());
 
     try {
@@ -24,14 +24,17 @@ class TranslationCubit extends Cubit<TranslationState> {
 
         if (translatedText != null && translatedText.toString().isNotEmpty) {
           emit(TranslationLoaded(translatedText.toString()));
+          return translatedText.toString();
         } else {
           emit(TranslationError('Translation not available'));
         }
       } else {
         emit(TranslationError('Failed to translate: ${response.statusCode}'));
       }
+      return '';
     } catch (e) {
       emit(TranslationError('Error: ${e.toString()}'));
+      return '';
     }
   }
 

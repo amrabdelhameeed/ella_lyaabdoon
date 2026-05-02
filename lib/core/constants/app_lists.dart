@@ -10,15 +10,6 @@ class AppLists {
       title: AzanDayPeriod.fajr.name.toString().toLowerCase(),
       period: AzanDayPeriod.fajr,
       rewards: const [
-        // TimelineReward(
-        //   id: 'fajr_dhimat_allah',
-        //   title: 'في ذمة الله',
-        //   description:
-        //       'قال رسول الله ﷺ: «مَنْ صَلَّى الصُّبْحَ فَهُوَ فِي ذِمَّةِ اللَّهِ، فَلَا يَطْلُبَنَّكُمُ اللَّهُ مِنْ ذِمَّتِهِ بِشَيْءٍ، فَإِنَّهُ مَنْ يَطْلُبْهُ مِنْ ذِمَّتِهِ بِشَيْءٍ يُدْرِكْهُ، ثُمَّ يَكُبَّهُ عَلَى وَجْهِهِ فِي نَارِ جَهَنَّمَ».',
-        //   source: 'رواه مسلم (657).',
-        //   zikrLevel: ZikrLevel.hard,
-        //   isWithCounter: false,
-        // ),
         ///FYI
         TimelineReward(
           id: 'fajr_angels_witness',
@@ -28,6 +19,9 @@ class AppLists {
           source: 'رواه البخاري (742)، ومسلم (632).',
           zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
+          tafsir: """
+         دا مثال لتفسير الحديث
+""",
         ),
         TimelineReward(
           id: 'fajr_qiyam_layl',
@@ -37,6 +31,9 @@ class AppLists {
           source: 'رواه مسلم (656).',
           zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
+          tafsir: """
+            دا مثال تاني لتفسير الحديث
+""",
         ),
         TimelineReward(
           id: 'fajr_ishraq_hajj_umrah',
@@ -46,6 +43,9 @@ class AppLists {
           source: 'رواه الترمذي (586) – حديث حسن.',
           zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'duha_sufficiency',
@@ -54,6 +54,9 @@ class AppLists {
               'قال الله تعالى في الحديث القدسي: «يَا ابْنَ آدَمَ، لَا تَعْجِزْ عَنْ أَرْبَعِ رَكَعَاتٍ مِنْ أَوَّلِ النَّهَارِ، أَكْفِكَ آخِرَهُ». ذهب البعض إلى أن المراد بها صلاة الصبح وسنتها، ومن هؤلاء شيخ الإسلام ابن تيمية وتلميذه ابن القيم.',
           source: 'رواه أبو داود (1286)، والترمذي (475).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
 
@@ -66,6 +69,9 @@ class AppLists {
           source: 'رواه البخاري (445)، ومسلم (649).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'fajr_sunnah_merit',
@@ -74,6 +80,9 @@ class AppLists {
               'عن عائشة رضي الله عنها، عن النبي ﷺ قال: «رَكْعَتَا الْفَجْرِ خَيْرٌ مِنَ الدُّنْيَا وَمَا فِيهَا». وفي رواية لمسلم: «لَهُمَا أَحَبُّ إِلَيَّ مِنَ الدُّنْيَا جَمِيعًا».',
           source: 'رواه مسلم (725).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -86,6 +95,9 @@ class AppLists {
           source: 'رواه مسلم (651).',
           zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         ///FYI
@@ -97,6 +109,9 @@ class AppLists {
           source: 'رواه أبو داود (561) والترمذي (223).',
           zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'fajr_sunnah_lying',
@@ -106,6 +121,9 @@ class AppLists {
           source: 'رواه البخاري (1160).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         ///FYI
@@ -117,6 +135,9 @@ class AppLists {
           source: 'رواه البخاري (1142) ومسلم (776).',
           zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'fajr_dua_response',
@@ -126,6 +147,9 @@ class AppLists {
           source: 'رواه الترمذي (212) وأبو داود (521).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'fajr_siwak_sunnah',
@@ -135,6 +159,9 @@ class AppLists {
           source: 'رواه البخاري (245) ومسلم (255).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
       ],
     ),
@@ -157,6 +184,9 @@ class AppLists {
           source: 'رواه الحاكم (2003) وصححه، ووافقه الذهبي.',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         // 2. الإخلاص والمعوذتان - ثلاث مرات
@@ -167,6 +197,9 @@ class AppLists {
               'قال رسول الله ﷺ: «قُلْ هُوَ اللَّهُ أَحَدٌ، وَالْمُعَوِّذَتَيْنِ حِينَ تُمْسِي وَحِينَ تُصْبِحُ ثَلَاثَ مَرَّاتٍ، تَكْفِيكَ مِنْ كُلِّ شَيْءٍ».',
           source: 'رواه أبو داود (5082)، والترمذي (3575) وقال: حسن صحيح.',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
 
@@ -179,6 +212,9 @@ class AppLists {
           source: 'رواه مسلم (2723).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         // 4. سيد الاستغفار - مرة واحدة
@@ -189,6 +225,9 @@ class AppLists {
               'قال رسول الله ﷺ: «سَيِّدُ الِاسْتِغْفَارِ أَنْ تَقُولَ: اللَّهُمَّ أَنْتَ رَبِّي لاَ إِلَهَ إِلَّا أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ، أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ، أَبُوءُ لَكَ بِنِعْمَتِكَ عَلَيَّ، وَأَبُوءُ لَكَ بِذَنْبِي فَاغْفِرْ لِي، فَإِنَّهُ لاَ يَغْفِرُ الذُّنُوبَ إِلَّا أَنْتَ».',
           source: 'رواه البخاري (6306).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -200,6 +239,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَا مِنْ عَبْدٍ مُسْلِمٍ يَقُولُ حِينَ يُصْبِحُ وَحِينَ يُمْسِي ثَلَاثَ مَرَّاتٍ: رَضِيتُ بِاللَّهِ رَبًّا، وَبِالْإِسْلَامِ دِينًا، وَبِمُحَمَّدٍ نَبِيًّا، إِلَّا كَانَ حَقًّا عَلَى اللَّهِ أَنْ يُرْضِيَهُ يَوْمَ الْقِيَامَةِ».',
           source: 'رواه أحمد (18967).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -211,6 +253,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ قَالَ حِينَ يُصْبِحُ أَرْبَعَ مَرَّاتٍ: اللَّهُمَّ إِنِّي أَصْبَحْتُ أُشْهِدُكَ وَأُشْهِدُ حَمَلَةَ عَرْشِكَ وَمَلَائِكَتَكَ وَجَمِيعَ خَلْقِكَ، أَنَّكَ أَنْتَ اللَّهُ لَا إِلَهَ إِلَّا أَنْتَ وَحْدَكَ لَا شَرِيكَ لَكَ، وَأَنَّ مُحَمَّدًا عَبْدُكَ وَرَسُولُكَ، أَعْتَقَهُ اللَّهُ مِنَ النَّارِ».',
           source: 'رواه أبو داود (5069).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -222,6 +267,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ قَالَ حِينَ يُصْبِحُ: اللَّهُمَّ مَا أَصْبَحَ بِي مِنْ نِعْمَةٍ أَوْ بِأَحَدٍ مِنْ خَلْقِكَ، فَمِنْكَ وَحْدَكَ لَا شَرِيكَ لَكَ، فَلَكَ الْحَمْدُ وَلَكَ الشُّكْرُ، فَقَدْ أَدَّى شُكْرَ يَوْمِهِ».',
           source: 'رواه أبو داود (5073).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -233,6 +281,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَا مِنْ عَبْدٍ يَقُولُ فِي صَبَاحِ كُلِّ يَوْمٍ وَمَسَاءِ كُلِّ لَيْلَةٍ: بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ وَهُوَ السَّمِيعُ الْعَلِيمُ ثَلَاثَ مَرَّاتٍ، لَمْ يَضُرَّهُ شَيْءٌ».',
           source: 'رواه الترمذي (3388).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -244,6 +295,9 @@ class AppLists {
               'عن عبد الله بن عمر رضي الله عنهما قال: لم يكن رسول الله ﷺ يدع هؤلاء الدعوات حين يمسي وحين يصبح: «اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ، اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي دِينِي وَدُنْيَايَ وَأَهْلِي وَمَالِي، اللَّهُمَّ اسْتُرْ عَوْرَاتِي وَآمِنْ رَوْعَاتِي، اللَّهُمَّ احْفَظْنِي مِن بَيْنِ يَدَيَّ وَمِنْ خَلْفِي وَعَنْ يَمِينِي وَعَنْ شِمَالِي وَمِن فَوْقِي وَأَعُوذُ بِعَظَمَتِكَ أَنْ أُغْتَالَ مِن تَحْتِي».',
           source: 'رواه أبو داود (5074) وابن ماجه (3871).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -255,6 +309,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ قَالَ حِينَ يُصْبِحُ وَحِينَ يُمْسِي: حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ، عَلَيْهِ تَوَكَّلْتُ، وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ، سَبْعَ مَرَّاتٍ، كَفَاهُ اللَّهُ مَا أَهَمَّهُ مِنْ أَمْرِ الدُّنْيَا وَالْآخِرَةِ».',
           source: 'رواه أبو داود (5081).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
 
@@ -266,6 +323,9 @@ class AppLists {
               'قال رسول الله ﷺ لفاطمة رضي الله عنها: «مَا يَمْنَعُكِ أَنْ تَسْمَعِي مَا أُوصِيكِ بِهِ؟ أَنْ تَقُولِي إِذَا أَصْبَحْتِ وَإِذَا أَمْسَيْتِ: يَا حَيُّ يَا قَيُّومُ، بِرَحْمَتِكَ أَسْتَغِيثُ، أَصْلِحْ لِي شَأْنِي كُلَّهُ، وَلَا تَكِلْنِي إِلَى نَفْسِي طَرْفَةَ عَيْنٍ».',
           source: 'رواه النسائي في الكبرى والحاكم وصححه.',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -277,6 +337,9 @@ class AppLists {
               'عن عبد الله بن مسعود رضي الله عنه قال: كان النبي ﷺ إذا أصبح قال: «اللَّهُمَّ بِكَ أَصْبَحْنَا، وَبِكَ أَمْسَيْنَا، وَبِكَ نَحْيَا، وَبِكَ نَمُوتُ، وَإِلَيْكَ النُّشُورُ».',
           source: 'رواه أبو داود (5068) والترمذي (3391).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -289,18 +352,10 @@ class AppLists {
           source: 'رواه أحمد (15367) وحسنه الألباني.',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: true,
+          tafsir: """
+            
+""",
         ),
-
-        // // 14. أعوذ بكلمات الله التامات - ثلاث مرات
-        // TimelineReward(
-        //   id: 'morning_protection_words',
-        //   title: 'لم تضره حُمة ذلك اليوم',
-        //   description:
-        //       'قال رسول الله ﷺ: «مَنْ قَالَ حِينَ يُمْسِي ثَلَاثَ مَرَّاتٍ: أَعُوذُ بِكَلِمَاتِ اللهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ، لَمْ تَضُرَّهُ حُمَةٌ تِلْكَ اللَّيْلَةَ. (وكذلك في الصباح لليوم)».',
-        //   source: 'رواه الترمذي (3604).',
-        //   isWithCounter: true,
-        //   zikrLevel: ZikrLevel.easy,
-        // ),
 
         // 15. سبحان الله وبحمده 100 مرة
         TimelineReward(
@@ -310,6 +365,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ قَالَ حِينَ يُصْبِحُ وَحِينَ يُمْسِي: سُبْحَانَ اللَّهِ وَبِحَمْدِهِ مِائَةَ مَرَّةٍ، لَمْ يَأْتِ أَحَدٌ يَوْمَ الْقِيَامَةِ بِأَفْضَلَ مِمَّا جَاءَ بِهِ، إِلَّا أَحَدٌ قَالَ مِثْلَ مَا قَالَ أَوْ زَادَ عَلَيْهِ».',
           source: 'رواه مسلم (2692).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
 
@@ -321,6 +379,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ قَالَ: لاَ إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لاَ شَرِيكَ لَهُ، لَهُ المُلْكُ وَلَهُ الحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، فِي يَوْمٍ مِائَةَ مَرَّةٍ، كَانَتْ لَهُ عَدْلَ عَشْرِ رِقَابٍ، وَكُتِبَتْ لَهُ مِائَةُ حَسَنَةٍ وَمُحِيَتْ عَنْهُ مِائَةُ سَيِّئَةٍ، وَكَانَتْ لَهُ حِرْزًا مِنَ الشَّيْطَانِ».',
           source: 'رواه البخاري (3293).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
 
@@ -332,6 +393,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ صَلَّى عَلَيَّ حِينَ يُصْبِحُ عَشْرًا، وَحِينَ يُمْسِي عَشْرًا، أَدْرَكَتْهُ شَفَاعَتِي يَوْمَ الْقِيَامَةِ».',
           source: 'رواه الطبراني في الأوسط (4751)، وحسنه الألباني.',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
 
@@ -343,6 +407,9 @@ class AppLists {
               'قال النبي ﷺ: «لَقَدْ قُلْتُ بَعْدَكِ أَرْبَعَ كَلِمَاتٍ، ثَلَاثَ مَرَّاتٍ، لَوْ وُزِنَتْ بِمَا قُلْتِ مُنْذُ الْيَوْمِ لَوَزَنَتْهُنَّ: سُبْحَانَ اللهِ وَبِحَمْدِهِ، عَدَدَ خَلْقِهِ وَرِضَا نَفْسِهِ وَزِنَةَ عَرْشِهِ وَمِدَادَ كَلِمَاتِهِ».',
           source: 'رواه مسلم (2726).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -355,6 +422,9 @@ class AppLists {
           source: 'رواه البخاري (2893).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         // 20. اللهم إني أسألك العفو والعافية
@@ -365,6 +435,9 @@ class AppLists {
               'عن ابن عمر رضي الله عنهما قال: لم يكن رسول الله ﷺ يدع هذا الدعاء: «اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ». قَالَ عَبَّاسُ الْعَنْسِيُّ: سُئِلَ النَّبِيُّ ﷺ: أَيُّ الدُّعَاءِ أَنْفَعُ؟ قَالَ: «اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ».',
           source: 'رواه ابن ماجه (3851) وصححه الألباني.',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -376,6 +449,9 @@ class AppLists {
               'قال رسول الله ﷺ: «إِنَّ اللَّهَ عَزَّ وَجَلَّ يَقُولُ: يَا ابْنَ آدَمَ، لَا تَعْجِزْ عَنْ أَرْبَعِ رَكَعَاتٍ مِنْ أَوَّلِ النَّهارِ أَكْفِكَ آخِرَهُ».',
           source: 'رواه أبو داود (1289).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
 
@@ -388,6 +464,9 @@ class AppLists {
           source: 'رواه مسلم (720).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: true,
+          tafsir: """
+            
+""",
         ),
       ],
     ),
@@ -406,6 +485,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ سَبَّحَ اللَّهَ فِي دُبُرِ كُلِّ صَلَاةٍ ثَلَاثًا وَثَلَاثِينَ، وَحَمِدَ اللَّهَ ثَلَاثًا وَثَلَاثِينَ، وَكَبَّرَ اللَّهَ ثَلَاثًا وَثَلَاثِينَ، فَتِلْكَ تِسْعَةٌ وَتِسْعُونَ، وَقَالَ تَمَامَ الْمِائَةِ: لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ غُفِرَتْ خَطَايَاهُ وَإِنْ كَانَتْ مِثْلَ زَبَدِ الْبَحْرِ».',
           source: 'رواه مسلم (597).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -416,6 +498,9 @@ class AppLists {
           source: 'رواه النسائي في الكبرى (9848).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'duhr_12_rakat_house',
@@ -424,6 +509,9 @@ class AppLists {
               'قَالَتْ أم حبيبة رضي الله عنها: سَمِعْتُ رَسُولَ اللَّهِ ﷺ يَقُولُ: «مَا مِنْ عَبْدٍ مُسْلِمٍ يُصَلِّي لِلَّهِ كُلَّ يَوْمٍ ثِنْتَيْ عَشْرَةَ رَكْعَةً تَطَوُّعًا، غَيْرَ فَرِيضَةٍ، إِلَّا بَنَى اللَّهُ لَهُ بَيْتًا فِي الْجَنَّةِ». (ومنها أربع قبل الظهر وركعتان بعدها).',
           source: 'رواه مسلم (728).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -433,6 +521,9 @@ class AppLists {
               'قَالَتْ أم حبيبة رضي الله عنها: سَمِعْتُ رَسُولَ اللَّهِ ﷺ يَقُولُ: «مَنْ حَافَظَ عَلَى أَرْبَعِ رَكَعَاتٍ قَبْلَ الظُّهْرِ وَأَرْبَعٍ بَعْدَهَا حَرَّمَهُ اللَّهُ عَلَى النَّارِ».',
           source: 'رواه أبو داود (1269) والترمذي (427).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -442,6 +533,9 @@ class AppLists {
               'عَنْ عَبْدِ اللَّهِ بْنِ السَّائِبِ أَنَّ رَسُولَ اللَّهِ ﷺ كَانَ يُصَلِّي أَرْبَعًا بَعْدَ أَنْ تَزُولَ الشَّمْسُ قَبْلَ الظُّهْرِ، وَقَالَ: «إِنَّهَا سَاعَةٌ تُفْتَحُ فِيهَا أَبْوَابُ السَّمَاءِ، فَأُحِبُّ أَنْ يَصْعَدَ لِي فِيهَا عَمَلٌ صَالِحٌ».',
           source: 'رواه الترمذي (478).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -451,6 +545,9 @@ class AppLists {
               'قال رسول الله ﷺ: «يُسَبِّحُ فِي دُبُرِ كُلِّ صَلَاةٍ عَشْرًا، وَيَحْمَدُ عَشْرًا، وَيُكَبِّرُ عَشْرًا، فَذَلِكَ خَمْسُونَ وَمِائَةٌ بِاللِّسَانِ، وَأَلْفٌ وَخَمْسُ مِائَةٍ فِي الْمِيزَانِ».',
           source: 'رواه أبو داود (5065).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -460,6 +557,9 @@ class AppLists {
               'عن ابن عباس رضي الله عنهما قال: قال رسول الله ﷺ: «مَنْ هَالَهُ اللَّيْلُ أَنْ يُكَابِدَهُ، وَبَخِلَ بِالْمَالِ أَنْ يُنْفِقَهُ، وَجَبُنَ عَنِ الْعَدُوِّ أَنْ يُقَاتِلَهُ، فَلْيُكْثِرْ أَنْ يَقُولَ: سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، فَإِنَّهَا أَحَبُّ إِلَى اللَّهِ مِنْ جَبَلِ ذَهَبٍ وَفِضَّةٍ يُنْفِقَانِ فِي سَبِيلِ اللَّهِ».',
           source: 'رواه الطبراني في الكبير (11026).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -472,6 +572,9 @@ class AppLists {
           source: 'رواه مسلم (649).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'duhr_dua_between_azan',
@@ -481,6 +584,9 @@ class AppLists {
           source: 'رواه الترمذي (212).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         ///FYI
@@ -492,6 +598,9 @@ class AppLists {
           source: 'رواه الطبراني في الأوسط (28).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         ///FYI
@@ -503,6 +612,9 @@ class AppLists {
           source: 'رواه البخاري (645)، ومسلم (650).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         ///FYI
@@ -514,6 +626,9 @@ class AppLists {
           source: 'رواه البخاري (615)، ومسلم (437).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         ///FYI
@@ -525,6 +640,9 @@ class AppLists {
           source: 'رواه النسائي (819)، وصححه الألباني.',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'duhr_walk_to_masjid',
@@ -534,6 +652,9 @@ class AppLists {
           source: 'رواه مسلم (666).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         ///FYI
@@ -545,6 +666,9 @@ class AppLists {
           source: 'رواه البخاري (659)، ومسلم (649).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'duhr_salat_nabi',
@@ -553,6 +677,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ صَلَّى عَلَيَّ صَلَاةً وَاحِدَةً، صَلَّى اللَّهُ عَلَيْهِ بِهَا عَشْرًا».',
           source: 'رواه مسلم (408).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -565,6 +692,9 @@ class AppLists {
           source: 'رواه الترمذي (3499)، وحسنه الألباني.',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'duhr_ikhlas_10',
@@ -573,6 +703,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ قَرَأَ قُلْ هُوَ اللَّهُ أَحَدٌ عَشْرَ مَرَّاتٍ، بَنَى اللَّهُ لَهُ قَصْرًا فِي الْجَنَّةِ».',
           source: 'رواه أحمد (15183)، وصححه الألباني.',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -583,16 +716,11 @@ class AppLists {
           source: 'رواه الترمذي (3464)، وقال: حسن صحيح.',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: true,
+          tafsir: """
+            
+""",
         ),
-        TimelineReward(
-          id: 'asr_4_before',
-          title: 'رحمة الله للعبد',
-          description:
-              'عن ابن عمر رضي الله عنهما قال: قال رسول الله ﷺ: «رَحِمَ اللَّهُ امْرَأً صَلَّى قَبْلَ العَصْرِ أَرْبَعًا».',
-          source: 'رواه الترمذي (430) وأبو داود (1271).',
-          isWithCounter: false,
-          zikrLevel: ZikrLevel.hard,
-        ),
+
         TimelineReward(
           id: 'duhr_hawqala',
           title: 'كنز من كنوز الجنة',
@@ -601,6 +729,9 @@ class AppLists {
           source: 'رواه البخاري (6409)، ومسلم (2704).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: true,
+          tafsir: """
+            
+""",
         ),
       ],
     ),
@@ -612,6 +743,19 @@ class AppLists {
       title: 'asr',
       period: AzanDayPeriod.asr,
       rewards: const [
+        TimelineReward(
+          id: 'asr_4_before',
+          title: 'رحمة الله للعبد',
+          description:
+              'عن ابن عمر رضي الله عنهما قال: قال رسول الله ﷺ: «رَحِمَ اللَّهُ امْرَأً صَلَّى قَبْلَ العَصْرِ أَرْبَعًا».',
+          source: 'رواه الترمذي (430) وأبو داود (1271).',
+          isWithCounter: false,
+          tafsir: """
+            
+""",
+          zikrLevel: ZikrLevel.hard,
+        ),
+
         ///FYI
         TimelineReward(
           id: 'asr_seeing_allah',
@@ -621,6 +765,9 @@ class AppLists {
           source: 'رواه البخاري (554).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         ///FYI
@@ -632,6 +779,9 @@ class AppLists {
           source: 'رواه البخاري (553).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         ///FYI
@@ -643,6 +793,9 @@ class AppLists {
           source: 'رواه البخاري (555).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'asr_paradise_entry',
@@ -652,6 +805,9 @@ class AppLists {
           source: 'رواه مسلم (1884).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'asr_tasbih_100',
@@ -660,6 +816,9 @@ class AppLists {
               'عن مصعب بن سعد قال: حدثني أبي قال: كُنَّا عِنْدَ رَسُولِ اللهِ ﷺ، فَقَالَ: «أَيَعْجِزُ أَحَدُكُمْ أَنْ يَكْسِبَ كُلَّ يَوْمٍ أَلْفَ حَسَنَةٍ؟ يُسَبِّحُ مِائَةَ تَسْبِيحَةٍ، فَيُكْتَبُ لَهُ أَلْفُ حَسَنَةٍ، أَوْ يُحَطُّ عَنْهُ أَلْفُ خَطِيئَةٍ».',
           source: 'رواه مسلم (2698).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -669,6 +828,9 @@ class AppLists {
               'قال رسول الله ﷺ: «تُسَبِّحُونَ وَتُكَبِّرُونَ وَتَحْمَدُونَ دُبُرَ كُلِّ صَلَاةٍ ثَلَاثًا وَثَلَاثِينَ مَرَّةً، فَإِنَّكُمْ تُدْرِكُونَ مَنْ كَانَ قَبْلَكُمْ، وَتَسْبِقُونَ مَنْ بَعْدَكُمْ».',
           source: 'رواه البخاري (843).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -679,6 +841,9 @@ class AppLists {
           source: 'رواه مسلم (2709).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'asr_ayat_kursi',
@@ -688,6 +853,9 @@ class AppLists {
           source: 'رواه النسائي في الكبرى (9848).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         ///FYI
@@ -699,6 +867,9 @@ class AppLists {
           source: 'رواه أبو داود (3667) وحسنه الألباني.',
           zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         ///FYI
@@ -710,18 +881,12 @@ class AppLists {
           source: 'سورة البقرة (238) ومسلم (627).',
           zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         ///FYI
-        // TimelineReward(
-        //   id: 'asr_missed_family_wealth',
-        //   title: 'كأنما وُتر أهله وماله',
-        //   description:
-        //       'عن عبد الله بن عمر رضي الله عنهما، أن رسول الله ﷺ قال: «الَّذِي تَفُوتُهُ صَلَاةُ الْعَصْرِ، كَأَنَّمَا وُتِرَ أَهْلَهُ وَمَالَهُ».',
-        //   source: 'رواه البخاري (552) ومسلم (626).',
-        //   zikrLevel: ZikrLevel.easy,
-        //   isWithCounter: false,
-        // ),
         TimelineReward(
           id: 'asr_bardaun_paradise',
           title: 'دخول الجنة بالبردين',
@@ -730,6 +895,9 @@ class AppLists {
           source: 'رواه البخاري (574) ومسلم (635).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'asr_tawheed_10_times',
@@ -739,6 +907,9 @@ class AppLists {
           source: 'رواه البخاري (6404) ومسلم (2693).',
           zikrLevel: ZikrLevel.hard,
           isWithCounter: true,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'asr_istighfar_after',
@@ -748,6 +919,9 @@ class AppLists {
           source: 'رواه مسلم (591).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: true,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'asr_safety_from_fire',
@@ -757,6 +931,9 @@ class AppLists {
           source: 'رواه مسلم (634).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'asr_dua_between_azan_iqama',
@@ -766,6 +943,9 @@ class AppLists {
           source: 'رواه الترمذي (212) وأبو داود (521).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'asr_jamaah_merit',
@@ -775,6 +955,9 @@ class AppLists {
           source: 'رواه البخاري (645) ومسلم (650).',
           zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
       ],
     ),
@@ -797,6 +980,9 @@ class AppLists {
           source: 'رواه الحاكم وصححه ووافقه الذهبي (1/562).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         // 2. الآيتان الأخيرتان من البقرة مساءً (زيادة مهمة مفقودة!)
@@ -808,6 +994,9 @@ class AppLists {
           source: 'رواه البخاري (5009) ومسلم (808).',
           zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         // 3. الإخلاص والمعوذتان - ثلاث مرات
@@ -819,6 +1008,9 @@ class AppLists {
           source: 'رواه الترمذي (3575).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: true,
+          tafsir: """
+            
+""",
         ),
 
         // 4. أمسينا وأمسى الملك لله - مرة واحدة
@@ -830,6 +1022,9 @@ class AppLists {
           source: 'رواه مسلم (2723).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         // 5. سيد الاستغفار مساءً
@@ -841,6 +1036,9 @@ class AppLists {
           source: 'رواه البخاري (6306).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         // 6. رضيت بالله ربًا - ثلاث مرات
@@ -851,6 +1049,9 @@ class AppLists {
               'عن ثوبان رضي الله عنه قال: قال رسول الله ﷺ: «مَنْ قَالَ حِينَ يُمْسِي: رَضِيتُ بِاللَّهِ رَبًّا، وَبِالْإِسْلَامِ دِينًا، وَبِمُحَمَّدٍ نَبِيًّا، كَانَ حَقًّا عَلَى اللَّهِ أَنْ يُرْضِيَهُ».',
           source: 'رواه الترمذي (3389).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -862,6 +1063,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ قَالَ حِينَ يُمْسِي أَرْبَعَ مَرَّاتٍ: اللَّهُمَّ إِنِّي أَمْسَيْتُ أُشْهِدُكَ وَأُشْهِدُ حَمَلَةَ عَرْشِكَ وَمَلَائِكَتَكَ وَجَمِيعَ خَلْقِكَ، أَنَّكَ أَنْتَ اللَّهُ لَا إِلَهَ إِلَّا أَنْتَ وَحْدَكَ لَا شَرِيكَ لَكَ، وَأَنَّ مُحَمَّدًا عَبْدُكَ وَرَسُولُكَ، أَعْتَقَهُ اللَّهُ مِنَ النَّارِ».',
           source: 'رواه أبو داود (5069).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -873,6 +1077,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ قَالَ حِينَ يُمْسِي: اللَّهُمَّ مَا أَمْسَى بِي مِنْ نِعْمَةٍ أَوْ بِأَحَدٍ مِنْ خَلْقِكَ فَمِنْكَ وَحْدَكَ لَا شَرِيكَ لَكَ، فَلَكَ الْحَمْدُ وَلَكَ الشُّكْرُ، فَقَدْ أَدَّى شُكْرَ لَيْلَتِهِ».',
           source: 'رواه أبو داود (5073).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -884,6 +1091,9 @@ class AppLists {
               'عن عثمان بن عفان رضي الله عنه قال: سَمِعْتُ رَسُولَ اللَّهِ ﷺ يَقُولُ: «مَنْ قَالَ: بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ، وَهُوَ السَّمِيعُ الْعَلِيمُ، ثَلَاثَ مَرَّاتٍ، لَمْ تُصِبْهُ فَجْأَةُ بَلَاءٍ حَتَّى يُصْبِحَ».',
           source: 'رواه أبو داود (5088).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -895,6 +1105,9 @@ class AppLists {
               'عن أبي هريرة رضي الله عنه قال: قال رسول الله ﷺ: «مَنْ قَالَ حِينَ يُمْسِي: أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ، لَمْ يَضُرَّهُ شَيْءٌ حَتَّى يُصْبِحَ».',
           source: 'رواه مسلم (2709).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -906,6 +1119,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ قَالَ حِينَ يُصْبِحُ وَحِينَ يُمْسِي: حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ، عَلَيْهِ تَوَكَّلْتُ، وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ، سَبْعَ مَرَّاتٍ، كَفَاهُ اللَّهُ مَا أَهَمَّهُ».',
           source: 'رواه أبو داود (5081).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -917,6 +1133,9 @@ class AppLists {
               'قال رسول الله ﷺ: «يَا حَيُّ يَا قَيُّومُ، بِرَحْمَتِكَ أَسْتَغِيثُ، أَصْلِحْ لِي شَأْنِي كُلَّهُ، وَلَا تَكِلْنِي إِلَى نَفْسِي طَرْفَةَ عَيْنٍ».',
           source: 'رواه النسائي في الكبرى والحاكم.',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -929,6 +1148,9 @@ class AppLists {
           source: 'رواه أبو داود (5068) والترمذي (3391).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         // 14. أمسينا على فطرة الإسلام
@@ -940,6 +1162,9 @@ class AppLists {
           source: 'رواه أحمد (15367) وحسنه الألباني.',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         // 15. اللهم عافني في بدني - ثلاث مرات
@@ -950,6 +1175,9 @@ class AppLists {
               'عن عبد الله بن عمر رضي الله عنهما قال: لم يكن رسول الله ﷺ يدع هؤلاء الدعوات حين يمسي وحين يصبح: «اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي، اللَّهُمَّ عَافِنِي فِي بَصَرِي، لَا إِلَهَ إِلَّا أَنْتَ».',
           source: 'رواه أبو داود (5090) وحسنه الألباني.',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -962,6 +1190,9 @@ class AppLists {
           source: 'رواه البخاري (2893).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
 
         // 17. اللهم اجرني من النار - سبع مرات بعد المغرب
@@ -972,6 +1203,9 @@ class AppLists {
               'قال النبي ﷺ: «وَإِذَا صَلَّيْتَ الْمَغْرِبَ، فَقُلْ قَبْلَ أَنْ تُكَلِّمَ أَحَدًا مِنَ النَّاسِ: اللَّهُمَّ أَجِرْنِي مِنَ النَّارِ، سَبْعَ مَرَّاتٍ، فَإِنَّكَ إِنْ مِتَّ مِنْ لَيْلَتِكَ تِلْكَ، كَتَبَ اللَّهُ لَكَ جِوَارًا مِنَ النَّارِ».',
           source: 'رواه النسائي في الكبرى (9842) وأبو داود (5079).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -983,6 +1217,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ صَلَّى عَلَيَّ حِينَ يُصْبِحُ عَشْرًا، وَحِينَ يُمْسِي عَشْرًا، أَدْرَكَتْهُ شَفَاعَتِي يَوْمَ الْقِيَامَةِ».',
           source: 'رواه الطبراني في الأوسط (5785) وحسنه الألباني.',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
 
@@ -994,6 +1231,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ قَالَ حِينَ يُصْبِحُ وَحِينَ يُمْسِي: سُبْحَانَ اللَّهِ وَبِحَمْدِهِ مِائَةَ مَرَّةٍ، لَمْ يَأْتِ أَحَدٌ يَوْمَ الْقِيَامَةِ بِأَفْضَلَ مِمَّا جَاءَ بِهِ».',
           source: 'رواه مسلم (2692).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
 
@@ -1005,6 +1245,9 @@ class AppLists {
               'عن أبي هريرة رضي الله عنه قال: قال رسول الله ﷺ: «مَنْ قَالَ: لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ، وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، فِي يَوْمٍ مِائَةَ مَرَّةٍ، كَانَتْ لَهُ عَدْلَ عَشْرِ رِقَابٍ».',
           source: 'رواه البخاري (3293) ومسلم (2691).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
 
@@ -1016,6 +1259,9 @@ class AppLists {
               'عن ابن عمر رضي الله عنهما قال: لم يكن رسول الله ﷺ يدع هذا الدعاء: «اللَّهُمَّ إِنِّي أَسْأَلُكَ الْعَفْوَ وَالْعَافِيَةَ فِي الدُّنْيَا وَالْآخِرَةِ».',
           source: 'رواه ابن ماجه (3851) وصححه الألباني.',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
 
@@ -1027,6 +1273,9 @@ class AppLists {
               'عن أم حبيبة رضي الله عنها قالت: قال رسول الله ﷺ: «مَنْ صَلَّى فِي يَوْمٍ وَلَيْلَةٍ ثِنْتَيْ عَشْرَةَ رَكْعَةً بُنِيَ لَهُ بَيْتٌ فِي الْجَنَّةِ: أَرْبَعًا قَبْلَ الظُّهْرِ، وَرَكْعَتَيْنِ بَعْدَهَا، وَرَكْعَتَيْنِ بَعْدَ الْمَغْرِبِ، وَرَكْعَتَيْنِ بَعْدَ الْعِشَاءِ، وَرَكْعَتَيْنِ قَبْلَ صَلَاةِ الْفَجْرِ».',
           source: 'رواه الترمذي (415).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
 
@@ -1038,6 +1287,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ سَبَّحَ اللَّهَ فِي دُبُرِ كُلِّ صَلَاةٍ ثَلَاثًا وَثَلَاثِينَ، وَحَمِدَ اللَّهَ ثَلَاثًا وَثَلَاثِينَ، وَكَبَّرَ اللَّهَ ثَلَاثًا وَثَلَاثِينَ، فَتِلْكَ تِسْعَةٌ وَتِسْعُونَ، وَقَالَ تَمَامَ الْمِائَةِ: لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، غُفِرَتْ خَطَايَاهُ».',
           source: 'رواه مسلم (597).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
       ],
@@ -1058,6 +1310,9 @@ class AppLists {
           source: 'رواه مسلم (656).',
           zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'isha_tasbih_10_each',
@@ -1066,6 +1321,9 @@ class AppLists {
               'قال رسول الله ﷺ: «يُسَبِّحُ فِي دُبُرِ كُلِّ صَلَاةٍ عَشْرًا، وَيَحْمَدُ عَشْرًا، وَيُكَبِّرُ عَشْرًا، فَذَلِكَ خَمْسُونَ وَمِائَةٌ بِاللِّسَانِ، وَأَلْفٌ وَخَمْسُ مِائَةٍ فِي الْمِيزَانِ».',
           source: 'رواه أبو داود (5065).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -1076,6 +1334,9 @@ class AppLists {
           source: 'رواه النسائي في الكبرى (9848).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'isha_sunnah_house',
@@ -1084,6 +1345,9 @@ class AppLists {
               'عن أم حبيبة رضي الله عنها قالت: قال رسول الله ﷺ: «مَنْ صَلَّى فِي يَوْمٍ وَلَيْلَةٍ ثِنْتَيْ عَشْرَةَ رَكْعَةً بُنِيَ لَهُ بَيْتٌ فِي الْجَنَّةِ: مِنْهَا رَكْعَتَانِ بَعْدَ الْعِشَاءِ».',
           source: 'رواه الترمذي (415).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -1094,6 +1358,9 @@ class AppLists {
           source: 'رواه أبو داود (1416).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'isha_timing_bless',
@@ -1103,6 +1370,9 @@ class AppLists {
           source: 'رواه البخاري (568).',
           zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'isha_tasbih_33',
@@ -1111,6 +1381,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ سَبَّحَ اللَّهَ فِي دُبُرِ كُلِّ صَلَاةٍ ثَلَاثًا وَثَلَاثِينَ، وَحَمِدَ اللَّهَ ثَلَاثًا وَثَلَاثِينَ، وَكَبَّرَ اللَّهَ ثَلَاثًا وَثَلَاثِينَ، فَتِلْكَ تِسْعَةٌ وَتِسْعُونَ، وَقَالَ تَمَامَ الْمِائَةِ: لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، غُفِرَتْ خَطَايَاهُ وَإِنْ كَانَتْ مِثْلَ زَبَدِ الْبَحْرِ».',
           source: 'رواه مسلم (597).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -1121,6 +1394,9 @@ class AppLists {
           source: 'رواه البخاري (659).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'isha_dua_mustajab',
@@ -1130,6 +1406,9 @@ class AppLists {
           source: 'رواه الترمذي (212).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'isha_munafiqin_safety',
@@ -1139,6 +1418,9 @@ class AppLists {
           source: 'رواه مسلم (651).',
           zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'evening_muawidhat',
@@ -1147,6 +1429,9 @@ class AppLists {
               'عن عبد الله بن خبيب قال: قال رسول الله ﷺ: «قُلْ: {قُلْ هُوَ اللَّهُ أَحَدٌ}، وَالمُعَوِّذَتَيْنِ حِينَ تُمْسِي وَتُصْبِحُ ثَلَاثَ مَرَّاتٍ، تَكْفِيكَ مِنْ كُلِّ شَيْءٍ».',
           source: 'رواه الترمذي (3575).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -1156,6 +1441,9 @@ class AppLists {
               'قال ﷺ: «مَنْ قَالَ: لا إلهَ إلا اللهُ وحدَهُ لا شريكَ لهُ، له الملكُ وله الحمدُ، وهو على كل شيءٍ قديرٌ، وَمَنْ قَالَهَا مِنَ اللَّيْلِ وَهُوَ مُوقِنٌ بِهَا، فَمَاتَ قَبْلَ أَنْ يُصْبِحَ، فَهُوَ مِنْ أَهْلِ الجَنَّةِ».',
           source: 'رواه البخاري (6306) ومسلم (2699).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
         TimelineReward(
@@ -1165,6 +1453,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ قَالَ حِينَ يُمْسِي: رَضِيتُ بِاللَّهِ رَبًّا، وَبِالْإِسْلَامِ دِينًا، وَبِمُحَمَّدٍ نَبِيًّا، كَانَ حقًّا عَلَى اللَّهِ أَنْ يُرْضِيَهُ».',
           source: 'رواه أبو داود (5072).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
         TimelineReward(
@@ -1174,6 +1465,9 @@ class AppLists {
               'قال ﷺ: «مَنْ قَالَ: بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ، وَهُوَ السَّمِيعُ الْعَلِيمُ، ثَلَاثَ مَرَّاتٍ، لَمْ تُصِبْهُ فَجَأَةُ بَلَاءٍ حَتَّى يُصْبِحَ».',
           source: 'رواه أبو داود (5088).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
         TimelineReward(
@@ -1183,6 +1477,9 @@ class AppLists {
               'جاء رجل إلى النبي ﷺ فقال: يا رسول الله ما لقيت من عقرب لدغتني البارحة، قال: «أَمَا لَوْ قُلْتَ حِينَ أَمْسَيْتَ: أَعُوذُ بِكَلِمَاتِ اللهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ، لَمْ تَضُرَّكَ».',
           source: 'رواه مسلم (2709).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
         TimelineReward(
@@ -1192,6 +1489,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ صَلَّى عَلَيَّ حِينَ يُصْبِحُ عَشْرًا، وَحِينَ يُمْسِي عَشْرًا، أَدْرَكَتْهُ شَفَاعَتِي يَوْمَ الْقِيَامَةِ».',
           source: 'رواه الطبراني وحسنه الألباني.',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
         TimelineReward(
@@ -1201,6 +1501,9 @@ class AppLists {
               'قال ﷺ: «مَنْ قَالَ: سُبْحَانَ اللَّهِ وَبِحَمْدِهِ، فِي يَوْمٍ مِائَةَ مَرَّةٍ، حُطَّتْ خَطَايَاهُ وَإِنْ كَانَتْ مِثْلَ زَبَدِ الْبَحْرِ».',
           source: 'رواه البخاري (6405).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -1210,6 +1513,9 @@ class AppLists {
               'عن النبي ﷺ قال: «مَنْ قَالَ حِينَ يُصْبِحُ وَحِينَ يُمْسِي: حَسْبِيَ اللَّهُ لَا إِلَهَ إِلَّا هُوَ عَلَيْهِ تَوَكَّلْتُ وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ، سَبْعَ مَرَّاتٍ، كَفَاهُ اللَّهُ مَا أَهَمَّهُ مِنْ أَمْرِ الدُّنْيَا وَالْآخِرَةِ».',
           source: 'رواه أبو داود (5081) وصححه الأرناؤوط.',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
         // آية الكرسي الخاصة بالجن مساءً (من الليل)
@@ -1221,6 +1527,9 @@ class AppLists {
           source: 'رواه النسائي في الكبرى (10795) وصححه الألباني.',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
       ],
     ),
@@ -1239,6 +1548,9 @@ class AppLists {
               'قال رسول الله ﷺ: «إِذَا أَوَى أَحَدُكُمْ إِلَى فِرَاشِهِ سَبَّحَ ثَلَاثًا وَثَلَاثِينَ، وَحَمِدَ ثَلَاثًا وَثَلَاثِينَ، وَكَبَّرَ أَرْبَعًا وَثَلَاثِينَ، فَهِيَ مِائَةٌ عَلَى اللِّسَانِ، وَأَلْفٌ فِي الْمِيزَانِ».',
           source: 'رواه أبو داود (5065).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -1248,6 +1560,9 @@ class AppLists {
               'عن أبي سعيد الخدري رضي الله عنه أن النبي ﷺ قال: «وَالَّذِي نَفْسِي بِيَدِهِ، إِنَّهَا لَتَعْدِلُ ثُلُثَ القُرْآنِ». (في {قُلْ هُوَ اللهُ أَحَدٌ}).',
           source: 'رواه البخاري (6643).',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
         TimelineReward(
@@ -1258,6 +1573,9 @@ class AppLists {
           source: 'رواه البخاري (6306).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'night_wake_up',
@@ -1267,6 +1585,9 @@ class AppLists {
           source: 'رواه البخاري (1154).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'night_bed_dhikr',
@@ -1276,6 +1597,9 @@ class AppLists {
           source: 'رواه النسائي في عمل اليوم والليلة (471) وابن حبان.',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'night_bed_tawheed',
@@ -1285,6 +1609,9 @@ class AppLists {
           source: 'رواه الحاكم في المستدرك (1/730).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'night_aslamtu',
@@ -1294,6 +1621,9 @@ class AppLists {
           source: 'رواه البخاري (247).',
           zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         // ذكر النوم الخاص: باسمك ربي وضعت جنبي
         TimelineReward(
@@ -1304,6 +1634,9 @@ class AppLists {
           source: 'رواه البخاري (6320) ومسلم (2714).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         // اللهم إنك خلقت نفسي وأنت توفاها
         TimelineReward(
@@ -1314,6 +1647,9 @@ class AppLists {
           source: 'رواه مسلم (2712).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'night_prayer_sharaf',
@@ -1324,6 +1660,9 @@ class AppLists {
               'الطبراني (4278)، الحاكم (7921)، أبو نعيم، حلية الأولياء 3/290',
           zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'night_divine_descent',
@@ -1333,6 +1672,9 @@ class AppLists {
           source: 'رواه البخاري (1145) ومسلم (758).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'night_100_ayat',
@@ -1341,6 +1683,9 @@ class AppLists {
               'قال رسول الله ﷺ: «مَنْ قَامَ بِعَشْرِ آياتٍ لَمْ يُكْتَبْ مِنَ الغَافِلِينَ، وَمَنْ قَامَ بِمِائَةِ آيَةٍ كُتِبَ مِنَ القَانِتِينَ، وَمَنْ قَامَ بِأَلْفِ آيَةٍ كُتِبَ مِنَ المُقَنْطِرِينَ».',
           source: 'رواه أبو داود (1398).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -1350,6 +1695,9 @@ class AppLists {
               'عن أبي مسعود البدري رضي الله عنه قال: قال رسول الله ﷺ: «الآيَتَانِ مِنْ آخرِ سُورَةِ البَقَرَةِ، مَنْ قَرَأَهُمَا فِي لَيْلَةٍ كَفَتَاهُ».',
           source: 'رواه البخاري (5009) ومسلم (808).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -1359,6 +1707,9 @@ class AppLists {
               'قال رسول الله ﷺ: «إِنَّ سُورَةً مِنَ القُرْآنِ ثَلَاثُونَ آيَةً شَفَعَتْ لِرَجُلٍ حَتَّى غُفِرَ لَهُ، وَهِيَ سُورَةُ تَبَارَكَ الَّذِي بِيَدِهِ الْمُلْكُ».',
           source: 'رواه الترمذي (2891) وأبو داود (1400).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -1369,6 +1720,9 @@ class AppLists {
           source: 'رواه ابن حبان (3/328) وصححه الألباني.',
           zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'night_surah_kafirun',
@@ -1378,6 +1732,9 @@ class AppLists {
           source: 'رواه أبو داود (5055) والترمذي (3403).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'night_any_moment_dua',
@@ -1387,6 +1744,9 @@ class AppLists {
           source: 'رواه مسلم (757).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'night_intention_reward',
@@ -1396,6 +1756,9 @@ class AppLists {
           source: 'رواه النسائي (1784) وأبو داود (1314).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
         TimelineReward(
           id: 'night_two_rakats',
@@ -1405,6 +1768,9 @@ class AppLists {
           source:
               'رواه ابن المبارك في الزهد وصححه الألباني في صحيح الجامع (3505).',
           isWithCounter: false,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.hard,
         ),
         TimelineReward(
@@ -1414,6 +1780,9 @@ class AppLists {
               'قال تعالى: {وَالْمُسْتَغْفِرِينَ بِالْأَسْحَارِ}. وقال ﷺ: «يَنْزِلُ اللَّهُ كُلَّ لَيْلَةٍ إِلَى السَّمَاءِ الدُّنْيَا حِينَ يَبْقَى ثُلُثُ اللَّيْلِ الْآخِرُ، فَيَقُولُ: هَلْ مِنْ مُسْتَغْفِرٍ فَأَغْفِرَ لَهُ؟ هَلْ مِنْ طَائِعٍ فَأَرْفَعَ لَهُ؟ هَلْ مِنْ دَاعٍ فَأُسْتَجَابَ لَهُ؟».',
           source: 'سورة آل عمران (17)، البخاري (1145)',
           isWithCounter: true,
+          tafsir: """
+            
+""",
           zikrLevel: ZikrLevel.easy,
         ),
         TimelineReward(
@@ -1424,6 +1793,9 @@ class AppLists {
           source: 'رواه البخاري (245) ومسلم (255).',
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
+          tafsir: """
+            
+""",
         ),
       ],
     ),

@@ -7,6 +7,7 @@ class TimelineReward {
   final String source; // المصدر بتاع الحديث
   final bool isWithCounter; // هل الذكر ده له عداد؟
   final ZikrLevel zikrLevel; // مستوى الذكر (سهل - صعب)
+  final String? tafsir; // تفسير الحديث أو الوصف الكامل للفضل
 
   const TimelineReward({
     required this.id,
@@ -15,5 +16,6 @@ class TimelineReward {
     required this.source,
     this.isWithCounter = false,
     this.zikrLevel = ZikrLevel.easy,
+    this.tafsir,
   });
 }

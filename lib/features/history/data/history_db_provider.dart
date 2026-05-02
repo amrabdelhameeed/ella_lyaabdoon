@@ -164,6 +164,136 @@ class HistoryDBProvider {
     final today = DateTime.now();
     return '${zikrId}_${today.year}_${today.month}_${today.day}';
   }
+  // ──────────────────────────────────────────────────────────
+  // Monthly Aggregations
+  // ──────────────────────────────────────────────────────────
+
+  static int getZikrsThisMonth() {
+    final now = DateTime.now();
+    return getZikrsForMonth(now.year, now.month);
+  }
+
+  static int getZikrsLastMonth() {
+    final now = DateTime.now();
+    final lastMonth = DateTime(now.year, now.month - 1);
+    return getZikrsForMonth(lastMonth.year, lastMonth.month);
+  }
+
+  static int getZikrsLast3Months() {
+    final now = DateTime.now();
+    int total = 0;
+
+    for (int i = 0; i < 3; i++) {
+      final date = DateTime(now.year, now.month - i);
+      total += getZikrsForMonth(date.year, date.month);
+    }
+
+    return total;
+  }
+
+  static int getZikrsLast6Months() {
+    final now = DateTime.now();
+    int total = 0;
+
+    for (int i = 0; i < 6; i++) {
+      final date = DateTime(now.year, now.month - i);
+      total += getZikrsForMonth(date.year, date.month);
+    }
+
+    return total;
+  }
+
+  static int getZikrsAllTime() {
+    if (_box == null || !_box!.isOpen) return 0;
+
+    int total = 0;
+
+    final allRewards = AppLists.timelineItems
+        .expand((item) => item.rewards)
+        .toList();
+
+    for (final reward in allRewards) {
+      final checks = getChecks(reward.id);
+      total += checks.length; // already deduplicated per day
+    }
+
+    return total;
+  }
+  // ──────────────────────────────────────────────────────────
+  // Insights / Analytics
+  // ──────────────────────────────────────────────────────────
+
+  /// Average zikrs per day for current week (Mon → today)
+  static double getWeeklyAverageZikrs() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final weekStart = today.subtract(Duration(days: (today.weekday + 1) % 7));
+    final daysCount = today.difference(weekStart).inDays + 1;
+
+    if (daysCount <= 0) return 0;
+
+    int total = 0;
+    for (int i = 0; i < daysCount; i++) {
+      total += getTotalZikrsCompletedForDate(weekStart.add(Duration(days: i)));
+    }
+
+    return total / daysCount;
+  }
+
+  /// Completion rate (%) over last N days
+  /// = days with at least 1 zikr / total days * 100
+  static int getCompletionRate(int days) {
+    if (days <= 0) return 0;
+
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    int completedDays = 0;
+
+    for (int i = 0; i < days; i++) {
+      final date = today.subtract(Duration(days: i));
+      final count = getTotalZikrsCompletedForDate(date);
+      if (count > 0) completedDays++;
+    }
+
+    return ((completedDays / days) * 100).round();
+  }
+
+  /// Best day of week based on total zikr count
+  /// Returns: 0=Mon ... 6=Sun, or -1 if no data
+  static int getBestDayOfWeek() {
+    if (_box == null || !_box!.isOpen) return -1;
+
+    final totals = List<int>.filled(7, 0); // Mon=0 ... Sun=6
+
+    final allRewards = AppLists.timelineItems
+        .expand((item) => item.rewards)
+        .toList();
+
+    for (final reward in allRewards) {
+      final checks = getChecks(reward.id);
+
+      for (final check in checks) {
+        final weekdayIndex = check.weekday - 1; // Mon=0
+        if (weekdayIndex >= 0 && weekdayIndex < 7) {
+          totals[weekdayIndex]++;
+        }
+      }
+    }
+
+    int max = 0;
+    int bestIndex = -1;
+
+    for (int i = 0; i < 7; i++) {
+      if (totals[i] > max) {
+        max = totals[i];
+        bestIndex = i;
+      }
+    }
+
+    return bestIndex;
+  }
 
   /// Get current count for a zikr today
   static int getCounter(String zikrId) {
@@ -266,7 +396,7 @@ class HistoryDBProvider {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     // weekday: Mon=1 … Sun=7
-    final weekStart = today.subtract(Duration(days: today.weekday - 1));
+    final weekStart = today.subtract(Duration(days: (today.weekday + 1) % 7));
     return getAppOpensForDateRange(weekStart, today);
   }
 
@@ -274,7 +404,9 @@ class HistoryDBProvider {
   static int getAppOpensLastWeek() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final thisWeekStart = today.subtract(Duration(days: today.weekday - 1));
+    final thisWeekStart = today.subtract(
+      Duration(days: (today.weekday + 1) % 7),
+    );
     final lastWeekStart = thisWeekStart.subtract(const Duration(days: 7));
     final lastWeekEnd = thisWeekStart.subtract(const Duration(days: 1));
     return getAppOpensForDateRange(lastWeekStart, lastWeekEnd);
@@ -335,7 +467,7 @@ class HistoryDBProvider {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     // weekday: Mon=1 … Sun=7
-    final weekStart = today.subtract(Duration(days: today.weekday - 1));
+    final weekStart = today.subtract(Duration(days: today.weekday - 3));
     final daysElapsed = today.difference(weekStart).inDays; // 0..6
 
     int total = 0;
@@ -345,11 +477,28 @@ class HistoryDBProvider {
     return total;
   }
 
+  static int getZikrsForMonth(int year, int month) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final startOfMonth = DateTime(year, month, 1);
+    final endOfMonth = DateTime(year, month + 1, 0);
+
+    int total = 0;
+    for (int i = 0; ; i++) {
+      final date = startOfMonth.add(Duration(days: i));
+      if (date.isAfter(endOfMonth)) break;
+      total += getTotalZikrsCompletedForDate(date);
+    }
+    return total;
+  }
+
   /// Get last week's total zikrs completed (Mon–Sun)
   static int getZikrsLastWeek() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    final thisWeekStart = today.subtract(Duration(days: today.weekday - 1));
+    final thisWeekStart = today.subtract(
+      Duration(days: (today.weekday + 1) % 7),
+    );
     final lastWeekStart = thisWeekStart.subtract(const Duration(days: 7));
 
     int total = 0;

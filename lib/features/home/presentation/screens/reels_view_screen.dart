@@ -34,7 +34,6 @@ class _AppColors {
   static const Color surfaceGreen = Color(0xFF1C4430);
 }
 
-// Bump suffix any time you want to reset the shown-count for all users.
 const String _kDoubleTapHintKey = 'double_tap_hint1';
 const String _kCounterTapHintKey = 'counter_tap_hint1';
 const int _kMaxHintShows = 5;
@@ -73,9 +72,6 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
   int _currentIndex = 0;
   List<RewardItem> _allRewards = [];
 
-  // ── Remote config ────────────────────────────────────────────────────
-  // bool _isZeenaEnabled = false;
-
   // ── Counter ──────────────────────────────────────────────────────────
   final Map<int, int> _counters = {};
   late final AnimationController _pulseController;
@@ -84,14 +80,15 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
   // ── Translation visibility per page ─────────────────────────────────
   final Map<int, bool> _showTranslation = {};
 
+  // ── Tafsir visibility per page ───────────────────────────────────────
+  final Map<int, bool> _showTafsir = {};
+
   // ── Hint: double-tap (mark done) ────────────────────────────────────
   bool _showDoubleTapHint = false;
 
   // ── Hint: counter tap ───────────────────────────────────────────────
-  // These are the ONLY two flags controlling visibility.
-  // Nothing else touches _showCounterTapHint except the two methods below.
   bool _showCounterTapHint = false;
-  bool _counterHintActive = false; // prevents double-scheduling
+  bool _counterHintActive = false;
 
   // ── Screenshot ───────────────────────────────────────────────────────
   final ScreenshotController _screenshotController = ScreenshotController();
@@ -113,7 +110,6 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeOut),
     )..addListener(() => setState(() {}));
 
-    // _loadRemoteConfig();
     _maybeShowDoubleTapHint();
   }
 
@@ -123,23 +119,6 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
     _pulseController.dispose();
     super.dispose();
   }
-
-  // ─────────────────────────────────────────────────────────────────────
-  // Remote config
-  // ─────────────────────────────────────────────────────────────────────
-
-  // Future<void> _loadRemoteConfig() async {
-  //   final rc = FirebaseRemoteConfig.instance;
-  //   await rc.setConfigSettings(
-  //     RemoteConfigSettings(
-  //       fetchTimeout: const Duration(seconds: 10),
-  //       minimumFetchInterval: const Duration(days: 1),
-  //     ),
-  //   );
-  //   await rc.setDefaults({'enable_zeena': true});
-  //   await rc.fetchAndActivate();
-  //   if (mounted) setState(() => _isZeenaEnabled = rc.getBool('enable_zeena'));
-  // }
 
   // ─────────────────────────────────────────────────────────────────────
   // Analytics
@@ -174,23 +153,15 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
 
   // ─────────────────────────────────────────────────────────────────────
   // Hint: counter tap
-  //
-  // Called from ONE place only: _onPageLanded(), which is triggered by
-  // onPageChanged (and after initial data load). Never called from build().
   // ─────────────────────────────────────────────────────────────────────
 
   Future<void> _maybeShowCounterTapHint() async {
-    // Already showing or already scheduled – bail out.
     if (_counterHintActive) return;
-
-    // Does the current page even have a counter?
     if (_currentIndex >= _allRewards.length) return;
     final reward = _allRewards[_currentIndex].reward as TimelineReward;
     if (!reward.isWithCounter) return;
 
-    // Check persistent shown-count.
     final n = CacheHelper.getInt(_kCounterTapHintKey);
-    debugPrint('[CounterHint] stored count=$n, max=$_kMaxHintShows');
     if (n >= _kMaxHintShows) return;
     CacheHelper.setInt(_kCounterTapHintKey, n + 1);
 
@@ -199,7 +170,6 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;
 
-    debugPrint('[CounterHint] >>> SHOWING');
     setState(() => _showCounterTapHint = true);
 
     await Future.delayed(const Duration(seconds: 3));
@@ -211,7 +181,6 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
     }
   }
 
-  /// Hide immediately when the user taps the counter.
   void _dismissCounterTapHint() {
     if (_showCounterTapHint) {
       setState(() {
@@ -222,18 +191,20 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
   }
 
   // ─────────────────────────────────────────────────────────────────────
-  // Called whenever the visible page changes (or data first loads).
+  // Page change handler
   // ─────────────────────────────────────────────────────────────────────
 
   void _onPageLanded(int index) {
     setState(() {
       _currentIndex = index;
       _showTranslation[index] = false;
+      // Tafsir collapses when swiping to a new page
+      _showTafsir[index] = false;
     });
     context.read<TranslationCubit>().reset();
     _dismissDoubleTapHint();
-    _dismissCounterTapHint(); // hide previous hint when swiping away
-    _maybeShowCounterTapHint(); // attempt to show for new page
+    _dismissCounterTapHint();
+    _maybeShowCounterTapHint();
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -264,7 +235,6 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
 
     if (mounted) setState(() {});
 
-    // Jump to page, then trigger hint after the frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_pageController.hasClients) {
         _pageController.jumpToPage(_currentIndex);
@@ -301,6 +271,16 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
     } else {
       context.read<TranslationCubit>().reset();
     }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Tafsir helpers
+  // ─────────────────────────────────────────────────────────────────────
+
+  bool _isShowingTafsir(int page) => _showTafsir[page] ?? false;
+
+  void _toggleTafsir(int page) {
+    setState(() => _showTafsir[page] = !(_showTafsir[page] ?? false));
   }
 
   // ─────────────────────────────────────────────────────────────────────
@@ -386,13 +366,12 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
   Widget _buildBody(HomeState state, bool isArabic) {
     return Stack(
       children: [
-        // ── Page view ──────────────────────────────────────────────────
         PageView.builder(
           restorationId: 'reels_view',
           controller: _pageController,
           scrollDirection: Axis.vertical,
           itemCount: _allRewards.length,
-          onPageChanged: _onPageLanded, // ← single source of truth
+          onPageChanged: _onPageLanded,
           itemBuilder: (context, index) {
             final item = _allRewards[index];
             return _buildRewardPage(
@@ -405,7 +384,6 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
           },
         ),
 
-        // ── Progress indicator ─────────────────────────────────────────
         Positioned(
           right: 3,
           top: 20,
@@ -413,24 +391,14 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
           child: _buildProgressIndicator(),
         ),
 
-        // ── Double-tap hint overlay ────────────────────────────────────
         if (_showDoubleTapHint)
           Positioned.fill(child: _buildDoubleTapHintOverlay()),
-
-        // ── Ramadan decoration ─────────────────────────────────────────
-        // if (_isZeenaEnabled)
-        //   Positioned(
-        //     top: 0,
-        //     left: 0,
-        //     right: 0,
-        //     child: RamadanZeena(animate: false, height: 15),
-        //   ),
       ],
     );
   }
 
   // ─────────────────────────────────────────────────────────────────────
-  // Hint overlays
+  // Hint overlay
   // ─────────────────────────────────────────────────────────────────────
 
   Widget _buildDoubleTapHintOverlay() {
@@ -541,6 +509,8 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
     final isEnglish = AppServicesDBprovider.currentLocale() == 'en';
     final count = _getCount(pageIndex);
     final showingTranslation = _isShowingTranslation(pageIndex);
+    final showingTafsir = _isShowingTafsir(pageIndex);
+    final hasTafsir = reward.tafsir != null && reward.tafsir!.isNotEmpty;
 
     return BlocBuilder<HistoryCubit, HistoryState>(
       builder: (context, _) {
@@ -567,7 +537,7 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
                 ),
                 const SizedBox(height: 10),
 
-                // Counter (note: NO hint trigger here)
+                // Counter
                 if (reward.isWithCounter) ...[
                   _buildCounter(context, pageIndex, count),
                   const SizedBox(height: 10),
@@ -587,6 +557,8 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
                       isRtl: isRtl,
                       isEnglish: isEnglish,
                       showingTranslation: showingTranslation,
+                      showingTafsir: showingTafsir,
+                      hasTafsir: hasTafsir,
                       pageIndex: pageIndex,
                     ),
                   ),
@@ -634,6 +606,8 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
     required bool isRtl,
     required bool isEnglish,
     required bool showingTranslation,
+    required bool showingTafsir,
+    required bool hasTafsir,
     required int pageIndex,
   }) {
     return Container(
@@ -651,11 +625,10 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.start,
         children: [
-          // ── Title row: centered title, check floats on top of layout ──
+          // ── Title row ──
           Stack(
             alignment: Alignment.center,
             children: [
-              // Padding on both sides equal to check icon width to keep title truly centered
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 28),
                 child: Text(
@@ -674,7 +647,6 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
                   ),
                 ),
               ),
-              // Check icon positioned to the end, outside the title padding
               Positioned(
                 right: isRtl ? null : 0,
                 left: isRtl ? 0 : null,
@@ -721,25 +693,40 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
           // ── Description ──
           Expanded(
             child: SingleChildScrollView(
-              child: Text(
-                reward.description,
-                textAlign: TextAlign.center,
-                textDirection: TextDirection.rtl,
-                softWrap: true,
-                overflow: TextOverflow.visible,
-                style: TextStyle(
-                  fontFamily: 'kufi',
-                  fontSize: _getFontSize(reward.description.length),
-                  height: 1.7,
-                ),
+              child: Column(
+                children: [
+                  Text(
+                    reward.description,
+                    textAlign: TextAlign.center,
+                    textDirection: TextDirection.rtl,
+                    softWrap: true,
+                    overflow: TextOverflow.visible,
+                    style: TextStyle(
+                      fontFamily: 'kufi',
+                      fontSize: _getFontSize(reward.description.length),
+                      height: 1.7,
+                    ),
+                  ),
+
+                  // ── Translation section ──
+                  if (isEnglish) ...[
+                    const SizedBox(height: 12),
+                    _buildTranslationSection(showingTranslation),
+                  ],
+
+                  // ── Tafsir toggle + content ──
+                  if (hasTafsir) ...[
+                    const SizedBox(height: 12),
+                    _buildTafsirToggleRow(pageIndex, reward),
+                    if (showingTafsir) ...[
+                      const SizedBox(height: 8),
+                      _buildTafsirSection(reward),
+                    ],
+                  ],
+                ],
               ),
             ),
           ),
-
-          if (isEnglish) ...[
-            const SizedBox(height: 12),
-            _buildTranslationSection(showingTranslation),
-          ],
 
           const SizedBox(height: 12),
 
@@ -779,8 +766,9 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
       ),
     );
   }
+
   // ─────────────────────────────────────────────────────────────────────
-  // Translation section
+  // Translation section (existing, unchanged)
   // ─────────────────────────────────────────────────────────────────────
 
   Widget _buildTranslationSection(bool showingTranslation) {
@@ -876,7 +864,6 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
               Text(
                 state.translatedText,
                 style: TextStyle(
-                  // color: Colors.white.withOpacity(0.9),
                   fontSize: _getFontSize(state.translatedText.length),
                   height: 1.6,
                 ),
@@ -890,16 +877,137 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
   }
 
   // ─────────────────────────────────────────────────────────────────────
+  // Tafsir toggle row — matches translation toggle style
+  // ─────────────────────────────────────────────────────────────────────
+
+  Widget _buildTafsirToggleRow(int pageIndex, TimelineReward reward) {
+    final isShowing = _isShowingTafsir(pageIndex);
+
+    return GestureDetector(
+      onTap: () => _toggleTafsir(pageIndex),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: isShowing
+              ? Colors.blue.withOpacity(0.2)
+              : Colors.blue.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isShowing
+                ? Colors.blue.withOpacity(0.6)
+                : Colors.blue.withOpacity(0.25),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.lightbulb_outline_rounded,
+              color: Colors.blue[isShowing ? 200 : 300],
+              size: 16,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              AppServicesDBprovider.currentLocale() == 'ar'
+                  ? 'تفسير'
+                  : 'Tafsir / Explanation',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+                color: Colors.blue[isShowing ? 200 : 300],
+              ),
+            ),
+            const SizedBox(width: 6),
+            AnimatedRotation(
+              turns: isShowing ? 0.5 : 0,
+              duration: const Duration(milliseconds: 200),
+              child: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: Colors.blue[300],
+                size: 18,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
+  // Tafsir content — mirrors the translation content card style
+  // ─────────────────────────────────────────────────────────────────────
+
+  Widget _buildTafsirSection(TimelineReward reward) {
+    final isArabic = AppServicesDBprovider.currentLocale() == 'ar';
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blue.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.blue.withOpacity(0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row
+          Row(
+            children: [
+              Icon(
+                Icons.lightbulb_outline_rounded,
+                color: Colors.blue[200],
+                size: 14,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                isArabic ? 'تفسير' : 'Tafsir / Explanation',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue[200],
+                  fontFamily: 'kufi',
+                  fontSize: 12,
+                ),
+              ),
+              const Spacer(),
+              IconButton(
+                onPressed: () => _copyToClipboard(reward.tafsir!),
+                icon: Icon(
+                  Icons.copy,
+                  size: 14,
+                  color: Colors.white.withOpacity(0.55),
+                ),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Tafsir text
+          Text(
+            reward.tafsir!,
+            style: TextStyle(
+              fontFamily: 'kufi',
+              fontSize: _getFontSize(reward.tafsir!.length),
+              height: 1.65,
+              color: Colors.blue[100],
+            ),
+            textDirection: TextDirection.rtl,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────
   // Counter widget
-  // The tap-hint is a clipped overlay INSIDE the counter card's own Stack,
-  // so it matches the card's exact size and border-radius.
   // ─────────────────────────────────────────────────────────────────────
 
   Widget _buildCounter(BuildContext context, int pageIndex, int count) {
     final theme = Theme.of(context);
     final sw = MediaQuery.of(context).size.width;
 
-    // Responsive sizing
     final buttonSize = (sw * 0.13).clamp(44.0, 68.0);
     final iconSize = buttonSize * 0.5;
     final countFont = (sw * 0.07).clamp(24.0, 40.0);
@@ -909,8 +1017,7 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
       color: Colors.transparent,
       child: Stack(
         children: [
-          // 1. MAIN CARD LAYER
-          // We wrap the whole container in a GestureDetector so the background is tappable.
+          // Main card
           GestureDetector(
             behavior: HitTestBehavior.translucent,
             onTap: () => _increment(pageIndex),
@@ -929,7 +1036,6 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
               ),
               child: Row(
                 children: [
-                  // Count Labels
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -960,20 +1066,13 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
                       ],
                     ),
                   ),
-
-                  // RESET BUTTON
-                  // AnimatedSwitcher handles the fade between the button and empty space
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 200),
                     child: count > 0
                         ? IconButton(
                             key: const ValueKey('reset'),
-                            onPressed: () {
-                              // setState is called here to refresh the UI
-                              setState(() {
-                                _resetCount(pageIndex);
-                              });
-                            },
+                            onPressed: () =>
+                                setState(() => _resetCount(pageIndex)),
                             icon: const Icon(Icons.refresh_rounded),
                             tooltip: 'reset'.tr(),
                             iconSize: (sw * 0.055).clamp(18.0, 24.0),
@@ -988,10 +1087,7 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
                             width: (sw * 0.055).clamp(18.0, 24.0) + 12,
                           ),
                   ),
-
                   const SizedBox(width: 8),
-
-                  // ADD BUTTON
                   GestureDetector(
                     onTap: () => _increment(pageIndex),
                     child: Container(
@@ -1027,12 +1123,10 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
             ),
           ),
 
-          // 2. HINT OVERLAY LAYER
-          // Positioned.fill ensures the overlay matches the size of the card.
+          // Hint overlay
           Positioned.fill(
             child: IgnorePointer(
-              ignoring:
-                  true, // Crucial: This allows taps to pass through to the buttons below
+              ignoring: true,
               child: AnimatedOpacity(
                 opacity: _showCounterTapHint ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 350),
@@ -1044,7 +1138,6 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Icon Animation
                         TweenAnimationBuilder<double>(
                           tween: Tween(begin: 0.0, end: 1.0),
                           duration: const Duration(milliseconds: 500),
@@ -1072,7 +1165,6 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
                           ),
                         ),
                         const SizedBox(width: 10),
-                        // Text Labels
                         Flexible(
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
@@ -1108,6 +1200,7 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
       ),
     );
   }
+
   // ─────────────────────────────────────────────────────────────────────
   // Action bar
   // ─────────────────────────────────────────────────────────────────────
@@ -1603,18 +1696,10 @@ class _HintContent extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  // color: Colors.white.withOpacity(0.15),
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    // color: Colors.white.withOpacity(0.3),
-                    width: 2,
-                  ),
+                  border: Border.all(width: 2),
                 ),
-                child: const Icon(
-                  Icons.touch_app_rounded,
-                  // color: Colors.white,
-                  size: 40,
-                ),
+                child: const Icon(Icons.touch_app_rounded, size: 40),
               ),
             ),
           ),
@@ -1627,11 +1712,7 @@ class _HintContent extends StatelessWidget {
               color: Theme.of(context).primaryColor,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
-                BoxShadow(
-                  // color: Theme.of(context).primaryColor.withOpacity(0.4),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
+                BoxShadow(blurRadius: 12, offset: const Offset(0, 4)),
               ],
             ),
             child: Column(
@@ -1639,7 +1720,6 @@ class _HintContent extends StatelessWidget {
                 Text(
                   label,
                   style: const TextStyle(
-                    // color: Colors.white,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1648,10 +1728,7 @@ class _HintContent extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   sublabel,
-                  style: TextStyle(
-                    // color: Colors.white.withOpacity(0.8),
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(fontSize: 12),
                   textAlign: TextAlign.center,
                 ),
               ],
@@ -1661,20 +1738,13 @@ class _HintContent extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              // color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.w600,
               shadows: [Shadow(blurRadius: 4, color: Colors.black54)],
             ),
           ),
           const SizedBox(height: 8),
-          Text(
-            sublabel,
-            style: TextStyle(
-              // color: Colors.white.withOpacity(0.8),
-              fontSize: 13,
-            ),
-          ),
+          Text(sublabel, style: const TextStyle(fontSize: 13)),
         ],
       ],
     );

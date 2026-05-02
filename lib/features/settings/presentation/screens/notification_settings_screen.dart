@@ -205,33 +205,33 @@ class _NotificationSettingsScreenState
           ),
 
           // ── Motivational Notifications Toggle ──────────
-          _buildSectionHeader(context, 'motivational_notifications'.tr()),
-          Card(
-            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: StatefulBuilder(
-              builder: (context, setTileState) {
-                final enabled = MotivationalNotificationService.isEnabled();
-                return SwitchListTile(
-                  secondary: Icon(
-                    Icons.auto_awesome,
-                    color: colorScheme.primary,
-                  ),
-                  title: Text('motivational_notifications'.tr()),
-                  subtitle: Text(
-                    'motivational_notifications_desc'.tr(),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.grey,
-                    ),
-                  ),
-                  value: enabled,
-                  onChanged: (value) {
-                    MotivationalNotificationService.setEnabled(value);
-                    setTileState(() {});
-                  },
-                );
-              },
-            ),
-          ),
+          // _buildSectionHeader(context, 'motivational_notifications'.tr()),
+          // Card(
+          //   margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          //   child: StatefulBuilder(
+          //     builder: (context, setTileState) {
+          //       final enabled = MotivationalNotificationService.isEnabled();
+          //       return SwitchListTile(
+          //         secondary: Icon(
+          //           Icons.auto_awesome,
+          //           color: colorScheme.primary,
+          //         ),
+          //         title: Text('motivational_notifications'.tr()),
+          //         subtitle: Text(
+          //           'motivational_notifications_desc'.tr(),
+          //           style: theme.textTheme.bodySmall?.copyWith(
+          //             color: Colors.grey,
+          //           ),
+          //         ),
+          //         value: enabled,
+          //         onChanged: (value) {
+          //           MotivationalNotificationService.setEnabled(value);
+          //           setTileState(() {});
+          //         },
+          //       );
+          //     },
+          //   ),
+          // ),
           const SizedBox(height: 16),
 
           // ── Scheduled Reminders ────────────────────────
