@@ -35,8 +35,6 @@ Access your spiritual goals directly from your home screen. Our interactive widg
 ### 🔔 Smart Reminders & Notifications
 Never miss your Azkar with customizable daily reminders. Manage your schedule directly from the app, with the ability to view and delete pending notifications at your convenience.
 
-### 🎧 Multi-Reciter Audio Support
-Start your day with the beautiful recitation of the Quran. Choose from various world-renowned reciters to play at app startup.
 
 ### 🌗 Premium UI/UX
 - **Dark/Light Mode**: Full support for system themes with a curated, eye-pleasing green palette.
