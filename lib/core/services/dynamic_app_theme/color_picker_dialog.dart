@@ -41,20 +41,16 @@ class _ColorPickerDialogState extends State<ColorPickerDialog>
   late TabController _tabController;
 
   // HSV values
-  late double _hue;       // 0 - 360
+  late double _hue; // 0 - 360
   late double _saturation; // 0 - 1
-  late double _value;     // 0 - 1
-  late double _alpha;     // 0 - 1
+  late double _value; // 0 - 1
+  late double _alpha; // 0 - 1
 
   late TextEditingController _hexController;
   bool _hexError = false;
 
-  Color get _currentColor => HSVColor.fromAHSV(
-        _alpha,
-        _hue,
-        _saturation,
-        _value,
-      ).toColor();
+  Color get _currentColor =>
+      HSVColor.fromAHSV(_alpha, _hue, _saturation, _value).toColor();
 
   @override
   void initState() {
@@ -227,17 +223,21 @@ class _ColorPickerDialogState extends State<ColorPickerDialog>
                         errorText: _hexError ? 'Invalid hex' : null,
                         border: const OutlineInputBorder(),
                         contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 12),
+                          horizontal: 12,
+                          vertical: 12,
+                        ),
                         suffixIcon: IconButton(
                           icon: const Icon(Icons.copy, size: 18),
                           tooltip: 'Copy',
                           onPressed: () {
-                            Clipboard.setData(ClipboardData(
-                                text: _colorToHex(_currentColor)));
+                            Clipboard.setData(
+                              ClipboardData(text: _colorToHex(_currentColor)),
+                            );
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                  content: Text('Copied to clipboard'),
-                                  duration: Duration(seconds: 1)),
+                                content: Text('Copied to clipboard'),
+                                duration: Duration(seconds: 1),
+                              ),
                             );
                           },
                         ),
@@ -257,9 +257,7 @@ class _ColorPickerDialogState extends State<ColorPickerDialog>
                         alignment: Alignment.centerLeft,
                         child: Text(
                           'Recent',
-                          style: Theme.of(context)
-                              .textTheme
-                              .labelMedium
+                          style: Theme.of(context).textTheme.labelMedium
                               ?.copyWith(color: scheme.onSurfaceVariant),
                         ),
                       ),
@@ -269,8 +267,7 @@ class _ColorPickerDialogState extends State<ColorPickerDialog>
                         child: ListView.separated(
                           scrollDirection: Axis.horizontal,
                           itemCount: widget.recentColors.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(width: 8),
+                          separatorBuilder: (_, __) => const SizedBox(width: 8),
                           itemBuilder: (_, i) {
                             final c = widget.recentColors[i];
                             final isSelected = c.value == _currentColor.value;
@@ -294,15 +291,20 @@ class _ColorPickerDialogState extends State<ColorPickerDialog>
                                   shape: BoxShape.circle,
                                   border: isSelected
                                       ? Border.all(
-                                          color: scheme.primary, width: 2.5)
+                                          color: scheme.primary,
+                                          width: 2.5,
+                                        )
                                       : Border.all(
-                                          color:
-                                              scheme.outline.withOpacity(0.3),
-                                          width: 1),
+                                          color: scheme.outline.withOpacity(
+                                            0.3,
+                                          ),
+                                          width: 1,
+                                        ),
                                   boxShadow: [
                                     BoxShadow(
-                                        color: c.withOpacity(0.4),
-                                        blurRadius: 6)
+                                      color: c.withOpacity(0.4),
+                                      blurRadius: 6,
+                                    ),
                                   ],
                                 ),
                                 child: isSelected
@@ -388,7 +390,8 @@ class _WheelTab extends StatelessWidget {
                 data: SliderTheme.of(context).copyWith(
                   trackHeight: 12,
                   thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 10),
+                    enabledThumbRadius: 10,
+                  ),
                 ),
                 child: Slider(
                   value: value,
@@ -432,17 +435,14 @@ class _ColorWheelState extends State<_ColorWheel> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onPanStart: (d) => _handleDrag(
-          d.localPosition, context.size ?? const Size(200, 200)),
-      onPanUpdate: (d) => _handleDrag(
-          d.localPosition, context.size ?? const Size(200, 200)),
-      onTapDown: (d) => _handleDrag(
-          d.localPosition, context.size ?? const Size(200, 200)),
+      onPanStart: (d) =>
+          _handleDrag(d.localPosition, context.size ?? const Size(200, 200)),
+      onPanUpdate: (d) =>
+          _handleDrag(d.localPosition, context.size ?? const Size(200, 200)),
+      onTapDown: (d) =>
+          _handleDrag(d.localPosition, context.size ?? const Size(200, 200)),
       child: CustomPaint(
-        painter: _WheelPainter(
-          hue: widget.hue,
-          saturation: widget.saturation,
-        ),
+        painter: _WheelPainter(hue: widget.hue, saturation: widget.saturation),
         child: const SizedBox(width: 200, height: 200),
       ),
     );
@@ -484,22 +484,23 @@ class _WheelPainter extends CustomPainter {
 
     // Thumb
     final angle = hue * math.pi / 180;
-    final thumbPos = center +
+    final thumbPos =
+        center +
         Offset(
           math.cos(angle) * saturation * radius,
           math.sin(angle) * saturation * radius,
         );
 
     final thumbColor = HSVColor.fromAHSV(1, hue, saturation, 1).toColor();
+    canvas.drawCircle(thumbPos, 12, Paint()..color = thumbColor);
     canvas.drawCircle(
-        thumbPos, 12, Paint()..color = thumbColor);
-    canvas.drawCircle(
-        thumbPos,
-        12,
-        Paint()
-          ..color = Colors.white
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.5);
+      thumbPos,
+      12,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5,
+    );
   }
 
   @override
@@ -523,8 +524,13 @@ class _SlidersTab extends StatelessWidget {
     required this.onChanged,
   });
 
-  Widget _label(String text) =>
-      SizedBox(width: 28, child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)));
+  Widget _label(String text) => SizedBox(
+    width: 28,
+    child: Text(
+      text,
+      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+    ),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -536,44 +542,85 @@ class _SlidersTab extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         // Hue
-        Row(children: [
-          _label('H'),
-          Expanded(child: _GradientSlider(
-            value: hue / 360,
-            gradient: LinearGradient(colors: List.generate(
-                7, (i) => HSVColor.fromAHSV(1, i * 60.0, 1, 1).toColor())),
-            onChanged: (v) => onChanged(v * 360, saturation, value),
-          )),
-          SizedBox(width: 36, child: Text('${hue.round()}°', textAlign: TextAlign.right, style: const TextStyle(fontSize: 12))),
-        ]),
+        Row(
+          children: [
+            _label('H'),
+            Expanded(
+              child: _GradientSlider(
+                value: hue / 360,
+                gradient: LinearGradient(
+                  colors: List.generate(
+                    7,
+                    (i) => HSVColor.fromAHSV(1, i * 60.0, 1, 1).toColor(),
+                  ),
+                ),
+                onChanged: (v) => onChanged(v * 360, saturation, value),
+              ),
+            ),
+            SizedBox(
+              width: 36,
+              child: Text(
+                '${hue.round()}°',
+                textAlign: TextAlign.right,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 12),
         // Saturation
-        Row(children: [
-          _label('S'),
-          Expanded(child: _GradientSlider(
-            value: saturation,
-            gradient: LinearGradient(colors: [
-              HSVColor.fromAHSV(1, hue, 0, value).toColor(),
-              HSVColor.fromAHSV(1, hue, 1, value).toColor(),
-            ]),
-            onChanged: (v) => onChanged(hue, v, value),
-          )),
-          SizedBox(width: 36, child: Text('${(saturation * 100).round()}%', textAlign: TextAlign.right, style: const TextStyle(fontSize: 12))),
-        ]),
+        Row(
+          children: [
+            _label('S'),
+            Expanded(
+              child: _GradientSlider(
+                value: saturation,
+                gradient: LinearGradient(
+                  colors: [
+                    HSVColor.fromAHSV(1, hue, 0, value).toColor(),
+                    HSVColor.fromAHSV(1, hue, 1, value).toColor(),
+                  ],
+                ),
+                onChanged: (v) => onChanged(hue, v, value),
+              ),
+            ),
+            SizedBox(
+              width: 36,
+              child: Text(
+                '${(saturation * 100).round()}%',
+                textAlign: TextAlign.right,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 12),
         // Value/Brightness
-        Row(children: [
-          _label('V'),
-          Expanded(child: _GradientSlider(
-            value: value,
-            gradient: LinearGradient(colors: [
-              Colors.black,
-              HSVColor.fromAHSV(1, hue, saturation, 1).toColor(),
-            ]),
-            onChanged: (v) => onChanged(hue, saturation, v),
-          )),
-          SizedBox(width: 36, child: Text('${(value * 100).round()}%', textAlign: TextAlign.right, style: const TextStyle(fontSize: 12))),
-        ]),
+        Row(
+          children: [
+            _label('V'),
+            Expanded(
+              child: _GradientSlider(
+                value: value,
+                gradient: LinearGradient(
+                  colors: [
+                    Colors.black,
+                    HSVColor.fromAHSV(1, hue, saturation, 1).toColor(),
+                  ],
+                ),
+                onChanged: (v) => onChanged(hue, saturation, v),
+              ),
+            ),
+            SizedBox(
+              width: 36,
+              child: Text(
+                '${(value * 100).round()}%',
+                textAlign: TextAlign.right,
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+          ],
+        ),
         const Divider(height: 28),
         // RGB display (read-only info)
         Row(
@@ -593,12 +640,23 @@ class _RgbChip extends StatelessWidget {
   final String label;
   final int value;
   final Color color;
-  const _RgbChip({required this.label, required this.value, required this.color});
+  const _RgbChip({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 12)),
+        Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
         const SizedBox(height: 2),
         Text('$value', style: const TextStyle(fontSize: 13)),
       ],
@@ -655,7 +713,11 @@ class _GradientTrackShape extends SliderTrackShape {
     final trackHeight = sliderTheme.trackHeight ?? 4;
     final trackTop = offset.dy + (parentBox.size.height - trackHeight) / 2;
     return Rect.fromLTWH(
-        offset.dx, trackTop, parentBox.size.width, trackHeight);
+      offset.dx,
+      trackTop,
+      parentBox.size.width,
+      trackHeight,
+    );
   }
 
   @override
@@ -672,12 +734,12 @@ class _GradientTrackShape extends SliderTrackShape {
     required TextDirection textDirection,
   }) {
     final rect = getPreferredRect(
-        parentBox: parentBox,
-        offset: offset,
-        sliderTheme: sliderTheme);
+      parentBox: parentBox,
+      offset: offset,
+      sliderTheme: sliderTheme,
+    );
     final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(7));
-    final paint = Paint()
-      ..shader = gradient.createShader(rect);
+    final paint = Paint()..shader = gradient.createShader(rect);
     context.canvas.drawRRect(rrect, paint);
   }
 }
@@ -702,16 +764,19 @@ class _AlphaSlider extends StatelessWidget {
       children: [
         const SizedBox(
           width: 28,
-          child: Text('A', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          child: Text(
+            'A',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
         ),
         Expanded(
           child: SliderTheme(
             data: SliderTheme.of(context).copyWith(
               trackHeight: 14,
               thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 10),
-              trackShape: _GradientTrackShape(LinearGradient(
-                colors: [color.withOpacity(0), color],
-              )),
+              trackShape: _GradientTrackShape(
+                LinearGradient(colors: [color.withOpacity(0), color]),
+              ),
               activeTrackColor: Colors.transparent,
               inactiveTrackColor: Colors.transparent,
             ),
@@ -720,9 +785,11 @@ class _AlphaSlider extends StatelessWidget {
         ),
         SizedBox(
           width: 36,
-          child: Text('${(alpha * 100).round()}%',
-              textAlign: TextAlign.right,
-              style: const TextStyle(fontSize: 12)),
+          child: Text(
+            '${(alpha * 100).round()}%',
+            textAlign: TextAlign.right,
+            style: const TextStyle(fontSize: 12),
+          ),
         ),
       ],
     );
@@ -735,7 +802,9 @@ class _AlphaSlider extends StatelessWidget {
 class _HexInputFormatter extends TextInputFormatter {
   @override
   TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
     var text = newValue.text.toUpperCase();
     if (!text.startsWith('#')) text = '#$text';
     final clean = '#' + text.substring(1).replaceAll(RegExp(r'[^0-9A-F]'), '');
