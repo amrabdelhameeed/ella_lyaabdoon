@@ -1,10 +1,24 @@
+import 'dart:async';
 import 'package:bloc/bloc.dart';
 import 'package:ella_lyaabdoon/features/history/data/history_db_provider.dart';
+import 'package:ella_lyaabdoon/utils/notification_helper.dart';
 import 'package:equatable/equatable.dart';
 part 'history_state.dart';
 
 class HistoryCubit extends Cubit<HistoryState> {
-  HistoryCubit() : super(HistoryInitial());
+  StreamSubscription? _zikrDoneSubscription;
+
+  HistoryCubit() : super(HistoryInitial()) {
+    _zikrDoneSubscription = NotificationHelper.zikrDoneStreamController.stream.listen((zikrId) {
+      loadCheck(zikrId);
+    });
+  }
+
+  @override
+  Future<void> close() {
+    _zikrDoneSubscription?.cancel();
+    return super.close();
+  }
 
   Future<void> loadCheck(String zikrId) async {
     try {
@@ -52,6 +66,23 @@ class HistoryCubit extends Cubit<HistoryState> {
       final currentChecks = state is HistoryLoaded
           ? Map<String, bool>.from((state as HistoryLoaded).checks)
           : <String, bool>{};
+
+      emit(HistoryLoaded(checks: currentChecks, lastUpdated: DateTime.now()));
+    } catch (e) {
+      emit(HistoryError(e.toString()));
+    }
+  }
+
+  Future<void> reloadChecks() async {
+    try {
+      await HistoryDBProvider.reload();
+      final currentChecks = state is HistoryLoaded
+          ? Map<String, bool>.from((state as HistoryLoaded).checks)
+          : <String, bool>{};
+
+      for (final zikrId in currentChecks.keys) {
+        currentChecks[zikrId] = HistoryDBProvider.isCheckedToday(zikrId);
+      }
 
       emit(HistoryLoaded(checks: currentChecks, lastUpdated: DateTime.now()));
     } catch (e) {
