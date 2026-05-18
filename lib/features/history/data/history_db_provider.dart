@@ -1,4 +1,5 @@
 import 'package:ella_lyaabdoon/core/constants/app_lists.dart';
+import 'package:ella_lyaabdoon/core/models/azan_day_period.dart';
 import 'package:flutter/material.dart';
 import 'package:hive/hive.dart';
 
@@ -19,11 +20,100 @@ class HistoryDBProvider {
     _appOpensBox = await Hive.openBox<List<String>>(_appOpensBoxName);
   }
 
+  /// Reload the boxes from disk to sync changes made by background isolates
+  static Future<void> reload() async {
+    try {
+      if (_box != null && _box!.isOpen) {
+        await _box!.close();
+      }
+      _box = await Hive.openBox<List<String>>(_boxName);
+    } catch (e) {
+      debugPrint('⚠️ Error reloading HistoryDBProvider: $e');
+    }
+  }
+
   static Box<List<String>> get _safeBox {
     if (_box == null || !_box!.isOpen) {
       throw HiveError('HistoryDBProvider box is not open');
     }
     return _box!;
+  }
+
+  /// Saturday = start of week (weekday=6)
+  /// Returns how many days back from today to reach the last Saturday
+  static DateTime _getWeekStart(DateTime today) {
+    // Dart: Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6, Sun=7
+    // Days since last Saturday:
+    // Sat=0, Sun=1, Mon=2, Tue=3, Wed=4, Thu=5, Fri=6
+    final daysSinceSaturday = (today.weekday + 1) % 7;
+    return today.subtract(Duration(days: daysSinceSaturday));
+  }
+
+  static int getZikrsThisWeek() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final weekStart = _getWeekStart(today);
+    final daysElapsed = today.difference(weekStart).inDays; // 0..6
+
+    int total = 0;
+    for (int i = 0; i <= daysElapsed; i++) {
+      total += getTotalZikrsCompletedForDate(weekStart.add(Duration(days: i)));
+    }
+    return total;
+  }
+
+  static int getZikrsLastWeek() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final thisWeekStart = _getWeekStart(today);
+    final lastWeekStart = thisWeekStart.subtract(const Duration(days: 7));
+
+    int total = 0;
+    for (int i = 0; i < 7; i++) {
+      total += getTotalZikrsCompletedForDate(
+        lastWeekStart.add(Duration(days: i)),
+      );
+    }
+    return total;
+  }
+
+  static Map<int, int> getWeekZikrCountsFromSaturday() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final weekStart = _getWeekStart(
+      today,
+    ); // already defined — returns last Saturday
+    final daysElapsed = today.difference(weekStart).inDays; // 0..6
+
+    final result = <int, int>{};
+    for (int i = 0; i <= 6; i++) {
+      final date = weekStart.add(Duration(days: i));
+      result[i] = i <= daysElapsed
+          ? getTotalZikrsCompletedForDate(date)
+          : 0; // future days = 0
+    }
+    return result;
+  }
+
+  static int getAppOpensThisWeek() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final weekStart = _getWeekStart(today);
+    return getAppOpensForDateRange(weekStart, today);
+  }
+
+  static DateTime getWeekStart(DateTime today) {
+    final daysSinceSaturday = (today.weekday + 1) % 7;
+    return today.subtract(Duration(days: daysSinceSaturday));
+  }
+
+  static int getAppOpensLastWeek() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final thisWeekStart = _getWeekStart(today);
+    final lastWeekStart = thisWeekStart.subtract(const Duration(days: 7));
+    final lastWeekEnd = thisWeekStart.subtract(const Duration(days: 1));
+    return getAppOpensForDateRange(lastWeekStart, lastWeekEnd);
   }
 
   /// Add a check for a zikr (prevents duplicates for the same day)
@@ -227,17 +317,13 @@ class HistoryDBProvider {
   static double getWeeklyAverageZikrs() {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-
-    final weekStart = today.subtract(Duration(days: (today.weekday + 1) % 7));
-    final daysCount = today.difference(weekStart).inDays + 1;
-
-    if (daysCount <= 0) return 0;
+    final weekStart = _getWeekStart(today);
+    final daysCount = today.difference(weekStart).inDays + 1; // 1..7
 
     int total = 0;
     for (int i = 0; i < daysCount; i++) {
       total += getTotalZikrsCompletedForDate(weekStart.add(Duration(days: i)));
     }
-
     return total / daysCount;
   }
 
@@ -391,27 +477,6 @@ class HistoryDBProvider {
     return result;
   }
 
-  /// Get this week's total app opens (Mon–today)
-  static int getAppOpensThisWeek() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    // weekday: Mon=1 … Sun=7
-    final weekStart = today.subtract(Duration(days: (today.weekday + 1) % 7));
-    return getAppOpensForDateRange(weekStart, today);
-  }
-
-  /// Get last week's total app opens (Mon–Sun)
-  static int getAppOpensLastWeek() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final thisWeekStart = today.subtract(
-      Duration(days: (today.weekday + 1) % 7),
-    );
-    final lastWeekStart = thisWeekStart.subtract(const Duration(days: 7));
-    final lastWeekEnd = thisWeekStart.subtract(const Duration(days: 1));
-    return getAppOpensForDateRange(lastWeekStart, lastWeekEnd);
-  }
-
   // ──────────────────────────────────────────────────────────
   // Daily Zikr Completion Aggregation
   // ──────────────────────────────────────────────────────────
@@ -462,21 +527,6 @@ class HistoryDBProvider {
     return result;
   }
 
-  /// Get this week's total zikrs completed (Mon–today)
-  static int getZikrsThisWeek() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    // weekday: Mon=1 … Sun=7
-    final weekStart = today.subtract(Duration(days: today.weekday - 3));
-    final daysElapsed = today.difference(weekStart).inDays; // 0..6
-
-    int total = 0;
-    for (int i = 0; i <= daysElapsed; i++) {
-      total += getTotalZikrsCompletedForDate(weekStart.add(Duration(days: i)));
-    }
-    return total;
-  }
-
   static int getZikrsForMonth(int year, int month) {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -492,22 +542,61 @@ class HistoryDBProvider {
     return total;
   }
 
-  /// Get last week's total zikrs completed (Mon–Sun)
-  static int getZikrsLastWeek() {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final thisWeekStart = today.subtract(
-      Duration(days: (today.weekday + 1) % 7),
-    );
-    final lastWeekStart = thisWeekStart.subtract(const Duration(days: 7));
+  // ──────────────────────────────────────────────────────────
+  // Period Statistics
+  // ──────────────────────────────────────────────────────────
+
+  static int getZikrsPerPeriodToday(AzanDayPeriod period) {
+    if (_box == null || !_box!.isOpen) return 0;
 
     int total = 0;
-    for (int i = 0; i < 7; i++) {
-      total += getTotalZikrsCompletedForDate(
-        lastWeekStart.add(Duration(days: i)),
+    try {
+      final periodItem = AppLists.timelineItems.firstWhere(
+        (item) => item.period == period,
       );
+      for (final reward in periodItem.rewards) {
+        if (isCheckedToday(reward.id)) {
+          total++;
+        }
+      }
+    } catch (e) {
+      // Ignore
     }
     return total;
+  }
+
+  static int getZikrsPerPeriodAllTime(AzanDayPeriod period) {
+    if (_box == null || !_box!.isOpen) return 0;
+
+    int total = 0;
+    try {
+      final periodItem = AppLists.timelineItems.firstWhere(
+        (item) => item.period == period,
+      );
+      for (final reward in periodItem.rewards) {
+        final checks = getChecks(reward.id);
+        total += checks.length;
+      }
+    } catch (e) {
+      // Ignore
+    }
+    return total;
+  }
+
+  static Map<AzanDayPeriod, double> getPeriodCompletionRates() {
+    final Map<AzanDayPeriod, double> rates = {};
+    if (_box == null || !_box!.isOpen) return rates;
+
+    for (final item in AppLists.timelineItems) {
+      final totalToday = getZikrsPerPeriodToday(item.period);
+      final count = item.rewards.length;
+      if (count == 0) {
+        rates[item.period] = 0.0;
+      } else {
+        rates[item.period] = totalToday / count;
+      }
+    }
+    return rates;
   }
 
   // ──────────────────────────────────────────────────────────
