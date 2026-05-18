@@ -1,5 +1,5 @@
 package com.amrabdelhameed.ella_lyaabdoon
-
+import java.time.LocalDate
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -38,6 +38,11 @@ class PrayerRewardGlanceWidget : GlanceAppWidget() {
             val title = prefs.getString("reward_title", null) ?: "افتح التطبيق"
             val desc = prefs.getString("reward_description", null) ?: "اضغط للتحديث"
             val time = prefs.getString("update_time", null) ?: "..."
+            val rewardId = prefs.getString("reward_id", null) ?: ""
+
+            // Store current reward ID for zikr done action
+            val appPrefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            appPrefs.edit().putString("flutter.current_reward_id", rewardId).apply()
 
             CompactWidgetContent(period, title, desc, time)
         }
@@ -195,6 +200,35 @@ private fun CompactWidgetContent(period: String, title: String, desc: String, ti
 
                     Spacer(modifier = GlanceModifier.defaultWeight())
 
+                    // Zikr Done Button
+                    Box(
+                        modifier = GlanceModifier
+                            .height(34.dp)
+                            .background(primaryGreen)
+                            .cornerRadius(17.dp)
+                            .clickable(actionRunCallback<MarkZikrDoneCallback>())
+                            .padding(horizontal = 14.dp, vertical = 8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text("✅", style = TextStyle(fontSize = 12.sp))
+                            Spacer(modifier = GlanceModifier.width(4.dp))
+                            Text(
+                                text = "تم الذكر",
+                                style = TextStyle(
+                                    color = white,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = GlanceModifier.width(8.dp))
+
                     Box(
                         modifier = GlanceModifier
                             .height(34.dp)
@@ -255,6 +289,46 @@ class RefreshActionCallback : ActionCallback {
             Uri.parse("homeWidget://refresh")
         )
         backgroundIntent.send()
+    }
+}
+
+class MarkZikrDoneCallback : ActionCallback {
+    override suspend fun onAction(
+        context: Context,
+        glanceId: GlanceId,
+        parameters: ActionParameters
+    ) {
+        val prefs = context.getSharedPreferences(
+            "FlutterSharedPreferences", Context.MODE_PRIVATE
+        )
+        val currentRewardId = prefs.getString("flutter.current_reward_id", null)
+        if (currentRewardId.isNullOrEmpty()) return
+
+        val sdf = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+        val today = sdf.format(java.util.Date())
+        val newEntry = "$currentRewardId|$today"
+
+        // Atomic append under synchronized lock
+        synchronized(this) {
+            val existing = prefs.getString("flutter.pending_zikr_queue", "") ?: ""
+            
+            // Avoid duplicate entries for same reward same day
+            val alreadyQueued = existing.split(",").any { it.trim() == newEntry }
+            if (!alreadyQueued) {
+                val updated = if (existing.isEmpty()) newEntry else "$existing,$newEntry"
+                prefs.edit()
+                    .putString("flutter.pending_zikr_queue", updated)
+                    .commit() // commit() not apply() — we need synchronous write
+                android.util.Log.d("PrayerWidget", "Queued: $newEntry | Full: $updated")
+            } else {
+                android.util.Log.d("PrayerWidget", "Skipped duplicate: $newEntry")
+            }
+        }
+
+        HomeWidgetBackgroundIntent.getBroadcast(
+            context,
+            Uri.parse("homeWidget://zikr_done")
+        ).send()
     }
 }
 
