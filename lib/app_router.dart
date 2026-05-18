@@ -84,15 +84,17 @@ class AppRouter {
 
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
-        path: AppRoutes.settings,
-        name: AppRoutes.settings,
-        builder: (context, state) => const SettingsScreen(),
-        pageBuilder: defaultPageBuilder(const SettingsScreen()),
-      ),
-      GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
         path: AppRoutes.home,
         name: AppRoutes.home,
+        routes: [
+          GoRoute(
+            parentNavigatorKey: _rootNavigatorKey,
+            path: AppRoutes.settings,
+            name: AppRoutes.settings,
+            builder: (context, state) => const SettingsScreen(),
+            pageBuilder: defaultPageBuilder(const SettingsScreen()),
+          ),
+        ],
         builder: (context, state) => const HomeScreen(),
         pageBuilder: defaultPageBuilder(const HomeScreen()),
       ),

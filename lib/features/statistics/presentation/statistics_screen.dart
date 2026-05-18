@@ -1142,9 +1142,14 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 // Shared helpers (top-level, used by _ZikrChartCard)
 // ══════════════════════════════════════════════════════════════════
 
-String _chartDateLabel(int index, int days, bool rtl, DateTime today) {
+String _chartDateLabel(
+  int index,
+  int days,
+  bool rtl,
+  DateTime anchor, // was: DateTime today
+) {
   final dateIndex = rtl ? (days - 1 - index) : index;
-  final date = today.subtract(Duration(days: days - 1 - dateIndex));
+  final date = anchor.add(Duration(days: dateIndex)); // ← add, not subtract
   final locale = AppServicesDBprovider.currentLocale();
   if (days <= 7) return easy.DateFormat('EEE', locale).format(date);
   if (days <= 30) return easy.DateFormat('d/M', locale).format(date);
@@ -1155,10 +1160,10 @@ String _chartDateLabel(int index, int days, bool rtl, DateTime today) {
 }
 
 Map<int, int> _maybeReverseData(Map<int, int> data, int days, bool rtl) {
-  if (!rtl) return data;
-  return {for (int i = 0; i < days; i++) i: data[days - 1 - i] ?? 0};
+  // ✅ Don't reverse — chart is forced LTR via Directionality wrapper
+  // Arabic labels (day names) still render correctly via DateFormat locale
+  return data;
 }
-
 // ══════════════════════════════════════════════════════════════════
 // Zikr Chart Card — single card, 7/14/30 = line chart, 90 = bar chart
 // ══════════════════════════════════════════════════════════════════
@@ -1176,15 +1181,24 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final rtl = _isRtl();
-    final rawData = HistoryDBProvider.getDailyZikrCountsRange(_selectedDays);
-    final data = _maybeReverseData(rawData, _selectedDays, rtl);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    final primary = theme.colorScheme.primary;
+
+    final rawData = _selectedDays == 7
+        ? HistoryDBProvider.getWeekZikrCountsFromSaturday()
+        : HistoryDBProvider.getDailyZikrCountsRange(_selectedDays);
+
+    final chartAnchor = _selectedDays == 7
+        ? HistoryDBProvider.getWeekStart(today)
+        : today.subtract(Duration(days: _selectedDays - 1));
+
+    final data = _maybeReverseData(rawData, _selectedDays, rtl);
+
     final maxY = data.values.fold(
       0.0,
       (a, b) => b.toDouble() > a ? b.toDouble() : a,
     );
-    final primary = theme.colorScheme.primary;
 
     return Card(
       elevation: 0,
@@ -1222,7 +1236,6 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
               ],
             ),
             const SizedBox(height: 16),
-            // Force LTR for fl_chart — RTL handled via data mirroring
             Directionality(
               textDirection: TextDirection.ltr,
               child: SizedBox(
@@ -1233,7 +1246,7 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
                         data,
                         _selectedDays,
                         rtl,
-                        today,
+                        chartAnchor, // ✅ only anchor, no today
                         maxY: maxY,
                       )
                     : _buildLineChart(
@@ -1241,7 +1254,7 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
                         data,
                         _selectedDays,
                         rtl,
-                        today,
+                        chartAnchor, // ✅ only anchor, no today
                         maxY: maxY,
                       ),
               ),
@@ -1257,7 +1270,7 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
     Map<int, int> data,
     int days,
     bool rtl,
-    DateTime today, {
+    DateTime anchor, { // ✅ single param
     required double maxY,
   }) {
     final theme = Theme.of(context);
@@ -1277,9 +1290,8 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
         clipData: const FlClipData.all(),
         lineTouchData: LineTouchData(
           touchTooltipData: LineTouchTooltipData(
-            getTooltipItems: (spots) => spots.map((spot) {
-              final dIdx = rtl ? spot.x.toInt() : (days - 1 - spot.x.toInt());
-              final date = today.subtract(Duration(days: dIdx));
+            getTooltipItems: (touchedSpots) => touchedSpots.map((spot) {
+              final date = anchor.add(Duration(days: spot.x.toInt()));
               return LineTooltipItem(
                 '${easy.DateFormat('d MMM', locale).format(date)}\n${spot.y.toInt()} ${'zikrs'.tr()}',
                 TextStyle(
@@ -1295,7 +1307,7 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
           context,
           days,
           rtl,
-          today,
+          anchor, // ✅ anchor
           interval: days <= 7 ? 1.0 : 5.0,
         ),
         borderData: FlBorderData(show: false),
@@ -1336,7 +1348,7 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
     Map<int, int> data,
     int days,
     bool rtl,
-    DateTime today, {
+    DateTime anchor, { // ✅ single param
     required double maxY,
   }) {
     final theme = Theme.of(context);
@@ -1361,14 +1373,19 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
             ],
           ),
         ),
-        titlesData: _titlesData(context, days, rtl, today, interval: 1),
+        titlesData: _titlesData(
+          context,
+          days,
+          rtl,
+          anchor, // ✅ anchor
+          interval: 1,
+        ),
         borderData: FlBorderData(show: false),
         gridData: _gridData(context, maxY),
         barTouchData: BarTouchData(
           touchTooltipData: BarTouchTooltipData(
             getTooltipItem: (group, _, rod, __) {
-              final dIdx = rtl ? group.x : (days - 1 - group.x);
-              final date = today.subtract(Duration(days: dIdx));
+              final date = anchor.add(Duration(days: group.x));
               return BarTooltipItem(
                 '${easy.DateFormat('d MMM', locale).format(date)}\n${rod.toY.toInt()} ${'zikrs'.tr()}',
                 TextStyle(
@@ -1388,7 +1405,7 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
     BuildContext context,
     int days,
     bool rtl,
-    DateTime today, {
+    DateTime anchor, { // ✅ single param, was 'today'
     required double interval,
   }) {
     final theme = Theme.of(context);
@@ -1403,7 +1420,18 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
           reservedSize: 28,
           interval: interval,
           getTitlesWidget: (v, _) {
-            final label = _chartDateLabel(v.toInt(), days, rtl, today);
+            final date = anchor.add(Duration(days: v.toInt()));
+            final locale = AppServicesDBprovider.currentLocale();
+            String label;
+            if (days <= 7) {
+              label = easy.DateFormat('EEE', locale).format(date);
+            } else if (days <= 30) {
+              label = easy.DateFormat('d/M', locale).format(date);
+            } else if (date.day == 1 || v.toInt() == 0) {
+              label = easy.DateFormat('MMM', locale).format(date);
+            } else {
+              label = '';
+            }
             if (label.isEmpty) return const SizedBox.shrink();
             return Padding(
               padding: const EdgeInsets.only(top: 4),
@@ -1440,7 +1468,6 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
     );
   }
 }
-
 // ══════════════════════════════════════════════════════════════════
 // Range Selector
 // ══════════════════════════════════════════════════════════════════

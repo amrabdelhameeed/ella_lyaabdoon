@@ -6,7 +6,7 @@ class AppRoutes {
   static const intro = '/intro';
   static const home = '/home';
 
-  static const settings = '/settings';
+  static const settings = 'settings';
   static const history = '/history';
   static const streakStatistics = '/streak-statistics';
   static const statistics = '/statistics';

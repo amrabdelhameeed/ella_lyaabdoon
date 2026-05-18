@@ -2,6 +2,7 @@
 
 import 'dart:io';
 import 'dart:async';
+import 'dart:isolate';
 import 'package:clarity_flutter/clarity_flutter.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:ella_lyaabdoon/app_router.dart';
@@ -29,6 +30,8 @@ import 'package:timezone/timezone.dart' as tz;
 import "package:path_provider/path_provider.dart" as path;
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:home_widget/home_widget.dart';
+import 'package:ella_lyaabdoon/core/constants/app_lists.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ============================================================
 // GLOBAL CONFIGURATION
@@ -47,48 +50,130 @@ bool _allServicesReady = false;
 
 @pragma('vm:entry-point')
 Future<void> widgetBackgroundCallback(Uri? uri) async {
+  debugPrint(
+    '🔔 Widget callback FIRED: $uri — isolate: ${Isolate.current.debugName}',
+  );
   WidgetsFlutterBinding.ensureInitialized();
   debugPrint('🔔 Widget callback: $uri');
 
   if (uri?.host == 'refresh') {
-    // Prayer widget refresh
     try {
       await _ensureHiveReady();
       await PrayerWidgetService.updateWidget().timeout(kInitTimeout);
     } catch (e) {
       debugPrint('⚠️ Prayer widget refresh failed: $e');
     }
+  } else if (uri?.host == 'zikr_done') {
+    try {
+      await _ensureHiveReady();
+      await CacheHelper.init();
+
+      final prefs = await SharedPreferences.getInstance();
+
+      // Re-read queue AFTER a short delay to let any concurrent Kotlin writes finish
+      await Future.delayed(const Duration(milliseconds: 150));
+      await prefs.reload(); // Force fresh read from disk
+
+      final queueRaw = prefs.getString('pending_zikr_queue') ?? '';
+      debugPrint('📦 Widget zikr_done: queue = "$queueRaw"');
+
+      if (queueRaw.isEmpty) {
+        debugPrint('⚠️ Queue empty — nothing to process');
+        return;
+      }
+
+      final allRewards = AppLists.timelineItems
+          .expand((item) => item.rewards)
+          .toList();
+
+      final now = DateTime.now();
+      final todayKey =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+      final entries = queueRaw
+          .split(',')
+          .where((e) => e.trim().isNotEmpty)
+          .toList();
+      final List<String> unprocessed = [];
+
+      for (final entry in entries) {
+        final parts = entry.trim().split('|');
+        final rewardId = parts[0];
+        final dateStr = parts.length > 1 ? parts[1] : todayKey;
+        final date = DateTime.tryParse(dateStr) ?? now;
+
+        final target = allRewards.where((r) => r.id == rewardId).firstOrNull;
+        if (target == null) {
+          debugPrint('⚠️ Reward not found: $rewardId — dropping');
+          continue; // drop unknown IDs
+        }
+
+        final isToday = dateStr == todayKey;
+        if (isToday && HistoryDBProvider.isCheckedToday(target.id)) {
+          debugPrint('⏭️ Already done today: $rewardId — dropping');
+          continue; // already processed, drop it
+        }
+
+        await HistoryDBProvider.addCheck(target.id, date);
+        debugPrint('✅ Marked done: $rewardId @ $dateStr');
+        await StreakService.recordActiveDay();
+
+        // Successfully processed — don't add to unprocessed
+      }
+
+      // Write back only unprocessed entries (should be empty normally)
+      if (unprocessed.isEmpty) {
+        await prefs.remove('pending_zikr_queue');
+      } else {
+        await prefs.setString('pending_zikr_queue', unprocessed.join(','));
+        debugPrint('⚠️ Left in queue (unprocessed): $unprocessed');
+      }
+
+      await PrayerWidgetService.updateWidget();
+      await HomeWidget.updateWidget(androidName: 'PrayerRewardWidgetProvider');
+      debugPrint('✅ Widget UI updated');
+    } catch (e, stack) {
+      debugPrint('⚠️ Widget zikr_done failed: $e\n$stack');
+    }
   }
 }
 
 /// Ensure Hive is initialized for background callbacks
 Future<void> _ensureHiveReady() async {
-  if (_hiveInitialized) return;
-
   try {
     final dbPath = await path.getApplicationDocumentsDirectory().timeout(
-      Duration(seconds: 3),
+      const Duration(seconds: 3),
     );
+
+    // Always call init — safe to call multiple times
     Hive.init(dbPath.path);
 
+    // Open each box only if not already open
     if (!Hive.isBoxOpen(AppDatabaseKeys.appServicesKey)) {
       await Hive.openBox<String>(
         AppDatabaseKeys.appServicesKey,
-      ).timeout(Duration(seconds: 3));
+      ).timeout(const Duration(seconds: 3));
     }
 
     if (!Hive.isBoxOpen('zikrHistoryBox')) {
-      await HistoryDBProvider.init().timeout(Duration(seconds: 3));
-      await HistoryDBProvider.cleanupDuplicates().timeout(Duration(seconds: 3));
+      await HistoryDBProvider.init().timeout(const Duration(seconds: 3));
     }
+
+    if (!Hive.isBoxOpen('zikrCounterBox')) {
+      // opened inside HistoryDBProvider.init() but guard anyway
+    }
+
+    await HistoryDBProvider.cleanupDuplicates().timeout(
+      const Duration(seconds: 3),
+    );
 
     _hiveInitialized = true;
     debugPrint('✅ Hive ready for widget callback');
   } catch (e) {
-    debugPrint('⚠️ Hive init in callback failed: $e');
+    debugPrint('⚠️ _ensureHiveReady failed: $e');
+    // Don't rethrow — let the callback attempt to proceed
   }
 }
-
 // ============================================================
 // MAIN FUNCTION - PROPER INITIALIZATION ORDER
 // ============================================================

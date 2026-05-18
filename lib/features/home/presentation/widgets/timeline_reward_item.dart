@@ -255,7 +255,7 @@ class _TimelineRewardItemState extends State<TimelineRewardItem> {
                               : ui.TextDirection.ltr,
                           child: Row(
                             children: [
-                              // Square Checkbox Button with enhanced colors
+                              // Square Checkbox Button
                               GestureDetector(
                                 onTap: _toggleCheck,
                                 child: Container(
@@ -281,12 +281,10 @@ class _TimelineRewardItemState extends State<TimelineRewardItem> {
                                                             alpha: 0.15,
                                                           ))
                                               : (isDarkMode
-                                                    // 🎨 Enhanced dark mode unchecked
                                                     ? Colors.grey[800]!
                                                           .withValues(
                                                             alpha: 0.4,
                                                           )
-                                                    // 🎨 Enhanced light mode unchecked
                                                     : Colors.grey[200]!
                                                           .withValues(
                                                             alpha: 0.6,
@@ -297,19 +295,15 @@ class _TimelineRewardItemState extends State<TimelineRewardItem> {
                                           bottomStart: Radius.circular(12),
                                         ),
                                   ),
-                                  child: // Square Checkbox Button
-                                  SizedBox(
+                                  child: SizedBox(
                                     width: 28,
                                     height: double.infinity,
                                     child: Transform.scale(
-                                      scale:
-                                          0.9, // Adjust scale to match your 28px width preference
+                                      scale: 0.9,
                                       child: Checkbox(
                                         value: isChecked,
-                                        // Maintains your Cubit logic
                                         onChanged: (bool? value) =>
                                             _toggleCheck(),
-                                        // Ensures the shape is slightly rounded like your original BoxDecoration
                                         shape: RoundedRectangleBorder(
                                           borderRadius: BorderRadius.circular(
                                             5,
@@ -321,83 +315,119 @@ class _TimelineRewardItemState extends State<TimelineRewardItem> {
                                 ),
                               ),
 
-                              // Reward title (with proper spacing)
+                              // Reward title (with forced RTL styling)
                               Expanded(
                                 child: ClipRRect(
                                   borderRadius: BorderRadius.circular(12),
-                                  child: Stack(
-                                    children: [
-                                      // Content
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 10,
-                                          vertical: 12,
-                                        ),
-                                        alignment: Alignment.centerRight,
-                                        child: Text(
-                                          widget.reward.title,
-                                          textDirection: ui.TextDirection.rtl,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodyMedium!
-                                              .copyWith(
-                                                fontFamily: 'kufi',
-                                                fontWeight: FontWeight.w600,
-                                                color:
-                                                    isChecked ||
-                                                        widget.isCurrent
-                                                    ? Theme.of(context)
-                                                          .textTheme
-                                                          .bodyMedium
-                                                          ?.color
-                                                    : Theme.of(context)
-                                                          .textTheme
-                                                          .bodyMedium
-                                                          ?.color
-                                                          ?.withValues(
-                                                            alpha: 0.7,
-                                                          ),
-                                                decoration: isChecked
-                                                    ? TextDecoration.lineThrough
-                                                    : null,
+                                  child: SizedBox(
+                                    height: 95,
+                                    child: Stack(
+                                      children: [
+                                        Padding(
+                                          padding: EdgeInsetsDirectional.only(
+                                            start: 8,
+                                            end: isArabic ? 45 : 22,
+                                          ),
+                                          child: Column(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.center,
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.stretch,
+                                            children: [
+                                              Directionality(
+                                                textDirection:
+                                                    ui.TextDirection.rtl,
+                                                child: Text(
+                                                  widget.reward.title,
+                                                  textDirection:
+                                                      ui.TextDirection.rtl,
+                                                  textAlign: TextAlign.right,
+                                                  maxLines: 3,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .bodyMedium!
+                                                      .copyWith(
+                                                        height: 1.2,
+                                                        fontFamily: 'kufi',
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color:
+                                                            isChecked ||
+                                                                widget.isCurrent
+                                                            ? Theme.of(context)
+                                                                  .textTheme
+                                                                  .bodyMedium
+                                                                  ?.color
+                                                            : Theme.of(context)
+                                                                  .textTheme
+                                                                  .bodyMedium
+                                                                  ?.color
+                                                                  ?.withValues(
+                                                                    alpha: 0.7,
+                                                                  ),
+                                                        decoration: isChecked
+                                                            ? TextDecoration
+                                                                  .lineThrough
+                                                            : null,
+                                                      ),
+                                                ),
                                               ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
 
-                                      // Smaller / Closer Banner
-                                      Positioned(
-                                        top: -2,
-                                        right: isArabic ? null : -2,
-                                        left: isArabic ? -2 : null,
-                                        child: Transform.scale(
-                                          scale: 0.8, // reduce visual size
-                                          child: Banner(
-                                            location: isArabic
-                                                ? BannerLocation.topEnd
-                                                : BannerLocation.topEnd,
-                                            message:
-                                                widget.reward.zikrLevel ==
-                                                    ZikrLevel.easy
-                                                ? "easy".tr()
-                                                : "hard".tr(),
-                                            color:
-                                                widget.reward.zikrLevel ==
-                                                    ZikrLevel.easy
-                                                ? Colors.blue
-                                                : Colors.orange.withValues(
-                                                    alpha: 0.8,
-                                                  ),
-                                            textStyle: const TextStyle(
-                                              fontSize: 11,
-                                              fontFamily: 'kufi',
-                                              fontWeight: FontWeight.bold,
+                                              if (widget
+                                                      .reward
+                                                      .sharedCategory !=
+                                                  null) ...[
+                                                const SizedBox(height: 6),
+                                                Align(
+                                                  alignment:
+                                                      Alignment.centerRight,
+                                                  child:
+                                                      _buildSharedCategoryTag(
+                                                        widget
+                                                            .reward
+                                                            .sharedCategory!,
+                                                      ),
+                                                ),
+                                              ],
+                                            ],
+                                          ),
+                                        ),
+
+                                        // Difficulty Banner Layer
+                                        Positioned.directional(
+                                          textDirection: isArabic
+                                              ? ui.TextDirection.rtl
+                                              : ui.TextDirection.ltr,
+                                          top: -2,
+                                          end: -2,
+                                          child: Transform.scale(
+                                            scale: 0.8,
+                                            child: Banner(
+                                              location: BannerLocation.topEnd,
+                                              message:
+                                                  widget.reward.zikrLevel ==
+                                                      ZikrLevel.easy
+                                                  ? "easy".tr()
+                                                  : "hard".tr(),
+                                              color:
+                                                  widget.reward.zikrLevel ==
+                                                      ZikrLevel.easy
+                                                  ? Colors.blue
+                                                  : Colors.orange.withValues(
+                                                      alpha: 0.8,
+                                                    ),
+                                              textStyle: const TextStyle(
+                                                fontSize: 11,
+                                                fontFamily: 'kufi',
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                             ),
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
@@ -421,13 +451,60 @@ class _TimelineRewardItemState extends State<TimelineRewardItem> {
     return Banner(
       location: BannerLocation.topStart,
       message: isEasy ? "easy".tr() : "hard".tr(),
-      // child: Text(
-      //   // style: TextStyle(
-      //   //   fontSize: 10,
-      //   //   fontWeight: FontWeight.bold,
-      //   //   color: isEasy ? Colors.blue : Colors.orange,
-      //   // ),
-      // ),
+    );
+  }
+
+  Widget _buildSharedCategoryTag(AzkarCategory category) {
+    String text = 'general';
+    Color themeColor = Colors.teal;
+    String? emoji;
+
+    switch (category) {
+      case AzkarCategory.morningAzkar:
+        text = 'morning';
+        themeColor = Colors.blue;
+        break;
+      case AzkarCategory.eveningAzkar:
+        text = 'evening';
+        themeColor = Colors.indigo;
+        break;
+      case AzkarCategory.postPrayer:
+        text = 'after_prayer';
+        themeColor = Colors.purple;
+        emoji = '🕌 ';
+        break;
+      default:
+        break;
+    }
+
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: themeColor.withValues(alpha: isDarkMode ? 0.15 : 0.1),
+        borderRadius: BorderRadius.circular(
+          8,
+        ), // Matches card aesthetics better than capsule
+        border: Border.all(color: themeColor.withValues(alpha: 0.25), width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (emoji != null) Text(emoji, style: const TextStyle(fontSize: 10)),
+          Text(
+            text.tr(),
+            style: TextStyle(
+              fontSize: 10,
+              fontFamily: 'kufi',
+              fontWeight: FontWeight.bold,
+              color: isDarkMode
+                  ? themeColor
+                  : themeColor.withValues(alpha: 0.9),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

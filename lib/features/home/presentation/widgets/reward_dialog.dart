@@ -18,9 +18,174 @@ import 'package:ella_lyaabdoon/features/history/data/history_db_provider.dart';
 import 'package:ella_lyaabdoon/features/history/logic/history_cubit.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Design tokens — single source of truth for the entire dialog.
+// All cards, badges, and text styles derive from these.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _DialogTokens {
+  _DialogTokens._();
+
+  // ── Radii ────────────────────────────────────────────────────────────────
+  static const double radiusCard = 12;
+  static const double radiusDialog = 20;
+  static const double radiusBadge = 6;
+
+  // ── Border width ─────────────────────────────────────────────────────────
+  static const double borderWidth = 1.5;
+
+  // ── Spacing ──────────────────────────────────────────────────────────────
+  static const double spaceXS = 6;
+  static const double spaceSM = 10;
+  static const double spaceMD = 14;
+  static const double spaceLG = 20;
+
+  // ── Card padding ─────────────────────────────────────────────────────────
+  static const EdgeInsets paddingCard = EdgeInsets.all(14);
+
+  // ── Icon sizes ───────────────────────────────────────────────────────────
+  static const double iconCard = 18;
+  static const double iconAction = 16;
+
+  // ── Font sizes ───────────────────────────────────────────────────────────
+  static const double fontCardTitle = 13;
+  static const double fontBody = 15;
+  static const double fontBodyArabic = 16;
+  static const double fontSource = 14;
+  static const double fontBadge = 10;
+
+  // ── Arabic line height ───────────────────────────────────────────────────
+  static const double heightArabic = 1.9;
+  static const double heightBody = 1.6;
+
+  // ── Semantic color roles ─────────────────────────────────────────────────
+  // Each card type has ONE role. We derive fill/border/icon from colorScheme
+  // or fixed Material palette roles — never raw hex.
+
+  /// Hadith card — warm accent (uses colorScheme.tertiary on M3 themes,
+  /// falls back to amber tone extracted from context).
+  static Color hadithAccent(BuildContext context) =>
+      Theme.of(context).colorScheme.tertiary;
+
+  /// Tafsir card — secondary accent.
+  static Color tafsirAccent(BuildContext context) =>
+      Theme.of(context).colorScheme.secondary;
+
+  /// Source card — primary.
+  static Color sourceAccent(BuildContext context) =>
+      Theme.of(context).colorScheme.primary;
+
+  /// Translation card — primary (same role as source, different layout).
+  static Color translationAccent(BuildContext context) =>
+      Theme.of(context).colorScheme.primary;
+
+  /// Error / warning — error role.
+  static Color errorAccent(BuildContext context) =>
+      Theme.of(context).colorScheme.error;
+
+  // ── Fill helpers (consistent opacity contract) ───────────────────────────
+  static Color fillCard(Color accent, bool isDark) =>
+      accent.withOpacity(isDark ? 0.10 : 0.06);
+
+  static Color borderCard(Color accent, bool isDark) =>
+      accent.withOpacity(isDark ? 0.30 : 0.25);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared card shell — use this for every info card in the dialog.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _InfoCard extends StatelessWidget {
+  const _InfoCard({
+    required this.accent,
+    required this.isDark,
+    required this.child,
+  });
+
+  final Color accent;
+  final bool isDark;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: _DialogTokens.paddingCard,
+      decoration: BoxDecoration(
+        color: _DialogTokens.fillCard(accent, isDark),
+        borderRadius: BorderRadius.circular(_DialogTokens.radiusCard),
+        border: Border.all(
+          color: _DialogTokens.borderCard(accent, isDark),
+          width: _DialogTokens.borderWidth,
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Card header row — icon + title + optional trailing action.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _CardHeader extends StatelessWidget {
+  const _CardHeader({
+    required this.icon,
+    required this.label,
+    required this.accent,
+    this.isDark = false,
+    this.trailingTooltip,
+    this.onTrailingTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color accent;
+  final bool isDark;
+  final String? trailingTooltip;
+  final VoidCallback? onTrailingTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final labelColor = isDark ? accent.withOpacity(0.9) : accent;
+
+    return Row(
+      children: [
+        Icon(icon, color: labelColor, size: _DialogTokens.iconCard),
+        const SizedBox(width: _DialogTokens.spaceSM),
+        Text(
+          label,
+          style: TextStyle(
+            fontFamily: 'kufi',
+            fontSize: _DialogTokens.fontCardTitle,
+            fontWeight: FontWeight.bold,
+            color: labelColor,
+          ),
+        ),
+        if (onTrailingTap != null) ...[
+          const Spacer(),
+          IconButton(
+            onPressed: onTrailingTap,
+            icon: Icon(Icons.copy, size: _DialogTokens.iconAction),
+            tooltip: trailingTooltip,
+            color: Theme.of(context).colorScheme.outline,
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main widget entry point
+// ─────────────────────────────────────────────────────────────────────────────
+
 class RewardDetailDialog extends StatelessWidget {
   final TimelineReward reward;
   final VoidCallback? onChecked;
+
   const RewardDetailDialog({super.key, required this.reward, this.onChecked});
 
   @override
@@ -37,6 +202,7 @@ class RewardDetailDialog extends StatelessWidget {
 class _RewardDetailDialogContent extends StatefulWidget {
   final TimelineReward reward;
   final VoidCallback? onChecked;
+
   const _RewardDetailDialogContent({required this.reward, this.onChecked});
 
   @override
@@ -46,21 +212,16 @@ class _RewardDetailDialogContent extends StatefulWidget {
 
 class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
     with SingleTickerProviderStateMixin {
-  // ── Counter ─────────────────────────────────────────────────────────
   int _count = 0;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
-  // ── Main zikr translation ────────────────────────────────────────────
   bool _showTranslation = false;
-
-  // ── Tafsir state ─────────────────────────────────────────────────────
   bool _showTafsir = false;
 
-  // ── Screenshot ───────────────────────────────────────────────────────
   final ScreenshotController _screenshotController = ScreenshotController();
 
-  // ─────────────────────────────────────────────────────────────────────
+  // ── Helpers ──────────────────────────────────────────────────────────────
 
   void _increment() {
     setState(() => _count++);
@@ -69,14 +230,50 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
 
   void _reset() => setState(() => _count = 0);
 
-  void _logEvent(String eventName, {Map<String, Object>? parameters}) {
+  void _logEvent(String name, {Map<String, Object>? parameters}) {
     if (kReleaseMode) {
-      FirebaseAnalytics.instance.logEvent(
-        name: eventName,
-        parameters: parameters,
-      );
+      FirebaseAnalytics.instance.logEvent(name: name, parameters: parameters);
     }
   }
+
+  void _copyToClipboard(String text) {
+    Clipboard.setData(ClipboardData(text: text));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              Icons.check_circle,
+              color: Theme.of(context).colorScheme.onPrimary,
+              size: 18,
+            ),
+            const SizedBox(width: 8),
+            Text('Copied'.tr()),
+          ],
+        ),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _launchUrl(String url) async {
+    _logEvent('url_launched', parameters: {'url': url});
+    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  }
+
+  void _toggleTranslation() {
+    setState(() => _showTranslation = !_showTranslation);
+    if (_showTranslation) {
+      context.read<TranslationCubit>().translate(widget.reward.description);
+    }
+  }
+
+  void _toggleTafsir() => setState(() => _showTafsir = !_showTafsir);
+
+  // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   @override
   void initState() {
@@ -104,122 +301,775 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
     super.dispose();
   }
 
-  // ─────────────────────────────────────────────────────────────────────
-  // Clipboard
-  // ─────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // Build
+  // ─────────────────────────────────────────────────────────────────────────
 
-  void _copyToClipboard(BuildContext context, String text) {
-    Clipboard.setData(ClipboardData(text: text));
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final isEnglish = AppServicesDBprovider.currentLocale() == 'en';
+    final hasTafsir =
+        widget.reward.tafsir != null && widget.reward.tafsir!.isNotEmpty;
+
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(_DialogTokens.radiusDialog),
+      ),
+      elevation: 8,
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 500),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(_DialogTokens.radiusDialog),
+          color: theme.colorScheme.surface,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle, color: Colors.white, size: 20),
-            const SizedBox(width: 8),
-            Text('Copied'.tr()),
+            _buildHeader(context, theme, isDark),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: _DialogTokens.spaceLG,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: _DialogTokens.spaceMD),
+
+                    // Done-today checkbox
+                    BlocBuilder<HistoryCubit, HistoryState>(
+                      builder: (context, _) {
+                        final isChecked = HistoryDBProvider.isCheckedToday(
+                          widget.reward.id,
+                        );
+                        return CheckboxListTile(
+                          contentPadding: EdgeInsets.zero,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          checkboxShape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          activeColor: theme.colorScheme.primary,
+                          value: isChecked,
+                          onChanged: (_) async {
+                            context.read<HistoryCubit>().toggleCheck(
+                              widget.reward.id,
+                            );
+                            await RewardWidgetService.updateWidget();
+                            widget.onChecked?.call();
+                          },
+                          title: Text(
+                            isChecked
+                                ? 'zikr_done_today'.tr()
+                                : 'mark_as_done'.tr(),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: isChecked
+                                  ? theme.colorScheme.primary
+                                  : null,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    if (widget.reward.isWithCounter) ...[
+                      const SizedBox(height: _DialogTokens.spaceSM),
+                      _buildCounter(context, isDark, theme),
+                    ],
+
+                    const SizedBox(height: _DialogTokens.spaceMD),
+                    _hadithCard(context, isDark, theme, isSharing: false),
+
+                    // Translate button (English only)
+                    if (isEnglish) ...[
+                      const SizedBox(height: _DialogTokens.spaceMD),
+                      Center(
+                        child: OutlinedButton.icon(
+                          onPressed: _toggleTranslation,
+                          icon: Icon(
+                            _showTranslation ? Icons.close : Icons.translate,
+                            size: 16,
+                          ),
+                          label: Text(
+                            _showTranslation
+                                ? 'Hide Translation'
+                                : 'Translate to English',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: theme.colorScheme.primary,
+                            side: BorderSide(
+                              color: theme.colorScheme.primary,
+                              width: _DialogTokens.borderWidth,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
+                            ),
+                          ),
+                        ),
+                      ),
+                      if (_showTranslation) ...[
+                        const SizedBox(height: _DialogTokens.spaceMD),
+                        _translationCard(context, isDark, theme),
+                      ],
+                    ],
+
+                    // Tafsir
+                    if (hasTafsir) ...[
+                      const SizedBox(height: _DialogTokens.spaceMD),
+                      _tafsirToggleRow(context, isDark, theme),
+                      if (_showTafsir) ...[
+                        const SizedBox(height: _DialogTokens.spaceXS),
+                        _tafsirCard(context, isDark, theme, isSharing: false),
+                      ],
+                    ],
+
+                    const SizedBox(height: _DialogTokens.spaceLG),
+                    _sourceCard(context, isDark, theme, isSharing: false),
+                    const SizedBox(height: _DialogTokens.spaceLG),
+                  ],
+                ),
+              ),
+            ),
           ],
         ),
-        backgroundColor: Colors.green,
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
       ),
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────
-  // URL
-  // ─────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // Header
+  // ─────────────────────────────────────────────────────────────────────────
 
-  void _launchUrl(String url, {String? message}) async {
-    if (message != null) {
-      url = '$url?text=${Uri.encodeComponent(message)}';
-    }
-    _logEvent('url_launched', parameters: {'url': url});
-    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  Widget _buildHeader(BuildContext context, ThemeData theme, bool isDark) {
+    final primary = theme.colorScheme.primary;
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 10, 4, 10),
+      decoration: BoxDecoration(
+        color: _DialogTokens.fillCard(primary, isDark),
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(_DialogTokens.radiusDialog),
+          topRight: Radius.circular(_DialogTokens.radiusDialog),
+        ),
+        border: Border(
+          bottom: BorderSide(
+            color: _DialogTokens.borderCard(primary, isDark),
+            width: _DialogTokens.borderWidth,
+          ),
+        ),
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isNarrow = constraints.maxWidth < 340;
+
+          return Row(
+            children: [
+              Expanded(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        widget.reward.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium!.copyWith(
+                          fontWeight: FontWeight.bold,
+                          fontFamily: 'kufi',
+                          fontSize: 14,
+                          color: primary,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: _DialogTokens.spaceXS),
+                    _levelBadge(context, widget.reward.zikrLevel, theme),
+                  ],
+                ),
+              ),
+              if (!isNarrow) ...[
+                _headerIconBtn(
+                  context,
+                  Icons.share_outlined,
+                  tooltip: 'Share'.tr(),
+                  onTap: () => _shareReward(context),
+                ),
+                PulsingWrapper(
+                  child: _headerIconBtn(
+                    context,
+                    Icons.alarm_add,
+                    tooltip: 'Schedule Reminder'.tr(),
+                    onTap: () => _scheduleReminder(context),
+                  ),
+                ),
+                _headerIconBtn(
+                  context,
+                  Icons.report_gmailerrorred_outlined,
+                  tooltip: 'report'.tr(),
+                  color: theme.colorScheme.error,
+                  onTap: _reportZikr,
+                ),
+              ] else
+                PulsingWrapper(
+                  child: PopupMenuButton<_HeaderAction>(
+                    icon: Icon(Icons.more_vert, color: primary),
+                    onSelected: (action) {
+                      switch (action) {
+                        case _HeaderAction.share:
+                          _shareReward(context);
+                        case _HeaderAction.reminder:
+                          _scheduleReminder(context);
+                        case _HeaderAction.report:
+                          _reportZikr();
+                      }
+                    },
+                    itemBuilder: (_) => [
+                      _popupItem(
+                        context,
+                        _HeaderAction.share,
+                        Icons.share_outlined,
+                        'Share'.tr(),
+                        primary,
+                      ),
+                      _popupItem(
+                        context,
+                        _HeaderAction.reminder,
+                        Icons.alarm_add,
+                        'Schedule Reminder'.tr(),
+                        primary,
+                      ),
+                      _popupItem(
+                        context,
+                        _HeaderAction.report,
+                        Icons.report_gmailerrorred_outlined,
+                        'report'.tr(),
+                        theme.colorScheme.error,
+                      ),
+                    ],
+                  ),
+                ),
+              IconButton(
+                onPressed: () => Navigator.of(context).pop(),
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.close),
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
-  // ─────────────────────────────────────────────────────────────────────
-  // Main zikr translation toggle
-  // ─────────────────────────────────────────────────────────────────────
-
-  void _toggleTranslation(BuildContext context) {
-    setState(() => _showTranslation = !_showTranslation);
-    if (_showTranslation) {
-      context.read<TranslationCubit>().translate(widget.reward.description);
-    }
+  void _reportZikr() {
+    _launchUrl(
+      'https://wa.me/201121009270?text=${Uri.encodeComponent('يوجد مشكلة في هذا الذكر : ${widget.reward.title} و المعرف الخاص به ${widget.reward.id}')}',
+    );
+    _logEvent('zikr_complain');
   }
 
-  // ─────────────────────────────────────────────────────────────────────
-  // Tafsir toggle
-  // ─────────────────────────────────────────────────────────────────────
+  Widget _headerIconBtn(
+    BuildContext context,
+    IconData icon, {
+    required String tooltip,
+    required VoidCallback onTap,
+    Color? color,
+  }) {
+    return IconButton(
+      onPressed: onTap,
+      visualDensity: VisualDensity.compact,
+      icon: Icon(icon),
+      color: color ?? Theme.of(context).colorScheme.primary,
+      tooltip: tooltip,
+    );
+  }
 
-  void _toggleTafsir() => setState(() => _showTafsir = !_showTafsir);
+  PopupMenuItem<_HeaderAction> _popupItem(
+    BuildContext context,
+    _HeaderAction value,
+    IconData icon,
+    String label,
+    Color color,
+  ) {
+    return PopupMenuItem(
+      value: value,
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 8),
+          Text(label),
+        ],
+      ),
+    );
+  }
 
-  // ─────────────────────────────────────────────────────────────────────
-  // Share widget (screenshot capture)
-  // ─────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // Counter
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _buildCounter(BuildContext context, bool isDark, ThemeData theme) {
+    final primary = theme.colorScheme.primary;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final buttonSize = (screenWidth * 0.14).clamp(44.0, 72.0);
+
+    return Material(
+      color: Colors.transparent,
+      child: PulsingWrapper(
+        child: InkWell(
+          borderRadius: BorderRadius.circular(_DialogTokens.radiusCard),
+          onTap: _increment,
+          child: _InfoCard(
+            accent: primary,
+            isDark: isDark,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'zikr_done_count'.tr(),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Transform.scale(
+                        scale: _pulseAnimation.value,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          '$_count',
+                          style: theme.textTheme.headlineMedium?.copyWith(
+                            color: primary,
+                            fontWeight: FontWeight.bold,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: _count > 0
+                      ? IconButton(
+                          key: const ValueKey('reset'),
+                          onPressed: _reset,
+                          icon: const Icon(Icons.refresh_rounded),
+                          color: theme.colorScheme.onSurfaceVariant,
+                          tooltip: 'reset'.tr(),
+                          iconSize: 20,
+                          padding: const EdgeInsets.all(4),
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                        )
+                      : SizedBox(key: const ValueKey('empty'), width: 32),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: _increment,
+                  child: Container(
+                    width: buttonSize,
+                    height: buttonSize,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: primary,
+                      boxShadow: [
+                        BoxShadow(
+                          color: primary.withOpacity(0.30),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.add_rounded,
+                      color: theme.colorScheme.onPrimary,
+                      size: buttonSize * 0.5,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Hadith card
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _hadithCard(
+    BuildContext context,
+    bool isDark,
+    ThemeData theme, {
+    required bool isSharing,
+  }) {
+    final accent = _DialogTokens.hadithAccent(context);
+
+    return _InfoCard(
+      accent: accent,
+      isDark: isDark,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _CardHeader(
+            icon: Icons.menu_book_rounded,
+            label: 'Hadith'.tr(),
+            accent: accent,
+            isDark: isDark,
+            trailingTooltip: isSharing ? null : 'Copy Hadith'.tr(),
+            onTrailingTap: isSharing
+                ? null
+                : () => _copyToClipboard(widget.reward.description),
+          ),
+          const SizedBox(height: _DialogTokens.spaceSM),
+          Text(
+            widget.reward.description,
+            style: theme.textTheme.bodyLarge!.copyWith(
+              height: _DialogTokens.heightArabic,
+              fontFamily: 'kufi',
+              fontSize: _DialogTokens.fontBodyArabic,
+              color: theme.colorScheme.onSurface,
+            ),
+            textAlign: TextAlign.justify,
+            textDirection: TextDirection.rtl,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Tafsir toggle row
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _tafsirToggleRow(BuildContext context, bool isDark, ThemeData theme) {
+    final accent = _DialogTokens.tafsirAccent(context);
+
+    return GestureDetector(
+      onTap: _toggleTafsir,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: _DialogTokens.fillCard(
+            accent,
+            isDark,
+          ).withOpacity(_showTafsir ? 0.14 : 0.06),
+          borderRadius: BorderRadius.circular(_DialogTokens.radiusCard),
+          border: Border.all(
+            color: _DialogTokens.borderCard(accent, isDark),
+            width: _DialogTokens.borderWidth,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.lightbulb_outline_rounded, color: accent, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              AppServicesDBprovider.currentLocale() == 'ar'
+                  ? 'تفسير'
+                  : 'Explanation',
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: _DialogTokens.fontCardTitle,
+                color: accent,
+              ),
+            ),
+            const Spacer(),
+            AnimatedRotation(
+              turns: _showTafsir ? 0.5 : 0,
+              duration: const Duration(milliseconds: 200),
+              child: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                color: accent,
+                size: 20,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Tafsir card
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _tafsirCard(
+    BuildContext context,
+    bool isDark,
+    ThemeData theme, {
+    required bool isSharing,
+  }) {
+    final accent = _DialogTokens.tafsirAccent(context);
+    final isArabic = AppServicesDBprovider.currentLocale() == 'ar';
+
+    return _InfoCard(
+      accent: accent,
+      isDark: isDark,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _CardHeader(
+            icon: Icons.lightbulb_outline_rounded,
+            label: isArabic ? 'تفسير' : 'Explanation',
+            accent: accent,
+            isDark: isDark,
+            trailingTooltip: isSharing ? null : 'Copy'.tr(),
+            onTrailingTap: isSharing
+                ? null
+                : () => _copyToClipboard(widget.reward.tafsir!),
+          ),
+          const SizedBox(height: _DialogTokens.spaceSM),
+          Text(
+            widget.reward.tafsir!,
+            style: TextStyle(
+              fontFamily: 'kufi',
+              fontSize: _DialogTokens.fontBody,
+              height: _DialogTokens.heightArabic,
+              color: theme.colorScheme.onSurface,
+            ),
+            textDirection: TextDirection.rtl,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Translation card
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _translationCard(BuildContext context, bool isDark, ThemeData theme) {
+    final accent = _DialogTokens.translationAccent(context);
+    final errorAccent = _DialogTokens.errorAccent(context);
+
+    return BlocBuilder<TranslationCubit, TranslationState>(
+      builder: (context, state) {
+        if (state is TranslationLoading) {
+          return _InfoCard(
+            accent: accent,
+            isDark: isDark,
+            child: const Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Column(
+                  children: [
+                    CircularProgressIndicator(),
+                    SizedBox(height: 12),
+                    Text('Translating...'),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        if (state is TranslationError) {
+          return _InfoCard(
+            accent: errorAccent,
+            isDark: isDark,
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: errorAccent, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    state.message,
+                    style: TextStyle(color: errorAccent, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (state is TranslationLoaded) {
+          return _InfoCard(
+            accent: accent,
+            isDark: isDark,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Disclaimer banner
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 8,
+                  ),
+                  margin: const EdgeInsets.only(bottom: _DialogTokens.spaceSM),
+                  decoration: BoxDecoration(
+                    color: errorAccent.withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(
+                      _DialogTokens.radiusCard - 4,
+                    ),
+                    border: Border.all(
+                      color: errorAccent.withOpacity(0.3),
+                      width: _DialogTokens.borderWidth,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: errorAccent,
+                        size: 15,
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          'Disclaimer: Translation is not 100% accurate',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: errorAccent,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                _CardHeader(
+                  icon: Icons.translate,
+                  label: 'English Translation',
+                  accent: accent,
+                  isDark: isDark,
+                  trailingTooltip: 'Copy translation',
+                  onTrailingTap: () => _copyToClipboard(state.translatedText),
+                ),
+
+                const SizedBox(height: _DialogTokens.spaceSM),
+
+                Text(
+                  state.translatedText,
+                  style: theme.textTheme.bodyMedium!.copyWith(
+                    height: _DialogTokens.heightBody,
+                    fontSize: _DialogTokens.fontBody,
+                    color: theme.colorScheme.onSurface,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return const SizedBox();
+      },
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Source card
+  // ─────────────────────────────────────────────────────────────────────────
+
+  Widget _sourceCard(
+    BuildContext context,
+    bool isDark,
+    ThemeData theme, {
+    required bool isSharing,
+  }) {
+    final accent = _DialogTokens.sourceAccent(context);
+
+    return _InfoCard(
+      accent: accent,
+      isDark: isDark,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _CardHeader(
+            icon: Icons.source_rounded,
+            label: 'Source'.tr(),
+            accent: accent,
+            isDark: isDark,
+            trailingTooltip: isSharing ? null : 'Copy source'.tr(),
+            onTrailingTap: isSharing
+                ? null
+                : () => _copyToClipboard(widget.reward.source),
+          ),
+          const SizedBox(height: _DialogTokens.spaceSM),
+          Text(
+            widget.reward.source,
+            textDirection: TextDirection.rtl,
+            style: theme.textTheme.bodyMedium!.copyWith(
+              height: _DialogTokens.heightBody,
+              fontFamily: 'kufi',
+              fontWeight: FontWeight.w600,
+              fontSize: _DialogTokens.fontSource,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Share capture widget
+  // ─────────────────────────────────────────────────────────────────────────
 
   Widget _buildShareCaptureWidget(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final isArabic = AppServicesDBprovider.currentLocale() == 'ar';
 
     return Container(
       constraints: const BoxConstraints(maxWidth: 600),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [Colors.grey[900]!, Colors.grey[850]!]
-              : [Colors.white, Colors.green.withOpacity(0.03)],
-        ),
-      ),
+      color: theme.colorScheme.surface,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Header
+          // Share header
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  Colors.greenAccent.withOpacity(0.2),
-                  Colors.green.withOpacity(0.1),
-                ],
-              ),
-            ),
+            padding: const EdgeInsets.all(_DialogTokens.spaceLG),
+            color: _DialogTokens.fillCard(theme.colorScheme.primary, isDark),
             child: Text(
               widget.reward.title,
               style: theme.textTheme.titleLarge!.copyWith(
                 fontWeight: FontWeight.bold,
                 fontFamily: 'kufi',
                 fontSize: 16,
-                color: isDark ? Colors.white : Colors.green[900],
+                color: theme.colorScheme.primary,
               ),
               textAlign: TextAlign.center,
               textDirection: TextDirection.rtl,
             ),
           ),
-
           Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(_DialogTokens.spaceLG),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 _hadithCard(context, isDark, theme, isSharing: true),
                 if (widget.reward.tafsir != null &&
-                    widget.reward.tafsir!.isNotEmpty) ...[
-                  const SizedBox(height: 16),
+                    widget.reward.tafsir!.trim().isNotEmpty) ...[
+                  const SizedBox(height: _DialogTokens.spaceMD),
                   _tafsirCard(context, isDark, theme, isSharing: true),
                 ],
-                const SizedBox(height: 16),
+                const SizedBox(height: _DialogTokens.spaceMD),
                 _sourceCard(context, isDark, theme, isSharing: true),
-                const SizedBox(height: 16),
+                const SizedBox(height: _DialogTokens.spaceMD),
                 _brandingFooter(context, isDark, theme),
               ],
             ),
@@ -229,9 +1079,9 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
   // Share action
-  // ─────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
 
   Future<void> _shareReward(BuildContext context) async {
     try {
@@ -241,83 +1091,77 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
         builder: (_) => const Center(child: CircularProgressIndicator()),
       );
 
-      final Uint8List? image = await _screenshotController
-          .captureFromLongWidget(
-            InheritedTheme.captureAll(
-              context,
-              Material(
-                child: MediaQuery(
-                  data: MediaQuery.of(context),
-                  child: Directionality(
-                    textDirection: TextDirection.rtl,
-                    child: _buildShareCaptureWidget(context),
-                  ),
-                ),
+      final image = await _screenshotController.captureFromLongWidget(
+        InheritedTheme.captureAll(
+          context,
+          Material(
+            child: MediaQuery(
+              data: MediaQuery.of(context),
+              child: Directionality(
+                textDirection: TextDirection.rtl,
+                child: _buildShareCaptureWidget(context),
               ),
             ),
-            delay: const Duration(milliseconds: 100),
-            context: context,
-            pixelRatio: 2.0,
-            constraints: const BoxConstraints(maxWidth: 520),
-          );
+          ),
+        ),
+        delay: const Duration(milliseconds: 100),
+        context: context,
+        pixelRatio: 2.0,
+        constraints: const BoxConstraints(maxWidth: 520),
+      );
 
       if (image == null) {
         if (context.mounted) Navigator.pop(context);
         throw Exception('Failed to capture screenshot');
       }
 
-      final directory = await getTemporaryDirectory();
-      final imagePath =
-          '${directory.path}/reward_${DateTime.now().millisecondsSinceEpoch}.png';
-      final imageFile = File(imagePath);
-      await imageFile.writeAsBytes(image);
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}/reward_${DateTime.now().millisecondsSinceEpoch}.png';
+      final file = File(path);
+      await file.writeAsBytes(image);
 
       if (context.mounted) Navigator.pop(context);
 
-      final shareText = AppServicesDBprovider.currentLocale() == 'ar'
-          ? 'تم التقاطها بتطبيق إلا ليعبدون\n\nhttps://play.google.com/store/apps/details?id=com.amrabdelhameed.ella_lyaabdoon'
-          : 'Captured with Ella Lyaabdoon app\n\nhttps://play.google.com/store/apps/details?id=com.amrabdelhameed.ella_lyaabdoon';
-
+      final isArabic = AppServicesDBprovider.currentLocale() == 'ar';
       await Share.shareXFiles(
-        [XFile(imagePath)],
-        text: shareText,
+        [XFile(path)],
+        text: isArabic
+            ? 'تم التقاطها بتطبيق إلا ليعبدون\n\nhttps://play.google.com/store/apps/details?id=com.amrabdelhameed.ella_lyaabdoon'
+            : 'Captured with Ella Lyaabdoon app\n\nhttps://play.google.com/store/apps/details?id=com.amrabdelhameed.ella_lyaabdoon',
         subject: 'مشاركة من تطبيق إلا ليعبدون',
       );
 
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('جزاك الله خيراً'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('جزاك الله خيراً'),
+            backgroundColor: Theme.of(context).colorScheme.primary,
           ),
         );
         Future.delayed(const Duration(seconds: 2), () {
           try {
-            if (imageFile.existsSync()) imageFile.deleteSync();
-          } catch (e) {
-            debugPrint('Error deleting temp file: $e');
-          }
+            if (file.existsSync()) file.deleteSync();
+          } catch (_) {}
         });
       }
     } catch (e) {
-      if (context.mounted && Navigator.canPop(context)) {
-        Navigator.pop(context);
-      }
+      if (context.mounted && Navigator.canPop(context)) Navigator.pop(context);
       debugPrint('Share error: $e');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('failed_to_share'.tr()),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
   // Schedule reminder
-  // ─────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
 
   Future<void> _scheduleReminder(BuildContext context) async {
     final time = await showTimePicker(
@@ -335,7 +1179,7 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
       if (isScheduled && context.mounted) {
         final shouldReplace = await showDialog<bool>(
           context: context,
-          builder: (context) => AlertDialog(
+          builder: (ctx) => AlertDialog(
             title: Text('Already Scheduled'.tr()),
             content: Text(
               'A reminder for this reward already exists. Do you want to replace it?'
@@ -343,11 +1187,11 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
             ),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(ctx, false),
                 child: Text('cancel'.tr()),
               ),
               TextButton(
-                onPressed: () => Navigator.pop(context, true),
+                onPressed: () => Navigator.pop(ctx, true),
                 child: Text('Replace'.tr()),
               ),
             ],
@@ -359,6 +1203,7 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
       await NotificationHelper.scheduleDaily(
         notificationId: notificationId,
         payload: {
+          'type': 'zikr_reminder',
           'reward_id': widget.reward.id.toString(),
           'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
         },
@@ -370,11 +1215,10 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            duration: const Duration(seconds: 3),
             content: Text(
               '${'Reminder scheduled for'.tr()} ${time.format(context)}',
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: Theme.of(context).colorScheme.primary,
           ),
         );
       }
@@ -384,964 +1228,64 @@ class _RewardDetailDialogContentState extends State<_RewardDetailDialogContent>
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to schedule reminder'.tr()),
-            backgroundColor: Colors.red,
+            backgroundColor: Theme.of(context).colorScheme.error,
           ),
         );
       }
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────
-  // Build
-  // ─────────────────────────────────────────────────────────────────────
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final isEnglish = AppServicesDBprovider.currentLocale() == 'en';
-    final hasTafsir =
-        widget.reward.tafsir != null && widget.reward.tafsir!.isNotEmpty;
-
-    return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      elevation: 8,
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 500),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isDark
-                ? [Colors.grey[900]!, Colors.grey[850]!]
-                : [Colors.white, Colors.green.withOpacity(0.03)],
-          ),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            _buildHeader(context, theme, isDark),
-
-            // Body
-            Flexible(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Done-today checkbox
-                    BlocBuilder<HistoryCubit, HistoryState>(
-                      builder: (context, histState) {
-                        final isChecked = HistoryDBProvider.isCheckedToday(
-                          widget.reward.id,
-                        );
-                        return CheckboxListTile(
-                          contentPadding: EdgeInsets.zero,
-                          controlAffinity: ListTileControlAffinity.leading,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          checkboxShape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          activeColor: Colors.green,
-                          value: isChecked,
-                          onChanged: (_) async {
-                            context.read<HistoryCubit>().toggleCheck(
-                              widget.reward.id,
-                            );
-                            await RewardWidgetService.updateWidget();
-                            widget.onChecked?.call();
-                          },
-                          title: Text(
-                            isChecked
-                                ? 'zikr_done_today'.tr()
-                                : 'mark_as_done'.tr(),
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: isChecked ? Colors.green : null,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    if (widget.reward.isWithCounter) ...[
-                      _buildCounter(context, isDark, theme),
-                      const SizedBox(height: 20),
-                    ],
-
-                    // Hadith card
-                    _hadithCard(context, isDark, theme, isSharing: false),
-
-                    // Main translation (English only)
-                    if (isEnglish) ...[
-                      const SizedBox(height: 16),
-                      Center(
-                        child: ElevatedButton.icon(
-                          onPressed: () => _toggleTranslation(context),
-                          icon: Icon(
-                            _showTranslation ? Icons.close : Icons.translate,
-                            size: 18,
-                          ),
-                          label: Text(
-                            _showTranslation
-                                ? 'Hide Translation'
-                                : 'Translate to English',
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 12,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-
-                    if (isEnglish && _showTranslation) ...[
-                      const SizedBox(height: 16),
-                      _buildMainTranslationSection(context, isDark, theme),
-                    ],
-
-                    // ── Tafsir section ──────────────────────────────────
-                    if (hasTafsir) ...[
-                      const SizedBox(height: 16),
-                      _buildTafsirToggleRow(context, isDark, theme),
-                      if (_showTafsir) ...[
-                        const SizedBox(height: 8),
-                        _tafsirCard(context, isDark, theme, isSharing: false),
-                      ],
-                    ],
-
-                    const SizedBox(height: 20),
-                    _sourceCard(context, isDark, theme, isSharing: false),
-                    const SizedBox(height: 20),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────
-  // Header
-  // ─────────────────────────────────────────────────────────────────────
-
-  Widget _buildHeader(BuildContext context, ThemeData theme, bool isDark) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 4, 10),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Theme.of(context).colorScheme.primary.withOpacity(0.2),
-            Theme.of(context).colorScheme.primary.withOpacity(0.1),
-          ],
-        ),
-        borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isNarrow = constraints.maxWidth < 340;
-
-          return Row(
-            children: [
-              Expanded(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(width: 5),
-                    Flexible(
-                      child: Text(
-                        widget.reward.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleMedium!.copyWith(
-                          fontWeight: FontWeight.bold,
-                          fontFamily: 'kufi',
-                          fontSize: 14,
-                          color: isDark
-                              ? Colors.white
-                              : Theme.of(context).colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    _buildLevelBadge(context, widget.reward.zikrLevel),
-                  ],
-                ),
-              ),
-              if (!isNarrow) ...[
-                IconButton(
-                  onPressed: () => _shareReward(context),
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.share_outlined),
-                  color: Theme.of(context).colorScheme.primary,
-                  tooltip: 'Share'.tr(),
-                ),
-                PulsingWrapper(
-                  child: IconButton(
-                    onPressed: () => _scheduleReminder(context),
-                    visualDensity: VisualDensity.compact,
-                    icon: const Icon(Icons.alarm_add),
-                    color: Theme.of(context).colorScheme.primary,
-                    tooltip: 'Schedule Reminder'.tr(),
-                  ),
-                ),
-                IconButton(
-                  onPressed: () {
-                    _launchUrl(
-                      'https://wa.me/201121009270?text=${Uri.encodeComponent('يوجد مشكلة في هذا الذكر : ${widget.reward.title} و المعرف الخاص به ${widget.reward.id}')}',
-                    );
-                    _logEvent('zikr_complain');
-                  },
-                  visualDensity: VisualDensity.compact,
-                  icon: const Icon(Icons.report_gmailerrorred_outlined),
-                  color: Theme.of(context).colorScheme.errorContainer,
-                  tooltip: 'report'.tr(),
-                ),
-              ] else
-                PulsingWrapper(
-                  child: PopupMenuButton<_HeaderAction>(
-                    icon: Icon(Icons.more_vert, color: Colors.green[700]),
-                    onSelected: (action) {
-                      if (action == _HeaderAction.share) {
-                        _shareReward(context);
-                      } else if (action == _HeaderAction.reminder) {
-                        _scheduleReminder(context);
-                      } else if (action == _HeaderAction.report) {
-                        _launchUrl(
-                          'https://wa.me/201121009270?text=${Uri.encodeComponent('يوجد مشكلة في هذا الذكر : ${widget.reward.title} و المعرف الخاص به ${widget.reward.id}')}',
-                        );
-                        _logEvent('zikr_complain');
-                      }
-                    },
-                    itemBuilder: (_) => [
-                      PopupMenuItem(
-                        value: _HeaderAction.share,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.share_outlined,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text('Share'.tr()),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: _HeaderAction.reminder,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.alarm_add,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text('Schedule Reminder'.tr()),
-                          ],
-                        ),
-                      ),
-                      PopupMenuItem(
-                        value: _HeaderAction.report,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.report_gmailerrorred_outlined,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.errorContainer,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 8),
-                            Text('report'.tr()),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              IconButton(
-                onPressed: () => Navigator.of(context).pop(),
-                visualDensity: VisualDensity.compact,
-                icon: const Icon(Icons.close),
-                color: Theme.of(context).colorScheme.primary,
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────
-  // Counter
-  // ─────────────────────────────────────────────────────────────────────
-
-  Widget _buildCounter(BuildContext context, bool isDark, ThemeData theme) {
-    final primary = theme.colorScheme.primary;
-    final screenWidth = MediaQuery.of(context).size.width;
-
-    final buttonSize = (screenWidth * 0.14).clamp(44.0, 72.0);
-    final iconSize = buttonSize * 0.5;
-    final countFontSize = (screenWidth * 0.07).clamp(24.0, 40.0);
-
-    return Material(
-      color: Colors.transparent,
-      child: PulsingWrapper(
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: _increment,
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: screenWidth * 0.04,
-              vertical: 14,
-            ),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.grey[800]!.withOpacity(0.6)
-                  : primary.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: primary.withOpacity(0.25), width: 1.5),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'zikr_done_count'.tr(),
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: isDark ? Colors.white60 : Colors.grey[600],
-                          fontWeight: FontWeight.w600,
-                          fontSize: (screenWidth * 0.028).clamp(10.0, 13.0),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Transform.scale(
-                        scale: _pulseAnimation.value,
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          '$_count',
-                          style: theme.textTheme.headlineMedium?.copyWith(
-                            color: primary,
-                            fontWeight: FontWeight.bold,
-                            fontSize: countFontSize,
-                            height: 1,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
-                  child: _count > 0
-                      ? IconButton(
-                          key: const ValueKey('reset'),
-                          onPressed: _reset,
-                          icon: const Icon(Icons.refresh_rounded),
-                          color: Colors.grey[500],
-                          tooltip: 'reset'.tr(),
-                          iconSize: (screenWidth * 0.055).clamp(18.0, 24.0),
-                          padding: const EdgeInsets.all(6),
-                          constraints: const BoxConstraints(
-                            minWidth: 32,
-                            minHeight: 32,
-                          ),
-                        )
-                      : SizedBox(
-                          key: const ValueKey('empty'),
-                          width: (screenWidth * 0.055).clamp(18.0, 24.0) + 12,
-                        ),
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: _increment,
-                  child: Container(
-                    width: buttonSize,
-                    height: buttonSize,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [primary, primary.withOpacity(0.75)],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: primary.withOpacity(0.35),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.add_rounded,
-                      color: Colors.white,
-                      size: iconSize,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────
-  // Hadith card
-  // ─────────────────────────────────────────────────────────────────────
-
-  Widget _hadithCard(
-    BuildContext context,
-    bool isDark,
-    ThemeData theme, {
-    required bool isSharing,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.grey[800]!.withOpacity(0.5)
-            : Colors.amber.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark
-              ? Colors.amber.withOpacity(0.2)
-              : Colors.amber.withOpacity(0.3),
-          width: 2,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.menu_book_rounded, color: Colors.amber[700], size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Hadith'.tr(),
-                style: theme.textTheme.titleMedium!.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.amber[800],
-                ),
-              ),
-              if (!isSharing) ...[
-                const Spacer(),
-                IconButton(
-                  onPressed: () =>
-                      _copyToClipboard(context, widget.reward.description),
-                  icon: const Icon(Icons.copy, size: 18),
-                  tooltip: 'Copy Hadith'.tr(),
-                  color: Colors.grey[600],
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            widget.reward.description,
-            style: theme.textTheme.bodyLarge!.copyWith(
-              height: 2,
-              fontFamily: 'kufi',
-              fontSize: 16,
-              color: isDark ? Colors.white : Colors.grey[800],
-            ),
-            textAlign: TextAlign.justify,
-            textDirection: TextDirection.rtl,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────
-  // Tafsir toggle row
-  // ─────────────────────────────────────────────────────────────────────
-
-  Widget _buildTafsirToggleRow(
-    BuildContext context,
-    bool isDark,
-    ThemeData theme,
-  ) {
-    return GestureDetector(
-      onTap: _toggleTafsir,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: _showTafsir
-              ? Colors.blue.withOpacity(0.15)
-              : Colors.blue.withOpacity(0.07),
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: _showTafsir
-                ? Colors.blue.withOpacity(0.5)
-                : Colors.blue.withOpacity(0.25),
-            width: 1.5,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.lightbulb_outline_rounded,
-              color: Colors.blue[_showTafsir ? 200 : 300],
-              size: 18,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              AppServicesDBprovider.currentLocale() == 'ar'
-                  ? 'تفسير'
-                  : 'Tafsir / Explanation',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-                color: Colors.blue[_showTafsir ? 200 : 300],
-              ),
-            ),
-            const Spacer(),
-            AnimatedRotation(
-              turns: _showTafsir ? 0.5 : 0,
-              duration: const Duration(milliseconds: 200),
-              child: Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: Colors.blue[300],
-                size: 20,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────
-  // Tafsir card — display only, no translation option
-  // ─────────────────────────────────────────────────────────────────────
-
-  Widget _tafsirCard(
-    BuildContext context,
-    bool isDark,
-    ThemeData theme, {
-    required bool isSharing,
-  }) {
-    final isArabic = AppServicesDBprovider.currentLocale() == 'ar';
-
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.blue.withOpacity(0.1)
-            : Colors.blue.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.blue.withOpacity(isDark ? 0.25 : 0.3),
-          width: 1.5,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Card header
-          Row(
-            children: [
-              Icon(
-                Icons.lightbulb_outline_rounded,
-                color: Colors.blue[isDark ? 200 : 700],
-                size: 18,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                isArabic ? 'تفسير' : 'Tafsir / Explanation',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue[isDark ? 200 : 800],
-                  fontFamily: 'kufi',
-                  fontSize: 13,
-                ),
-              ),
-              if (!isSharing) ...[
-                const Spacer(),
-                IconButton(
-                  onPressed: () =>
-                      _copyToClipboard(context, widget.reward.tafsir!),
-                  icon: Icon(Icons.copy, size: 16, color: Colors.grey[500]),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ],
-          ),
-
-          const SizedBox(height: 10),
-
-          // Tafsir Arabic text
-          Text(
-            widget.reward.tafsir!,
-            style: TextStyle(
-              fontFamily: 'kufi',
-              fontSize: _getFontSize(widget.reward.tafsir!.length),
-              height: 1.65,
-              color: isDark ? Colors.blue[100] : Colors.blue[900],
-            ),
-            textDirection: TextDirection.rtl,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────
-  // Main zikr translation section
-  // ─────────────────────────────────────────────────────────────────────
-
-  Widget _buildMainTranslationSection(
-    BuildContext context,
-    bool isDark,
-    ThemeData theme,
-  ) {
-    return BlocBuilder<TranslationCubit, TranslationState>(
-      builder: (context, state) {
-        if (state is TranslationLoading) {
-          return Container(
-            padding: const EdgeInsets.all(32),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.grey[800]!.withOpacity(0.5)
-                  : Theme.of(context).colorScheme.primary.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-                width: 2,
-              ),
-            ),
-            child: const Column(
-              children: [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Translating...'),
-              ],
-            ),
-          );
-        }
-        if (state is TranslationError) {
-          return Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.red[50],
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Theme.of(context).colorScheme.errorContainer,
-                width: 2,
-              ),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      Icons.error_outline,
-                      color: Theme.of(context).colorScheme.errorContainer,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Error',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.errorContainer,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  state.message,
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.errorContainer,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-        if (state is TranslationLoaded) {
-          return Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.grey[800]!.withOpacity(0.5)
-                  : Colors.green.withOpacity(0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isDark
-                    ? Colors.green.withOpacity(0.2)
-                    : Colors.green.withOpacity(0.3),
-                width: 2,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Disclaimer
-                Container(
-                  padding: const EdgeInsets.all(10),
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.errorContainer,
-                    ),
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.errorContainer.withOpacity(0.1),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.warning_amber_rounded,
-                        color: Theme.of(context).colorScheme.errorContainer,
-                        size: 16,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Disclaimer: The translation is not 100% accurate',
-                          maxLines: 3,
-                          style: TextStyle(
-                            fontSize: 12,
-                            overflow: TextOverflow.ellipsis,
-                            fontWeight: FontWeight.bold,
-                            color: Theme.of(context).colorScheme.errorContainer,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.translate,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'English Translation',
-                      style: theme.textTheme.titleMedium!.copyWith(
-                        fontSize: 12,
-                        overflow: TextOverflow.ellipsis,
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      onPressed: () =>
-                          _copyToClipboard(context, state.translatedText),
-                      icon: const Icon(Icons.copy, size: 18),
-                      tooltip: 'Copy translation',
-                      color: Theme.of(context).colorScheme.primary,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  state.translatedText,
-                  style: theme.textTheme.bodyLarge!.copyWith(
-                    height: 1.8,
-                    fontSize: 14,
-                    color: isDark
-                        ? Colors.white
-                        : Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-        return const SizedBox();
-      },
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────
-  // Source card
-  // ─────────────────────────────────────────────────────────────────────
-
-  Widget _sourceCard(
-    BuildContext context,
-    bool isDark,
-    ThemeData theme, {
-    required bool isSharing,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark
-            ? Colors.grey[800]!.withOpacity(0.5)
-            : Theme.of(context).colorScheme.primary.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isDark
-              ? Theme.of(context).colorScheme.primary.withOpacity(0.2)
-              : Theme.of(context).colorScheme.primary.withOpacity(0.3),
-          width: 2,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.source_rounded,
-                color: Theme.of(context).colorScheme.primary,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'Source'.tr(),
-                style: theme.textTheme.titleMedium!.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-              ),
-              if (!isSharing) ...[
-                const Spacer(),
-                IconButton(
-                  onPressed: () =>
-                      _copyToClipboard(context, widget.reward.source),
-                  icon: const Icon(Icons.copy, size: 18),
-                  tooltip: 'Copy source'.tr(),
-                  color: Theme.of(context).colorScheme.primary,
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            widget.reward.source,
-            textDirection: TextDirection.rtl,
-            style: theme.textTheme.bodyMedium!.copyWith(
-              height: 1.6,
-              fontFamily: 'kufi',
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : Colors.grey[700],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ─────────────────────────────────────────────────────────────────────
-  // Branding footer (share capture only)
-  // ─────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // Branding footer
+  // ─────────────────────────────────────────────────────────────────────────
 
   Widget _brandingFooter(BuildContext context, bool isDark, ThemeData theme) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'shared_with'.tr(),
-              style: theme.textTheme.titleMedium!.copyWith(
-                fontWeight: FontWeight.bold,
-                color: isDark ? Colors.white : Colors.grey[800],
-              ),
+    final accent = theme.colorScheme.primary;
+    return _InfoCard(
+      accent: accent,
+      isDark: isDark,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            'shared_with'.tr(),
+            style: theme.textTheme.titleMedium!.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface,
             ),
-            const SizedBox(width: 4),
-            Image.asset('assets/playstore.png', height: 50, width: 50),
-          ],
-        ),
+          ),
+          Image.asset('assets/playstore.png', height: 40, width: 40),
+        ],
       ),
     );
   }
 
-  // ─────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
   // Level badge
-  // ─────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
 
-  Widget _buildLevelBadge(BuildContext context, ZikrLevel level) {
+  Widget _levelBadge(BuildContext context, ZikrLevel level, ThemeData theme) {
     final isEasy = level == ZikrLevel.easy;
+    // Use colorScheme roles: easy → secondary, hard → tertiary
+    final color = isEasy ? Colors.blue : Colors.orange.withValues(alpha: 0.8);
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: (isEasy ? Colors.blue : Colors.orange).withOpacity(0.1),
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: (isEasy ? Colors.blue : Colors.orange).withOpacity(0.3),
-        ),
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(_DialogTokens.radiusBadge),
+        border: Border.all(color: color.withOpacity(0.35)),
       ),
       child: Text(
         isEasy ? 'easy'.tr() : 'hard'.tr(),
         style: TextStyle(
-          fontSize: 10,
+          fontSize: _DialogTokens.fontBadge,
           fontWeight: FontWeight.bold,
-          color: isEasy ? Colors.blue : Colors.orange,
+          color: color,
         ),
       ),
     );
   }
-
-  // ─────────────────────────────────────────────────────────────────────
-  // Font size helper
-  // ─────────────────────────────────────────────────────────────────────
-
-  double _getFontSize(int len) {
-    if (len > 300) return 14;
-    if (len > 200) return 15;
-    if (len > 150) return 16;
-    if (len > 100) return 17;
-    return 18;
-  }
 }
 
-/// Small enum used by the overflow [PopupMenuButton] in the header.
 enum _HeaderAction { share, reminder, report }

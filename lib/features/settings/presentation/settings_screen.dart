@@ -20,10 +20,12 @@ import 'package:share_plus/share_plus.dart';
 import 'package:ella_lyaabdoon/core/constants/app_routes.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:external_app_launcher/external_app_launcher.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:in_app_review/in_app_review.dart';
 import 'package:ella_lyaabdoon/features/settings/presentation/widgets/suggest_zikr_dialog.dart';
 import 'package:showcaseview/showcaseview.dart';
+import 'package:ella_lyaabdoon/core/services/data_export_import_service.dart';
 
 import 'package:ella_lyaabdoon/utils/notification_helper.dart';
 
@@ -257,6 +259,37 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     //   ),
                     // ),
                     // const SizedBox(height: 16),
+
+                    /// QURAN APP SECTION
+                    _buildSectionHeader(context, 'open_quran'.tr()),
+                    Card(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 4,
+                      ),
+                      child: ListTile(
+                        leading: Icon(
+                          Icons.auto_stories,
+                          color: colorScheme.primary,
+                        ),
+                        title: Text('open_quran'.tr()),
+                        subtitle: Text(
+                          'open_quran_desc'.tr(),
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                        ),
+                        trailing: const Icon(Icons.open_in_new),
+                        onTap: () async {
+                          _logEvent('open_quran_app_clicked');
+                          await LaunchApp.openApp(
+                            androidPackageName: 'id.amrabdelhameeed.quranoffline',
+                            openStore: true,
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
                     /// APPEARANCE SECTION
                     _buildSectionHeader(context, 'appearance'.tr()),
@@ -1010,6 +1043,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 16),
 
+                    /// DATA MANAGEMENT SECTION
+                    _buildSectionHeader(context, 'data_management'.tr()),
+                    _buildDataManagementCard(context, colorScheme),
+                    const SizedBox(height: 24),
+
                     /// DEVELOPER INFO SECTION
                     _buildSectionHeader(context, 'developer'.tr()),
                     Card(
@@ -1092,10 +1130,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ],
                             ),
                           ),
+                          const SizedBox(height: 16),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 24),
                   ],
                 );
               },
@@ -1123,6 +1161,145 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return DropdownMenuItem(
       value: value,
       child: Text(labelKey.tr(), maxLines: 3, overflow: TextOverflow.ellipsis),
+    );
+  }
+
+  Future<void> _doExport() async {
+    _logEvent('export_data_clicked');
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final ok = await DataExportImportService.shareExport();
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      if (!ok) {
+        _showSnack('export_failed'.tr());
+      }
+    } catch (e) {
+      if (mounted) Navigator.of(context, rootNavigator: true).pop();
+      debugPrint('Export error: $e');
+    }
+  }
+
+  Future<void> _doImport() async {
+    _logEvent('import_data_clicked');
+
+    Navigator.of(context).pop();
+
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      final result = await DataExportImportService.importFromFile();
+
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+
+      if (!result.success) {
+        _showSnack('import_failed'.tr());
+        return;
+      }
+
+      if (result.restoredLocale != null && mounted) {
+        await EasyLocalization.of(
+          context,
+        )!.setLocale(Locale(result.restoredLocale!));
+      }
+
+      if (mounted) {
+        StreakService.refreshStreakNotifier();
+        _logEvent('import_data_success');
+        _showSnack('import_success'.tr());
+        context.go(AppRoutes.home);
+      }
+    } catch (e) {
+      debugPrint('Import error: $e');
+      if (mounted) {
+        Navigator.of(context, rootNavigator: true).pop();
+        _showSnack('import_failed'.tr());
+      }
+    }
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Widget _buildDataManagementCard(
+    BuildContext context,
+    ColorScheme colorScheme,
+  ) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Column(
+        children: [
+          ListTile(
+            leading: Icon(Icons.upload_file, color: colorScheme.primary),
+            title: Text('export_data'.tr()),
+            subtitle: Text(
+              'export_data_desc'.tr(),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: _doExport,
+          ),
+
+          const Divider(height: 1, indent: 16, endIndent: 16),
+
+          ListTile(
+            leading: Icon(Icons.download, color: colorScheme.primary),
+            title: Text('import_data'.tr()),
+            subtitle: Text(
+              'import_data_desc'.tr(),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+            ),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => showDialog(
+              context: context,
+              builder: (dialogCtx) => AlertDialog(
+                title: Text('import_data'.tr()),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('import_warning'.tr()),
+                    const SizedBox(height: 12),
+                    Text(
+                      'backup_includes'.tr(),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(dialogCtx).pop(),
+                    child: Text('cancel'.tr()),
+                  ),
+                  FilledButton(
+                    onPressed: _doImport,
+                    child: Text('confirm_import'.tr()),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
