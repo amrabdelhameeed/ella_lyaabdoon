@@ -1,4 +1,4 @@
-﻿import 'package:easy_localization/easy_localization.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 
 class TimelineHeader extends StatelessWidget {
@@ -8,6 +8,7 @@ class TimelineHeader extends StatelessWidget {
   final bool isLeftAligned;
   final bool isFirst;
   final Animation<double> pulseAnimation;
+  final String? sharedCategoryBadge;
 
   const TimelineHeader({
     super.key,
@@ -17,6 +18,7 @@ class TimelineHeader extends StatelessWidget {
     required this.isLeftAligned,
     required this.isFirst,
     required this.pulseAnimation,
+    this.sharedCategoryBadge,
   });
   @override
   Widget build(BuildContext context) {
@@ -28,7 +30,8 @@ class TimelineHeader extends StatelessWidget {
 
         return Container(
           color: scheme.background,
-          height: 80,
+
+          constraints: const BoxConstraints(minHeight: 80),
           child: Stack(
             children: [
               if (!isFirst)
@@ -165,8 +168,9 @@ class TimelineHeader extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      height: 55,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         gradient: isCurrent
             ? LinearGradient(
@@ -191,14 +195,54 @@ class TimelineHeader extends StatelessWidget {
           ),
         ],
       ),
-      child: Text(
-        titleKey.tr(),
-        textAlign: isLeftAligned ? TextAlign.right : TextAlign.left,
-        style: Theme.of(context).textTheme.titleLarge!.copyWith(
-          fontWeight: FontWeight.bold,
-          fontSize: 20,
-          color: isCurrent ? scheme.primary : null,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Flexible(
+            child: Text(
+              titleKey.tr(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: isLeftAligned ? TextAlign.right : TextAlign.left,
+              style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                fontWeight: FontWeight.bold,
+                fontSize: 20,
+                color: isCurrent ? scheme.primary : null,
+              ),
+            ),
+          ),
+
+          if (sharedCategoryBadge != null) ...[
+            const SizedBox(width: 6),
+
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: isCurrent ? scheme.primary : scheme.outline,
+                    width: 1,
+                  ),
+                  // color: scheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  sharedCategoryBadge!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                    fontSize: 10,
+                    // fontFamily: 'kufi',
+                    fontWeight: FontWeight.bold,
+                    color: isCurrent ? scheme.primary : null,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
