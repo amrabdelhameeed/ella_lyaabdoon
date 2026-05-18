@@ -28,6 +28,17 @@ class _NotificationSettingsScreenState
   bool _isLoadingNotifications = true;
   AzanHelper? _azanHelper;
 
+  static const int _fastingNotifIdSunday = 9001;
+  static const int _fastingNotifIdWednesday = 9002;
+  static const String _mondayFastingNotifKey = 'monday_fasting_notif_enabled';
+  static const String _thursdayFastingNotifKey =
+      'thursday_fasting_notif_enabled';
+
+  bool _isMondayFastingNotifEnabled() =>
+      CacheHelper.getBool(_mondayFastingNotifKey);
+  bool _isThursdayFastingNotifEnabled() =>
+      CacheHelper.getBool(_thursdayFastingNotifKey);
+
   @override
   void initState() {
     super.initState();
@@ -61,9 +72,12 @@ class _NotificationSettingsScreenState
           .map((p) => _periodNotifId(p))
           .toSet();
 
+      final fastingIds = {_fastingNotifIdSunday, _fastingNotifIdWednesday};
+
       final filtered = notifications.where((n) {
         if (n.id == StreakService.notificationId) return false;
         if (periodIds.contains(n.id)) return false;
+        if (fastingIds.contains(n.id)) return false;
         return true;
       }).toList();
 
@@ -203,6 +217,92 @@ class _NotificationSettingsScreenState
               ],
             ),
           ),
+
+          // ── Fasting Notifications Toggle ───────────────
+          _buildSectionHeader(context, 'fasting_notifications'.tr()),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Column(
+              children: [
+                StatefulBuilder(
+                  builder: (context, setTileState) {
+                    final enabled = _isMondayFastingNotifEnabled();
+                    return SwitchListTile(
+                      secondary: Icon(
+                        Icons.no_food_rounded,
+                        color: colorScheme.primary,
+                      ),
+                      title: Text('monday_fasting_reminder'.tr()),
+                      subtitle: Text(
+                        'monday_fasting_reminder_desc'.tr(),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.grey,
+                        ),
+                      ),
+                      value: enabled,
+                      onChanged: (value) async {
+                        CacheHelper.setBool(_mondayFastingNotifKey, value);
+                        if (value) {
+                          await NotificationHelper.scheduleWeekly(
+                            notificationId: _fastingNotifIdSunday,
+                            title: 'fasting_notif_title'.tr(),
+                            body: 'fasting_notif_body'.tr(),
+                            dayOfWeek: DateTime.sunday,
+                            time: const TimeOfDay(hour: 21, minute: 0),
+                          );
+                        } else {
+                          await NotificationHelper.cancel(
+                            _fastingNotifIdSunday,
+                          );
+                        }
+                        setTileState(() {});
+                        _loadScheduledNotifications();
+                      },
+                    );
+                  },
+                ),
+                const Divider(height: 1),
+                StatefulBuilder(
+                  builder: (context, setTileState) {
+                    final enabled = _isThursdayFastingNotifEnabled();
+                    return SwitchListTile(
+                      secondary: Icon(
+                        Icons.no_food_rounded,
+                        color: colorScheme.primary,
+                      ),
+                      title: Text('thursday_fasting_reminder'.tr()),
+                      subtitle: Text(
+                        'thursday_fasting_reminder_desc'.tr(),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.grey,
+                        ),
+                      ),
+                      value: enabled,
+                      onChanged: (value) async {
+                        CacheHelper.setBool(_thursdayFastingNotifKey, value);
+                        if (value) {
+                          await NotificationHelper.scheduleWeekly(
+                            notificationId: _fastingNotifIdWednesday,
+                            title: 'fasting_notif_title'.tr(),
+                            body: 'fasting_notif_body'.tr(),
+                            dayOfWeek: DateTime.wednesday,
+                            time: const TimeOfDay(hour: 21, minute: 0),
+                          );
+                        } else {
+                          await NotificationHelper.cancel(
+                            _fastingNotifIdWednesday,
+                          );
+                        }
+                        setTileState(() {});
+                        _loadScheduledNotifications();
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
 
           // ── Motivational Notifications Toggle ──────────
           // _buildSectionHeader(context, 'motivational_notifications'.tr()),
