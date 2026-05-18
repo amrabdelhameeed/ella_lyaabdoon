@@ -45,6 +45,13 @@ class PrayerWidgetService {
           'reward_description',
           randomReward.description,
         );
+
+        await HomeWidget.saveWidgetData<String>(
+          'reward_id',
+          randomReward.id,
+        );
+      } else {
+        await HomeWidget.saveWidgetData<String>('reward_id', '');
       }
 
       final timeFormat = DateFormat('HH:mm');
