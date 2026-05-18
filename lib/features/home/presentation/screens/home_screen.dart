@@ -1,10 +1,11 @@
-﻿import 'package:confetti/confetti.dart';
+import 'package:confetti/confetti.dart';
 import 'package:easy_localization/easy_localization.dart' as easy;
 import 'package:ella_lyaabdoon/app_router.dart';
 import 'package:ella_lyaabdoon/core/constants/app_lists.dart';
 import 'package:ella_lyaabdoon/core/constants/app_routes.dart';
 import 'package:ella_lyaabdoon/core/models/azan_day_period.dart';
 import 'package:ella_lyaabdoon/core/models/timeline_item.dart';
+import 'package:ella_lyaabdoon/core/models/timeline_reward.dart';
 import 'package:ella_lyaabdoon/core/services/app_services_database_provider.dart';
 import 'package:ella_lyaabdoon/core/services/cache_helper.dart';
 import 'package:ella_lyaabdoon/core/services/period_notification_reschedule_service.dart';
@@ -54,6 +55,9 @@ class _HomeScreenState extends State<HomeScreen>
   static const String _notificationShowcaseKey =
       'notification_settings_showcase_v1';
   final GlobalKey _notificationKey = GlobalKey();
+
+  // Cubits / Logic
+  late final HistoryCubit _historyCubit;
 
   // Keys
   final Map<AzanDayPeriod, GlobalKey> _periodKeys = {};
@@ -123,6 +127,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void initState() {
     super.initState();
+    _historyCubit = HistoryCubit();
     WidgetsBinding.instance.addObserver(this);
     _zikrConfettiController = ConfettiController(
       duration: const Duration(seconds: 2),
@@ -395,6 +400,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _historyCubit.close();
     _streakConfettiController.dispose();
     _milestoneSubscription?.cancel();
     _scrollController.dispose();
@@ -403,9 +409,24 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.resumed) {
+      // ✅ Reload Hive box from disk FIRST — picks up changes made by background isolate
+      await HistoryDBProvider.reload();
+
+      // Process any remaining pending widget zikrs that background didn't catch
+      await StreakService.processPendingWidgetZikr();
+
       PrayerWidgetService.updateWidget();
+
+      if (mounted) {
+        // Force full history reload so UI reflects background writes
+        _historyCubit.reloadChecks();
+        StreakService.refreshStreakNotifier();
+
+        // Trigger a setState so _sortRewardsByCompletion re-runs with fresh data
+        setState(() {});
+      }
     }
   }
 
@@ -413,7 +434,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<HistoryCubit>(create: (_) => HistoryCubit()),
+        BlocProvider<HistoryCubit>.value(value: _historyCubit),
         BlocProvider(create: (_) => TranslationCubit()),
         BlocProvider(create: (_) => LocationCubit()),
         BlocProvider(create: (context) => HomeCubit()..initialize()),
@@ -630,11 +651,29 @@ class _HomeScreenState extends State<HomeScreen>
           .where((r) => HistoryDBProvider.isCheckedToday(r.id))
           .length;
 
+      String? badge;
+      if (item.rewards.any(
+        (r) => r.sharedCategory == AzkarCategory.morningAzkar,
+      )) {
+        badge = AppServicesDBprovider.currentLocale() == 'ar'
+            ? '🌅 أذكار الصباح'
+            : '🌅 Morning Azkar';
+      } else if (item.rewards.any(
+        (r) => r.sharedCategory == AzkarCategory.eveningAzkar,
+      )) {
+        badge = AppServicesDBprovider.currentLocale() == 'ar'
+            ? '🌆 أذكار المساء'
+            : '🌆 Evening Azkar';
+      }
+
       return Container(
         key: _periodKeys[item.period],
         child: StickyHeader(
           header: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: isLeftAligned
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
             children: [
               TimelineHeader(
                 titleKey: item.title,
@@ -643,6 +682,8 @@ class _HomeScreenState extends State<HomeScreen>
                 isLeftAligned: isLeftAligned,
                 isFirst: isFirst,
                 pulseAnimation: _pulseAnimation,
+                sharedCategoryBadge:
+                    badge, // Ensure your TimelineHeader implementation uses maxLines & TextOverflow.ellipsis
               ),
               _buildCompletionBar(
                 doneCount: doneCount,
