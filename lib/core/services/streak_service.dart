@@ -5,10 +5,13 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:ella_lyaabdoon/core/services/cache_helper.dart';
 import 'package:ella_lyaabdoon/core/services/motivational_notification_service.dart';
 import 'package:ella_lyaabdoon/features/history/data/history_db_provider.dart';
+import 'package:ella_lyaabdoon/core/constants/app_lists.dart';
 import 'package:ella_lyaabdoon/utils/notification_helper.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:home_widget/home_widget.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class StreakService {
   static const String _lastOpenKey = 'lastOpenDate';
@@ -135,52 +138,172 @@ class StreakService {
     // First time user or new streak calculation
     if (lastOpenStr.isEmpty) {
       await _handleFirstTimeOpen(now, todayDateOnly);
-      return;
+    } else {
+      // Parse last open date
+      final lastOpen = DateTime.parse(lastOpenStr);
+      final lastOpenDateOnly = _getDateOnly(lastOpen);
+
+      debugPrint(
+        '📆 Last open date: ${DateFormat("yyyy-MM-dd").format(lastOpenDateOnly)}',
+      );
+
+      // Calculate difference in days
+      final daysDifference = todayDateOnly.difference(lastOpenDateOnly).inDays;
+      debugPrint('📊 Days difference: $daysDifference');
+
+      if (daysDifference == 0) {
+        // Same day - just update timestamp but DON'T cancel notification
+        await _handleSameDayOpen(now, todayDateOnly);
+      } else if (daysDifference == 1) {
+        // Consecutive day - increment streak
+        await _handleConsecutiveDayOpen(now, todayDateOnly, currentstreakCount);
+      } else if (daysDifference > 1) {
+        // Missed days - check if we can save the streak
+        int daysMissed = daysDifference - 1;
+        int availableSaves = getAvailableStreakSaves();
+
+        if (currentstreakCount > 0 && daysMissed <= availableSaves) {
+          await _handleStreakSavedOpen(
+            now,
+            todayDateOnly,
+            currentstreakCount,
+            daysMissed,
+          );
+        } else {
+          await _handleMissedDaysOpen(now, todayDateOnly, daysDifference);
+        }
+      } else {
+        // Negative difference (clock changed or timezone issue)
+        debugPrint(
+          '⚠️ Warning: Negative day difference detected. Treating as same day.',
+        );
+        await _handleSameDayOpen(now, todayDateOnly);
+      }
+
+      // Migrate statistics for existing users (one-time operation)
+      _migrateStatisticsIfNeeded(currentstreakCount, lastOpenDateOnly);
     }
 
-    // Parse last open date
-    final lastOpen = DateTime.parse(lastOpenStr);
-    final lastOpenDateOnly = _getDateOnly(lastOpen);
+    // Process pending widget zikr done (specific reward ID)
+    await processPendingWidgetZikr();
+  }
 
-    debugPrint(
-      '📆 Last open date: ${DateFormat("yyyy-MM-dd").format(lastOpenDateOnly)}',
-    );
+  static Future<void> recordActiveDay() async {
+    try {
+      final now = DateTime.now();
+      final todayDateOnly = _getDateOnly(now);
 
-    // Calculate difference in days
-    final daysDifference = todayDateOnly.difference(lastOpenDateOnly).inDays;
-    debugPrint('📊 Days difference: $daysDifference');
+      // Record app open for history stats (Hive must be open before calling this)
+      await HistoryDBProvider.recordAppOpen();
 
-    if (daysDifference == 0) {
-      // Same day - just update timestamp but DON'T cancel notification
-      await _handleSameDayOpen(now, todayDateOnly);
-    } else if (daysDifference == 1) {
-      // Consecutive day - increment streak
-      await _handleConsecutiveDayOpen(now, todayDateOnly, currentstreakCount);
-    } else if (daysDifference > 1) {
-      // Missed days - check if we can save the streak
-      int daysMissed = daysDifference - 1;
-      int availableSaves = getAvailableStreakSaves();
+      final lastOpenStr = CacheHelper.getString(_lastOpenKey);
+      int currentStreakCount = CacheHelper.getInt(_streakCountKey);
 
-      if (currentstreakCount > 0 && daysMissed <= availableSaves) {
+      debugPrint(
+        '📱 Widget recordActiveDay — lastOpen: $lastOpenStr, streak: $currentStreakCount',
+      );
+
+      if (lastOpenStr.isEmpty) {
+        // First ever interaction
+        CacheHelper.setString(_lastOpenKey, now.toIso8601String());
+        CacheHelper.setInt(_streakCountKey, 1);
+        streakNotifier.value = 1;
+        _updateStatistics(1, true);
+        debugPrint('🎉 Widget: First active day — streak set to 1');
+        return;
+      }
+
+      final lastOpen = DateTime.parse(lastOpenStr);
+      final lastOpenDateOnly = _getDateOnly(lastOpen);
+      final daysDiff = todayDateOnly.difference(lastOpenDateOnly).inDays;
+
+      debugPrint('📊 Widget recordActiveDay — daysDiff: $daysDiff');
+
+      if (daysDiff == 0) {
+        // Already recorded today — just update timestamp
+        CacheHelper.setString(_lastOpenKey, now.toIso8601String());
+        debugPrint('✅ Widget: Same day — timestamp updated only');
+        return;
+      }
+
+      if (daysDiff == 1) {
+        // Consecutive day
+        await _handleConsecutiveDayOpen(now, todayDateOnly, currentStreakCount);
+        debugPrint(
+          '🔥 Widget: Consecutive day — streak: ${CacheHelper.getInt(_streakCountKey)}',
+        );
+        return;
+      }
+
+      // daysDiff > 1 — check streak saves
+      final daysMissed = daysDiff - 1;
+      final availableSaves = getAvailableStreakSaves();
+
+      if (currentStreakCount > 0 && daysMissed <= availableSaves) {
         await _handleStreakSavedOpen(
           now,
           todayDateOnly,
-          currentstreakCount,
+          currentStreakCount,
           daysMissed,
         );
+        debugPrint(
+          '🛡️ Widget: Streak saved — streak: ${CacheHelper.getInt(_streakCountKey)}',
+        );
       } else {
-        await _handleMissedDaysOpen(now, todayDateOnly, daysDifference);
+        await _handleMissedDaysOpen(now, todayDateOnly, daysDiff);
+        debugPrint(
+          '💔 Widget: Streak reset — streak: ${CacheHelper.getInt(_streakCountKey)}',
+        );
       }
-    } else {
-      // Negative difference (clock changed or timezone issue)
-      debugPrint(
-        '⚠️ Warning: Negative day difference detected. Treating as same day.',
-      );
-      await _handleSameDayOpen(now, todayDateOnly);
+    } catch (e) {
+      debugPrint('⚠️ recordActiveDay failed: $e');
     }
+  }
 
-    // Migrate statistics for existing users (one-time operation)
-    _migrateStatisticsIfNeeded(currentstreakCount, lastOpenDateOnly);
+  /// Process pending widget zikr completions
+  static Future<void> processPendingWidgetZikr() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final queueRaw = prefs.getString('pending_zikr_queue') ?? '';
+      if (queueRaw.isEmpty) return;
+
+      await prefs.remove('pending_zikr_queue');
+
+      final allRewards = AppLists.timelineItems
+          .expand((item) => item.rewards)
+          .toList();
+
+      final now = DateTime.now();
+      final todayKey =
+          '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+
+      final entries = queueRaw.split(',').where((e) => e.isNotEmpty);
+
+      for (final entry in entries) {
+        final parts = entry.split('|');
+        final rewardId = parts[0];
+        final dateStr = parts.length > 1 ? parts[1] : todayKey;
+        final date = DateTime.tryParse(dateStr) ?? now;
+
+        final target = allRewards.where((r) => r.id == rewardId).firstOrNull;
+        if (target == null) {
+          debugPrint('⚠️ processPending: reward not found → $rewardId');
+          continue;
+        }
+
+        // Skip only if it's today AND already marked done
+        final isToday = dateStr == todayKey;
+        if (isToday && HistoryDBProvider.isCheckedToday(target.id)) {
+          debugPrint('⏭️ processPending: already done today → $rewardId');
+          continue;
+        }
+
+        await HistoryDBProvider.addCheck(target.id, date);
+        debugPrint('✅ processPending: $rewardId @ $dateStr');
+      }
+    } catch (e) {
+      debugPrint('⚠️ processPendingWidgetZikr failed: $e');
+    }
   }
 
   /// One-time migration to initialize statistics for existing users
@@ -501,6 +624,12 @@ class StreakService {
 
   static int getStreakCount() {
     return CacheHelper.getInt(_streakCountKey);
+  }
+
+  static void refreshStreakNotifier() {
+    final newStreak = CacheHelper.getInt(_streakCountKey);
+    streakNotifier.value = newStreak;
+    debugPrint('🔄 StreakNotifier refreshed: $newStreak');
   }
 
   /// Check if user's streak is in danger (didn't open today yet)
