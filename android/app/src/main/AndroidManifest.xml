@@ -25,6 +25,11 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <package android:name="id.amrabdelhameeed.quranoffline"/>
+        <intent>
+            <action android:name="android.intent.category.HOME"/>
+            <category android:name="android.intent.category.DEFAULT"/>
+        </intent>
     </queries>
 
     <application
