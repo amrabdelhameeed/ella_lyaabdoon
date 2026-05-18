@@ -912,7 +912,7 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
             Text(
               AppServicesDBprovider.currentLocale() == 'ar'
                   ? 'تفسير'
-                  : 'Tafsir / Explanation',
+                  : 'Explanation',
               style: TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 12,
@@ -962,7 +962,7 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
               ),
               const SizedBox(width: 6),
               Text(
-                isArabic ? 'تفسير' : 'Tafsir / Explanation',
+                isArabic ? 'تفسير' : 'Explanation',
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: Colors.blue[200],
@@ -1632,6 +1632,7 @@ class _ReelsViewContentState extends State<_ReelsViewContent>
       await NotificationHelper.scheduleDaily(
         notificationId: id,
         payload: {
+          'type': 'zikr_reminder',
           'reward_id': reward.id.toString(),
           'timestamp': DateTime.now().millisecondsSinceEpoch.toString(),
         },
