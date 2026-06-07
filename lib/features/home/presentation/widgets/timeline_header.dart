@@ -110,7 +110,7 @@ class TimelineHeader extends StatelessWidget {
               children: [
                 Text(
                   time,
-                  textAlign: TextAlign.center,
+                  textAlign: isLeftAligned ? TextAlign.left : TextAlign.right,
                   style: TextStyle(
                     color: scheme.onPrimary,
                     fontWeight: FontWeight.bold,
@@ -167,83 +167,93 @@ class TimelineHeader extends StatelessWidget {
   Widget _buildTitleCard(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
 
-    return Container(
-      height: 55,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        gradient: isCurrent
-            ? LinearGradient(
-                colors: [
-                  scheme.primary.withValues(alpha: 0.15),
-                  scheme.secondary.withValues(alpha: 0.08),
-                ],
-              )
-            : null,
-        color: isCurrent ? null : scheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isCurrent ? scheme.primary : scheme.outline,
-          width: isCurrent ? 2 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isCurrent
-                ? scheme.primary.withValues(alpha: 0.25)
-                : Colors.black12,
-            blurRadius: isCurrent ? 8 : 4,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Flexible(
-            child: Text(
-              titleKey.tr(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: isLeftAligned ? TextAlign.right : TextAlign.left,
-              style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-                color: isCurrent ? scheme.primary : null,
-              ),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          height: 55,
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            gradient: isCurrent
+                ? LinearGradient(
+                    colors: [
+                      scheme.primary.withValues(alpha: 0.15),
+                      scheme.secondary.withValues(alpha: 0.08),
+                    ],
+                  )
+                : null,
+            color: isCurrent ? null : scheme.surface,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isCurrent ? scheme.primary : scheme.outline,
+              width: isCurrent ? 2 : 1,
             ),
+            boxShadow: [
+              BoxShadow(
+                color: isCurrent
+                    ? scheme.primary.withValues(alpha: 0.25)
+                    : Colors.black12,
+                blurRadius: isCurrent ? 8 : 4,
+              ),
+            ],
           ),
+          child: Row(
+            mainAxisSize: MainAxisSize.max,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Text(
+                  titleKey.tr(),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: isLeftAligned ? TextAlign.left : TextAlign.right,
+                  style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    color: isCurrent ? scheme.primary : null,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
 
-          if (sharedCategoryBadge != null) ...[
-            const SizedBox(width: 6),
-
-            Flexible(
+        if (sharedCategoryBadge != null)
+          Positioned(
+            bottom: 0, // sits on the bottom border line
+            left: 0,
+            right: 0,
+            child: Align(
+              alignment: Alignment.bottomCenter,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 3,
+                ),
                 decoration: BoxDecoration(
+                  color: isCurrent ? scheme.primary : scheme.surface,
                   border: Border.all(
                     color: isCurrent ? scheme.primary : scheme.outline,
                     width: 1,
                   ),
-                  // color: scheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: Text(
                   sharedCategoryBadge!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall!.copyWith(
+                  style: Theme.of(context).textTheme.labelSmall!.copyWith(
                     fontSize: 10,
-                    // fontFamily: 'kufi',
                     fontWeight: FontWeight.bold,
-                    color: isCurrent ? scheme.primary : null,
+                    color: isCurrent ? scheme.onPrimary : scheme.onSurface,
                   ),
                 ),
               ),
             ),
-          ],
-        ],
-      ),
+          ),
+      ],
     );
   }
 }
