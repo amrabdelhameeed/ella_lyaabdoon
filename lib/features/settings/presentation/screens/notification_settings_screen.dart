@@ -72,7 +72,11 @@ class _NotificationSettingsScreenState
           .map((p) => _periodNotifId(p))
           .toSet();
 
-      final fastingIds = {_fastingNotifIdSunday, _fastingNotifIdWednesday};
+      final fastingIds = {
+        _fastingNotifIdSunday,
+        _fastingNotifIdWednesday,
+        9003,
+      };
 
       final filtered = notifications.where((n) {
         if (n.id == StreakService.notificationId) return false;
@@ -214,6 +218,53 @@ class _NotificationSettingsScreenState
                     },
                   );
                 }),
+              ],
+            ),
+          ),
+
+          // ── Friday Prayer Reminder ───────────────
+          _buildSectionHeader(context, 'prayer_reminder_friday'.tr()),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: Column(
+              children: [
+                StatefulBuilder(
+                  builder: (context, setTileState) {
+                    final enabled = CacheHelper.getBool(
+                      'prayer_reminder_friday_enabled',
+                    );
+                    return SwitchListTile(
+                      secondary: Icon(Icons.mosque, color: colorScheme.primary),
+                      title: Text('prayer_reminder_friday_title'.tr()),
+                      subtitle: Text(
+                        'prayer_reminder_friday_desc'.tr(),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: Colors.grey,
+                        ),
+                      ),
+                      value: enabled,
+                      onChanged: (value) async {
+                        CacheHelper.setBool(
+                          'prayer_reminder_friday_enabled',
+                          value,
+                        );
+                        if (value) {
+                          await NotificationHelper.scheduleWeekly(
+                            notificationId: 9003,
+                            title: 'prayer_reminder_friday_title'.tr(),
+                            body: 'prayer_reminder_friday_body'.tr(),
+                            dayOfWeek: DateTime.friday,
+                            time: const TimeOfDay(hour: 14, minute: 0),
+                          );
+                        } else {
+                          await NotificationHelper.cancel(9003);
+                        }
+                        setTileState(() {});
+                        _loadScheduledNotifications();
+                      },
+                    );
+                  },
+                ),
               ],
             ),
           ),
