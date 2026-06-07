@@ -11,6 +11,30 @@ import 'package:flutter/material.dart';
 // ──────────────────────────────────────────────────────────
 bool _isRtl() => AppServicesDBprovider.currentLocale().startsWith('ar');
 
+// ──────────────────────────────────────────────────────────
+// Top-level data loader — all Hive/SP reads in one place.
+// Called via addPostFrameCallback so the first frame is never blocked.
+// NOTE: NOT using compute() because Hive boxes are not available in a
+// spawned isolate. addPostFrameCallback alone eliminates the visible lag.
+// ──────────────────────────────────────────────────────────
+Map<String, dynamic> _loadAllStatsSync() {
+  final todayStats = HistoryDBProvider.getTodayStats();
+  return {
+    'stats': StreakService.getComprehensiveStats(),
+    'zikrsToday': todayStats['zikrsToday'] as int,
+    'openedToday': todayStats['openedToday'] as bool,
+    'zikrsThisWeek': HistoryDBProvider.getZikrsThisWeek(),
+    'zikrsThisMonth': HistoryDBProvider.getZikrsThisMonth(),
+    'zikrsLastMonth': HistoryDBProvider.getZikrsLastMonthSamePeriod(),
+    'zikrs3Months': HistoryDBProvider.getZikrsLast3Months(),
+    'zikrs6Months': HistoryDBProvider.getZikrsLast6Months(),
+    'zikrsAllTime': HistoryDBProvider.getZikrsAllTime(),
+    'weeklyAvg': HistoryDBProvider.getWeeklyAverageZikrs(),
+    'completionRate30': HistoryDBProvider.getCompletionRate(30),
+    'bestDayIndex': HistoryDBProvider.getBestDayOfWeek(),
+  };
+}
+
 class StatisticsScreen extends StatefulWidget {
   const StatisticsScreen({super.key});
 
@@ -20,15 +44,33 @@ class StatisticsScreen extends StatefulWidget {
 
 class _StatisticsScreenState extends State<StatisticsScreen>
     with WidgetsBindingObserver {
+  // ── loading gate ──
+  bool _isLoading = true;
+
+  // ── streak section ──
   late Map<String, dynamic> _stats;
-  late int _zikrsToday;
   late bool _openedToday;
+
+  // ── azkar counts section ──
+  late int _zikrsToday;
+  late int _zikrsThisWeek;
+  late int _zikrsThisMonth;
+  late int _zikrsLastMonth;
+  late int _zikrs3Months;
+  late int _zikrs6Months;
+  late int _zikrsAllTime;
+
+  // ── insights section ──
+  late double _weeklyAvg;
+  late int _completionRate30;
+  late int _bestDayIndex;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _loadData();
+    // Defer past first frame — screen paints immediately, data fills in after.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadData());
   }
 
   @override
@@ -39,20 +81,46 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _loadData();
+    if (state == AppLifecycleState.resumed) _reloadAndLoad();
+  }
+
+  Future<void> _reloadAndLoad() async {
+    await HistoryDBProvider.reload(); // flush stale box state
+    if (!mounted) return;
+    _loadData();
   }
 
   void _loadData() {
-    final todayStats = HistoryDBProvider.getTodayStats();
+    if (!mounted) return;
+    final results = _loadAllStatsSync();
+    if (!mounted) return;
     setState(() {
-      _stats = StreakService.getComprehensiveStats();
-      _zikrsToday = todayStats['zikrsToday'] as int;
-      _openedToday = todayStats['openedToday'] as bool;
+      _isLoading = false;
+      _stats = results['stats'] as Map<String, dynamic>;
+      _openedToday = results['openedToday'] as bool;
+      _zikrsToday = results['zikrsToday'] as int;
+      _zikrsThisWeek = results['zikrsThisWeek'] as int;
+      _zikrsThisMonth = results['zikrsThisMonth'] as int;
+      _zikrsLastMonth = results['zikrsLastMonth'] as int;
+      _zikrs3Months = results['zikrs3Months'] as int;
+      _zikrs6Months = results['zikrs6Months'] as int;
+      _zikrsAllTime = results['zikrsAllTime'] as int;
+      _weeklyAvg = results['weeklyAvg'] as double;
+      _completionRate30 = results['completionRate30'] as int;
+      _bestDayIndex = results['bestDayIndex'] as int;
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Show a clean loader on first open — never blocks the raster thread.
+    if (_isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: Text('statistics_title'.tr())),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     final currentStreak = _stats['currentStreak'] as int;
     final color = StreakService.getStreakColor(currentStreak);
 
@@ -65,8 +133,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           children: [
             // ════════════════════════════════════════════════════
             // SECTION 1 — STREAK
-            // Everything streak-related together: current, longest,
-            // active days, saves, next milestone.
             // ════════════════════════════════════════════════════
             Hero(
               tag: 'streak_icon',
@@ -110,8 +176,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             const SizedBox(height: 8),
 
             // ════════════════════════════════════════════════════
-            // SECTION 2 — AZKAR COUNTS (numbers only, no graphs)
-            // Today, week, month comparison, 3m/6m/all-time.
+            // SECTION 2 — AZKAR COUNTS
             // ════════════════════════════════════════════════════
             _buildAzkarCountsSection(context),
 
@@ -120,8 +185,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
             const SizedBox(height: 8),
 
             // ════════════════════════════════════════════════════
-            // SECTION 3 — TRENDS (graphs only)
-            // Insight pills, single toggleable chart, heatmap.
+            // SECTION 3 — TRENDS
             // ════════════════════════════════════════════════════
             _buildInsightRow(context),
             const SizedBox(height: 8),
@@ -453,17 +517,17 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 
   // ─────────────────────────────────────────
   // SECTION 2 — Azkar counts (numeric only)
+  // All values come from pre-loaded state — zero DB calls in build.
   // ─────────────────────────────────────────
 
   Widget _buildAzkarCountsSection(BuildContext context) {
-    final todayStats = HistoryDBProvider.getTodayStats();
-    final zikrsToday = todayStats['zikrsToday'] as int;
-    final zikrsThisWeek = HistoryDBProvider.getZikrsThisWeek();
-    final zikrsThisMonth = HistoryDBProvider.getZikrsThisMonth();
-    final zikrsLastMonth = HistoryDBProvider.getZikrsLastMonth();
-    final zikrs3Months = HistoryDBProvider.getZikrsLast3Months();
-    final zikrs6Months = HistoryDBProvider.getZikrsLast6Months();
-    final zikrsAllTime = HistoryDBProvider.getZikrsAllTime();
+    final zikrsToday = _zikrsToday;
+    final zikrsThisWeek = _zikrsThisWeek;
+    final zikrsThisMonth = _zikrsThisMonth;
+    final zikrsLastMonth = _zikrsLastMonth;
+    final zikrs3Months = _zikrs3Months;
+    final zikrs6Months = _zikrs6Months;
+    final zikrsAllTime = _zikrsAllTime;
 
     final monthDiff = zikrsThisMonth - zikrsLastMonth;
     final monthPercent = zikrsLastMonth > 0
@@ -585,7 +649,7 @@ class _StatisticsScreenState extends State<StatisticsScreen>
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        'last_month'.tr(),
+                        '${'last_month'.tr()} (1–${DateTime.now().day})',
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: cs.onSurface.withOpacity(0.55),
                         ),
@@ -698,9 +762,11 @@ class _StatisticsScreenState extends State<StatisticsScreen>
   // ─────────────────────────────────────────
 
   Widget _buildInsightRow(BuildContext context) {
-    final weeklyAvg = HistoryDBProvider.getWeeklyAverageZikrs();
-    final completionRate30 = HistoryDBProvider.getCompletionRate(30);
-    final bestDayIndex = HistoryDBProvider.getBestDayOfWeek();
+    // Use pre-loaded values — no DB calls here.
+    final weeklyAvg = _weeklyAvg;
+    final completionRate30 = _completionRate30;
+    final bestDayIndex = _bestDayIndex;
+
     final locale = AppServicesDBprovider.currentLocale();
     final now = DateTime.now();
     final bestDayName = bestDayIndex >= 0
@@ -713,7 +779,6 @@ class _StatisticsScreenState extends State<StatisticsScreen>
           )
         : '–';
 
-    // Use IntrinsicHeight so all three pills have equal height
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1142,14 +1207,9 @@ class _StatisticsScreenState extends State<StatisticsScreen>
 // Shared helpers (top-level, used by _ZikrChartCard)
 // ══════════════════════════════════════════════════════════════════
 
-String _chartDateLabel(
-  int index,
-  int days,
-  bool rtl,
-  DateTime anchor, // was: DateTime today
-) {
+String _chartDateLabel(int index, int days, bool rtl, DateTime anchor) {
   final dateIndex = rtl ? (days - 1 - index) : index;
-  final date = anchor.add(Duration(days: dateIndex)); // ← add, not subtract
+  final date = anchor.add(Duration(days: dateIndex));
   final locale = AppServicesDBprovider.currentLocale();
   if (days <= 7) return easy.DateFormat('EEE', locale).format(date);
   if (days <= 30) return easy.DateFormat('d/M', locale).format(date);
@@ -1160,12 +1220,11 @@ String _chartDateLabel(
 }
 
 Map<int, int> _maybeReverseData(Map<int, int> data, int days, bool rtl) {
-  // ✅ Don't reverse — chart is forced LTR via Directionality wrapper
-  // Arabic labels (day names) still render correctly via DateFormat locale
   return data;
 }
+
 // ══════════════════════════════════════════════════════════════════
-// Zikr Chart Card — single card, 7/14/30 = line chart, 90 = bar chart
+// Zikr Chart Card
 // ══════════════════════════════════════════════════════════════════
 
 class _ZikrChartCard extends StatefulWidget {
@@ -1246,7 +1305,7 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
                         data,
                         _selectedDays,
                         rtl,
-                        chartAnchor, // ✅ only anchor, no today
+                        chartAnchor,
                         maxY: maxY,
                       )
                     : _buildLineChart(
@@ -1254,7 +1313,7 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
                         data,
                         _selectedDays,
                         rtl,
-                        chartAnchor, // ✅ only anchor, no today
+                        chartAnchor,
                         maxY: maxY,
                       ),
               ),
@@ -1270,7 +1329,7 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
     Map<int, int> data,
     int days,
     bool rtl,
-    DateTime anchor, { // ✅ single param
+    DateTime anchor, {
     required double maxY,
   }) {
     final theme = Theme.of(context);
@@ -1307,7 +1366,7 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
           context,
           days,
           rtl,
-          anchor, // ✅ anchor
+          anchor,
           interval: days <= 7 ? 1.0 : 5.0,
         ),
         borderData: FlBorderData(show: false),
@@ -1348,7 +1407,7 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
     Map<int, int> data,
     int days,
     bool rtl,
-    DateTime anchor, { // ✅ single param
+    DateTime anchor, {
     required double maxY,
   }) {
     final theme = Theme.of(context);
@@ -1373,13 +1432,7 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
             ],
           ),
         ),
-        titlesData: _titlesData(
-          context,
-          days,
-          rtl,
-          anchor, // ✅ anchor
-          interval: 1,
-        ),
+        titlesData: _titlesData(context, days, rtl, anchor, interval: 1),
         borderData: FlBorderData(show: false),
         gridData: _gridData(context, maxY),
         barTouchData: BarTouchData(
@@ -1405,7 +1458,7 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
     BuildContext context,
     int days,
     bool rtl,
-    DateTime anchor, { // ✅ single param, was 'today'
+    DateTime anchor, {
     required double interval,
   }) {
     final theme = Theme.of(context);
@@ -1468,6 +1521,7 @@ class _ZikrChartCardState extends State<_ZikrChartCard> {
     );
   }
 }
+
 // ══════════════════════════════════════════════════════════════════
 // Range Selector
 // ══════════════════════════════════════════════════════════════════
