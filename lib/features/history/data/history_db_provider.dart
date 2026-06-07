@@ -13,8 +13,24 @@ class HistoryDBProvider {
   static Box<int>? _counterBox;
   static Box<List<String>>? _appOpensBox;
 
+  // Caching layer for extreme performance
+  static Map<String, List<DateTime>>? _checksCache;
+  static Map<String, int>? _dailyZikrCountsCache;
+
+  /// Clear the query/parsed data caches
+  static void _invalidateCaches() {
+    _checksCache = null;
+    _dailyZikrCountsCache = null;
+  }
+
+  /// Manually release cache memory
+  static void clearCaches() {
+    _invalidateCaches();
+  }
+
   /// Initialize Hive box
   static Future<void> init() async {
+    _invalidateCaches();
     _box = await Hive.openBox<List<String>>(_boxName);
     _counterBox = await Hive.openBox<int>(_counterBoxName);
     _appOpensBox = await Hive.openBox<List<String>>(_appOpensBoxName);
@@ -22,14 +38,15 @@ class HistoryDBProvider {
 
   /// Reload the boxes from disk to sync changes made by background isolates
   static Future<void> reload() async {
-    try {
-      if (_box != null && _box!.isOpen) {
-        await _box!.close();
-      }
-      _box = await Hive.openBox<List<String>>(_boxName);
-    } catch (e) {
-      debugPrint('⚠️ Error reloading HistoryDBProvider: $e');
-    }
+    _invalidateCaches();
+    // try {
+    //   if (_box != null && _box!.isOpen) {
+    //     await _box!.close();
+    //   }
+    //   _box = await Hive.openBox<List<String>>(_boxName);
+    // } catch (e) {
+    //   debugPrint('⚠️ Error reloading HistoryDBProvider: $e');
+    // }
   }
 
   static Box<List<String>> get _safeBox {
@@ -118,6 +135,7 @@ class HistoryDBProvider {
 
   /// Add a check for a zikr (prevents duplicates for the same day)
   static Future<void> addCheck(String zikrId, DateTime date) async {
+    _invalidateCaches();
     // ✅ Copy to avoid mutating Hive's in-memory reference directly
     final List<String> currentChecks = List<String>.from(
       _safeBox.get(zikrId) ?? [],
@@ -144,6 +162,7 @@ class HistoryDBProvider {
 
   /// Remove today's check (removes ALL entries for the given date)
   static Future<void> removeCheck(String zikrId, DateTime date) async {
+    _invalidateCaches();
     // ✅ Copy to avoid mutating Hive's in-memory reference directly
     final List<String> currentChecks = List<String>.from(
       _safeBox.get(zikrId) ?? [],
@@ -163,28 +182,80 @@ class HistoryDBProvider {
     await _safeBox.put(zikrId, currentChecks);
   }
 
+  static Map<String, List<DateTime>> _getOrCreateChecksCache() {
+    if (_checksCache != null) return _checksCache!;
+
+    final cache = <String, List<DateTime>>{};
+    if (_box == null || !_box!.isOpen) return cache;
+
+    final allRewards = AppLists.timelineItems
+        .expand((item) => item.rewards)
+        .toList();
+
+    for (final reward in allRewards) {
+      final List<String>? checkStrings = _box!.get(reward.id);
+      if (checkStrings == null) {
+        cache[reward.id] = [];
+        continue;
+      }
+
+      final Map<String, DateTime> uniqueDates = {};
+      for (final dateStr in checkStrings) {
+        try {
+          final date = DateTime.parse(dateStr);
+          final dateKey = '${date.year}-${date.month}-${date.day}';
+          if (!uniqueDates.containsKey(dateKey)) {
+            uniqueDates[dateKey] = date;
+          }
+        } catch (_) {}
+      }
+      cache[reward.id] = uniqueDates.values.toList()..sort();
+    }
+
+    _checksCache = cache;
+    return cache;
+  }
+
+  static Map<String, int> _getOrCreateDailyZikrCountsCache() {
+    if (_dailyZikrCountsCache != null) return _dailyZikrCountsCache!;
+
+    final counts = <String, int>{};
+    final checksCache = _getOrCreateChecksCache();
+
+    for (final checks in checksCache.values) {
+      for (final check in checks) {
+        final dateKey = '${check.year}-${check.month}-${check.day}';
+        counts[dateKey] = (counts[dateKey] ?? 0) + 1;
+      }
+    }
+
+    _dailyZikrCountsCache = counts;
+    return counts;
+  }
+
   /// Get all checks as DateTime (removes duplicates)
   static List<DateTime> getChecks(String zikrId) {
-    final List<String>? checkStrings = _box?.get(zikrId);
+    if (_box == null || !_box!.isOpen) return [];
+
+    final cache = _getOrCreateChecksCache();
+    if (cache.containsKey(zikrId)) {
+      return cache[zikrId]!;
+    }
+
+    // Fallback if not in timelineItems (just in case)
+    final List<String>? checkStrings = _box!.get(zikrId);
     if (checkStrings == null) return [];
 
-    // Parse and deduplicate by date (not timestamp)
     final Map<String, DateTime> uniqueDates = {};
-
     for (final dateStr in checkStrings) {
       try {
         final date = DateTime.parse(dateStr);
         final dateKey = '${date.year}-${date.month}-${date.day}';
-
-        // Keep only the first entry encountered per day
         if (!uniqueDates.containsKey(dateKey)) {
           uniqueDates[dateKey] = date;
         }
-      } catch (e) {
-        // Skip invalid dates
-      }
+      } catch (_) {}
     }
-
     return uniqueDates.values.toList()..sort();
   }
 
@@ -219,6 +290,7 @@ class HistoryDBProvider {
 
   /// Cleanup method to remove all duplicates from existing data
   static Future<void> cleanupDuplicates() async {
+    _invalidateCaches();
     final allKeys = _safeBox.keys;
 
     for (final key in allKeys) {
@@ -296,17 +368,29 @@ class HistoryDBProvider {
   static int getZikrsAllTime() {
     if (_box == null || !_box!.isOpen) return 0;
 
+    // Use daily counts cache — same path as all other aggregations
+    final dailyCounts = _getOrCreateDailyZikrCountsCache();
+    return dailyCounts.values.fold(0, (sum, count) => sum + count);
+  }
+
+  /// Zikrs in last month for the same day range as current month so far.
+  /// e.g. if today is the 10th, compares 1st→10th of this month vs 1st→10th of last month.
+  static int getZikrsLastMonthSamePeriod() {
+    final now = DateTime.now();
+    final dayOfMonth = now.day; // e.g. 10
+    final lastMonthYear = now.month == 1 ? now.year - 1 : now.year;
+    final lastMonthMonth = now.month == 1 ? 12 : now.month - 1;
+
+    // Cap at the last day of last month (handles e.g. today=31 but last month had 30)
+    final lastDayOfLastMonth = DateTime(now.year, now.month, 0).day;
+    final endDay = dayOfMonth.clamp(1, lastDayOfLastMonth);
+
     int total = 0;
-
-    final allRewards = AppLists.timelineItems
-        .expand((item) => item.rewards)
-        .toList();
-
-    for (final reward in allRewards) {
-      final checks = getChecks(reward.id);
-      total += checks.length; // already deduplicated per day
+    for (int d = 1; d <= endDay; d++) {
+      total += getTotalZikrsCompletedForDate(
+        DateTime(lastMonthYear, lastMonthMonth, d),
+      );
     }
-
     return total;
   }
   // ──────────────────────────────────────────────────────────
@@ -352,14 +436,9 @@ class HistoryDBProvider {
     if (_box == null || !_box!.isOpen) return -1;
 
     final totals = List<int>.filled(7, 0); // Mon=0 ... Sun=6
+    final checksCache = _getOrCreateChecksCache();
 
-    final allRewards = AppLists.timelineItems
-        .expand((item) => item.rewards)
-        .toList();
-
-    for (final reward in allRewards) {
-      final checks = getChecks(reward.id);
-
+    for (final checks in checksCache.values) {
       for (final check in checks) {
         final weekdayIndex = check.weekday - 1; // Mon=0
         if (weekdayIndex >= 0 && weekdayIndex < 7) {
@@ -483,27 +562,8 @@ class HistoryDBProvider {
 
   /// Get total zikrs completed for a specific date across all rewards
   static int getTotalZikrsCompletedForDate(DateTime date) {
-    if (_box == null || !_box!.isOpen) return 0;
-
-    final targetDate = DateTime(date.year, date.month, date.day);
-    int total = 0;
-
-    // ✅ Correct: collect all reward IDs from timeline
-    final allRewards = AppLists.timelineItems
-        .expand((item) => item.rewards)
-        .toList();
-
-    for (final reward in allRewards) {
-      final checks = getChecks(reward.id);
-      for (final check in checks) {
-        final checkDate = DateTime(check.year, check.month, check.day);
-        if (checkDate.isAtSameMomentAs(targetDate)) {
-          total++; // Count one per reward per day (duplicates already removed in getChecks)
-          break;
-        }
-      }
-    }
-    return total;
+    final dateKey = '${date.year}-${date.month}-${date.day}';
+    return _getOrCreateDailyZikrCountsCache()[dateKey] ?? 0;
   }
 
   /// ✅ Get daily zikr counts for the last N days
