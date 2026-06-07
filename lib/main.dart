@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:async';
 import 'dart:isolate';
 import 'package:clarity_flutter/clarity_flutter.dart';
+import 'package:device_preview/device_preview.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:ella_lyaabdoon/app_router.dart';
 import 'package:ella_lyaabdoon/core/di/di.dart';
@@ -219,7 +220,15 @@ void main() async {
       debugPrint('✅ All critical services initialized');
       await dotenv.load(fileName: ".env");
       // 🎯 NOW launch app - everything is ready!
-      runApp(ClarityWidget(app: const MyApp(), clarityConfig: _clarityConfig!));
+      runApp(
+        ClarityWidget(
+          app: DevicePreview(
+            enabled: !kReleaseMode,
+            builder: (context) => const MyApp(),
+          ),
+          clarityConfig: _clarityConfig!,
+        ),
+      );
 
       debugPrint('✅ App launched successfully');
 
@@ -640,6 +649,9 @@ class MyApp extends StatelessWidget {
                 supportedLocales: context.supportedLocales,
                 localizationsDelegates: context.localizationDelegates,
                 locale: context.locale,
+                useInheritedMediaQuery: true,
+                // locale: DevicePreview.locale(context),
+                // builder: DevicePreview.appBuilder,
                 themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
                 theme: AppTheme.lightTheme(currentLocale),
                 darkTheme: AppTheme.darkTheme(currentLocale),

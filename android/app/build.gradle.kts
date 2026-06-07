@@ -110,6 +110,11 @@ dependencies {
     // Exclude old firebase-iid
     configurations.all {
         exclude(group = "com.google.firebase", module = "firebase-iid")
+        resolutionStrategy.force(
+            "androidx.glance:glance:1.1.0",
+            "androidx.glance:glance-appwidget:1.1.0",
+            "androidx.glance:glance-material3:1.1.0"
+        )
     }
 }
 
