@@ -14,6 +14,7 @@ class AppLists {
         ...SharedAzkar.postPrayerAzkar.map(
           (r) => r.copyWith(id: 'fajr_${r.id}'),
         ),
+        ...SharedAzkar.morningAzkar,
         const TimelineReward(
           id: 'fajr_sunnah',
           title: 'خير من الدنيا وما فيها',
@@ -91,7 +92,7 @@ class AppLists {
           zikrLevel: ZikrLevel.easy,
           isWithCounter: false,
         ),
-const TimelineReward(
+        const TimelineReward(
           id: 'fajr_angel_duaa',
           title: 'دعاء الملائكة',
           description:
@@ -143,7 +144,7 @@ const TimelineReward(
           source: 'رواه البخاري (245) ومسلم (255).',
           tafsir:
               'جاء في فتح الباري أن قوله "يشوص فاه" يعني يغسل فمه ويدلك أسنانه بالسواك عرضاً من أعلى لأسفل. والاستياك عند قيام من النوم أو لتجهيز النفس لصلاة الفجر هو سنة نبوية مؤكدة، والحكمة والسر فيها إزالة الروائح المتغيرة في الفم نتيجة ركود اللعاب أثناء النوم، وتنظيفه وتطهيره ليكون الفم طيباً عند قراءة القرآن ومناجاة الله والذكر، مصداقاً لقوله ﷺ: "السواك مطهرة للفم مرضاة للرب". (شرح سنن النسائي / الدرر السنية)',
-isWithCounter: false,
+          isWithCounter: false,
           zikrLevel: ZikrLevel.easy,
         ),
       ],
@@ -165,7 +166,7 @@ isWithCounter: false,
           source: 'رواه أبو داود (1289) والترمذي (475).',
           tafsir:
               'قال إسلام ويب في شرح الحديث: "أي أكفك شغلك وحوائجك وأدفع عنك ما تكره بعد صلاتك إلى آخر النهار. والمعنى: فرِّغ بالك بعبادتي في أول النهار أُفرِّغ بالك في آخره بقضاء حوائجك". وقال شيخ الإسلام ابن تيمية: هذه الأربع عنده هي صلاة الفجر وسنتها. وفيه أن ربط أول النهار بالعبادة سبب للبركة والكفاية طوال اليوم. (إسلام ويب / islamweb.net)',
-          zikrLevel: ZikrLevel.easy,
+          zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
         ),
         const TimelineReward(
@@ -177,7 +178,7 @@ isWithCounter: false,
           tafsir:
               'قال النووي في شرح مسلم: "السُّلَامَى" هي مفاصل الإنسان، وعددها ثلاثمائة وستون مفصلاً. فعلى كل إنسان في كل يوم صدقة عن كل مفصل شكراً لله على نعمة الجسد. والمعجز في هذا الحديث أن ركعتين من الضحى تجزئ عن هذه الصدقات كلها؛ فهي تعادل ثلاثمائة وستين صدقة يومياً. وفيه الحث على صلاة الضحى ولو ركعتين. (الدرر السنية / dorar.net)',
           isWithCounter: false,
-          zikrLevel: ZikrLevel.easy,
+          zikrLevel: ZikrLevel.hard,
         ),
         const TimelineReward(
           id: 'shorouq_ishraq_hajj_umrah',
@@ -214,7 +215,7 @@ isWithCounter: false,
         ...SharedAzkar.postPrayerAzkar.map(
           (r) => r.copyWith(id: 'duhr_${r.id}'),
         ),
-        ...SharedAzkar.morningAzkar,
+        ...SharedAzkar.eveningAzkar,
         const TimelineReward(
           id: 'duhr_12_rakat_house',
           title: 'بيت في الجنة',
@@ -245,7 +246,7 @@ isWithCounter: false,
           source: 'رواه الترمذي (478).',
           tafsir:
               'قال المباركفوري في تحفة الأحوذي: فتح أبواب السماء في وقت الزوال يدل على أن الأعمال الصالحة ترفع إلى الله في هذا الوقت بصورة مميزة، فكان النبي ﷺ يحرص على أن يكون له عمل صالح يصعد في هذه الساعة المباركة. وفيه الحث على الصلاة وقت الزوال للفوز بهذه الميزة. (طريق الإسلام / islamway.net)',
-          zikrLevel: ZikrLevel.easy,
+          zikrLevel: ZikrLevel.hard,
           isWithCounter: false,
         ),
         const TimelineReward(
@@ -377,7 +378,7 @@ isWithCounter: false,
           source: 'رواه الترمذي (3464).',
           tafsir:
               'قال المباركفوري: هذا الحديث يدل على أن لكل ذكر من الأذكار عملاً وأثراً في الجنة يُوجده في الآخرة. وقوله "غُرست له نخلة" تصوير لحسنة باقية في الجنة تُجنى منها الثمار. فقول "سبحان الله العظيم وبحمده" كلمتان خفيفتان على اللسان، ثقيلتان في الميزان، حبيبتان إلى الرحمن، وكل قائل لها يُغرس له بها نخلة في الجنة. (إسلام ويب / islamweb.net)',
-          isWithCounter: false,
+          isWithCounter: true,
           zikrLevel: ZikrLevel.easy,
         ),
         const TimelineReward(
@@ -551,6 +552,17 @@ isWithCounter: false,
           (r) => r.copyWith(id: 'maghrib_${r.id}'),
         ),
         ...SharedAzkar.eveningAzkar,
+        TimelineReward(
+          id: 'maghrib_protection_fire',
+          title: 'كُتب له جوار من النار',
+          description:
+              'قال النبي ﷺ: «وَإِذَا صَلَّيْتَ الْمَغْرِبَ، فَقُلْ قَبْلَ أَنْ تُكَلِّمَ أَحَدًا مِنَ النَّاسِ: اللَّهُمَّ أَجِرْنِي مِنَ النَّارِ، سَبْعَ مَرَّاتٍ، فَإِنَّكَ إِنْ مِتَّ مِنْ لَيْلَتِكَ تِلْكَ، كَتَبَ اللَّهُ لَكَ جِوَارًا مِنَ النَّارِ».',
+          source: 'رواه النسائي في الكبرى (9842) وأبو داود (5079).',
+          isWithCounter: true,
+          tafsir: """""",
+          zikrLevel: ZikrLevel.easy,
+          sharedCategory: AzkarCategory.eveningAzkar,
+        ),
         const TimelineReward(
           id: 'maghrib_sunnah_house',
           title: 'بيت في الجنة',

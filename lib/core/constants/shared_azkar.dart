@@ -109,7 +109,7 @@ class SharedAzkar {
       source: 'رواه أبو داود (5081).',
       isWithCounter: true,
       tafsir: """""",
-      zikrLevel: ZikrLevel.hard,
+      zikrLevel: ZikrLevel.easy,
       sharedCategory: AzkarCategory.morningAzkar,
     ),
     TimelineReward(
@@ -141,7 +141,7 @@ class SharedAzkar {
           'كان رسول الله ﷺ إذا أصبح قال: «أَصْبَحْنَا عَلَى فِطْرَةِ الْإِسْلَامِ، وَعَلَى كَلِمَةِ الْإِخْلَاصِ، وَعَلَى دِينِ نَبِيِّنَا مُحَمَّدٍ ﷺ، وَعَلَى مِلَّةِ أَبِينَا إِبْرَاهِيمَ حَنِيفًا مُسْلِمًا وَمَا كَانَ مِنَ الْمُشْرِكِينَ».',
       source: 'رواه أحمد (15367) وحسنه الألباني.',
       zikrLevel: ZikrLevel.easy,
-      isWithCounter: true,
+      isWithCounter: false,
       tafsir: """""",
       sharedCategory: AzkarCategory.morningAzkar,
     ),
@@ -390,17 +390,7 @@ class SharedAzkar {
       tafsir: """""",
       sharedCategory: AzkarCategory.eveningAzkar,
     ),
-    TimelineReward(
-      id: 'maghrib_protection_fire',
-      title: 'كُتب له جوار من النار',
-      description:
-          'قال النبي ﷺ: «وَإِذَا صَلَّيْتَ الْمَغْرِبَ، فَقُلْ قَبْلَ أَنْ تُكَلِّمَ أَحَدًا مِنَ النَّاسِ: اللَّهُمَّ أَجِرْنِي مِنَ النَّارِ، سَبْعَ مَرَّاتٍ، فَإِنَّكَ إِنْ مِتَّ مِنْ لَيْلَتِكَ تِلْكَ، كَتَبَ اللَّهُ لَكَ جِوَارًا مِنَ النَّارِ».',
-      source: 'رواه النسائي في الكبرى (9842) وأبو داود (5079).',
-      isWithCounter: true,
-      tafsir: """""",
-      zikrLevel: ZikrLevel.easy,
-      sharedCategory: AzkarCategory.eveningAzkar,
-    ),
+
     TimelineReward(
       id: 'maghrib_salat_nabi_evening',
       title: 'نيل شفاعة النبي ﷺ',
@@ -480,11 +470,99 @@ class SharedAzkar {
       isWithCounter: false,
       sharedCategory: AzkarCategory.postPrayer,
     ),
+
+    TimelineReward(
+      id: 'post_prayer_istighfar_3',
+      title: 'التحلل من الصلاة والانتقال للذكر',
+      description:
+          'كان رسول الله ﷺ إذا انصرف من صلاته استغفر ثلاثًا، وقال: «اللَّهُمَّ أَنْتَ السَّلَامُ وَمِنْكَ السَّلَامُ، تَبَارَكْتَ يَا ذَا الْجَلَالِ وَالْإِكْرَامِ».',
+      source: 'رواه مسلم (591).',
+      zikrLevel: ZikrLevel.easy,
+      isWithCounter: true,
+      sharedCategory: AzkarCategory.postPrayer,
+    ),
+
+    TimelineReward(
+      id: 'post_prayer_la_ilaha_illallah_wahdahu',
+      title: 'دفع الهموم ورد العين وغفران الذنوب',
+      description:
+          'كان النبي ﷺ يقول دبر كل صلاة مكتوبة: «لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، اللَّهُمَّ لَا مَانِعَ لِمَا أَعْطَيْتَ، وَلَا مُعْطِيَ لِمَا مَنَعْتَ، وَلَا يَنْفَعُ ذَا الْجَدِّ مِنْكَ الْجَدُّ».',
+      source: 'رواه البخاري (844)، ومسلم (593).',
+      zikrLevel: ZikrLevel.easy,
+      isWithCounter: false,
+      sharedCategory: AzkarCategory.postPrayer,
+    ),
+
+    TimelineReward(
+      id: 'post_prayer_allahu_akbar_3',
+      title: 'إعلان عظمة الله عقب الصلاة',
+      description:
+          'عن ابن عباس رضي الله عنهما: «كُنْتُ أَعْرِفُ انْقِضَاءَ صَلَاةِ النَّبِيِّ ﷺ بِالتَّكْبِيرِ» — كان ﷺ يرفع صوته بالتكبير ثلاثًا دبر الصلاة.',
+      source: 'رواه البخاري (842)، ومسلم (583).',
+      zikrLevel: ZikrLevel.easy,
+      isWithCounter: true,
+      sharedCategory: AzkarCategory.postPrayer,
+    ),
+
+    TimelineReward(
+      id: 'post_prayer_muawwidhaat',
+      title: 'الكفاية من كل شيء وحفظ من السحر والعين',
+      description:
+          'قال رسول الله ﷺ لعقبة بن عامر رضي الله عنه: «اقْرَأِ الْمُعَوِّذَاتِ دُبُرَ كُلِّ صَلَاةٍ» — يعني: قُلْ هُوَ اللَّهُ أَحَدٌ، وَقُلْ أَعُوذُ بِرَبِّ الْفَلَقِ، وَقُلْ أَعُوذُ بِرَبِّ النَّاسِ.',
+      source: 'رواه أبو داود (1523)، والنسائي، وصححه الألباني.',
+      zikrLevel: ZikrLevel.easy,
+      isWithCounter: false,
+      sharedCategory: AzkarCategory.postPrayer,
+    ),
+
+    TimelineReward(
+      id: 'post_prayer_allahumma_aini',
+      title: 'وصية النبي ﷺ لمعاذ',
+      description:
+          'أخذ النبي ﷺ بيد معاذ رضي الله عنه وقال: «يَا مُعَاذُ، وَاللَّهِ إِنِّي لَأُحِبُّكَ، أُوصِيكَ يَا مُعَاذُ لَا تَدَعَنَّ فِي دُبُرِ كُلِّ صَلَاةٍ أَنْ تَقُولَ: اللَّهُمَّ أَعِنِّي عَلَى ذِكْرِكَ وَشُكْرِكَ وَحُسْنِ عِبَادَتِكَ».',
+      source: 'رواه أبو داود (1522)، وصححه الألباني.',
+      zikrLevel: ZikrLevel.easy,
+      isWithCounter: false,
+      sharedCategory: AzkarCategory.postPrayer,
+    ),
+
+    TimelineReward(
+      id: 'post_prayer_ibn_zubair',
+      title: 'ذكر النبي ﷺ الذي كان يجهر به دبر كل صلاة',
+      description:
+          'كان رسول الله ﷺ يقول دبر كل صلاة حين يسلم: «لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ، لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللَّهِ، لَا إِلَهَ إِلَّا اللَّهُ وَلَا نَعْبُدُ إِلَّا إِيَّاهُ، لَهُ النِّعْمَةُ وَلَهُ الْفَضْلُ وَلَهُ الثَّنَاءُ الْحَسَنُ، لَا إِلَهَ إِلَّا اللَّهُ مُخْلِصِينَ لَهُ الدِّينَ وَلَوْ كَرِهَ الْكَافِرُونَ».',
+      source: 'رواه مسلم (594).',
+      zikrLevel: ZikrLevel.hard,
+      isWithCounter: false,
+      sharedCategory: AzkarCategory.postPrayer,
+    ),
+
+    // TimelineReward(
+    //   id: 'post_prayer_tasbih_10',
+    //   title: 'خصلتان تدخلان الجنة ولا يعمل بهما إلا قليل',
+    //   description:
+    //       'قال رسول الله ﷺ: «خَصْلَتَانِ لَا يُحْصِيهِمَا رَجُلٌ مُسْلِمٌ إِلَّا دَخَلَ الْجَنَّةَ، أَلَا وَهُمَا يَسِيرٌ، وَمَنْ يَعْمَلُ بِهِمَا قَلِيلٌ: يُسَبِّحُ اللَّهَ فِي دُبُرِ كُلِّ صَلَاةٍ عَشْرًا، وَيَحْمَدُهُ عَشْرًا، وَيُكَبِّرُهُ عَشْرًا — فَذَلِكَ خَمْسُونَ وَمِائَةٌ بِاللِّسَانِ، وَأَلْفٌ وَخَمْسُمِائَةٍ فِي الْمِيزَانِ».',
+    //   source: 'رواه الترمذي (3410)، وابن ماجه (926)، وصححه الألباني.',
+    //   zikrLevel: ZikrLevel.easy,
+    //   isWithCounter: true,
+    //   sharedCategory: AzkarCategory.postPrayer,
+    // ),
+
+    // TimelineReward(
+    //   id: 'post_prayer_tahlil_10_fajr_maghrib',
+    //   title: 'عشر حسنات ومحو عشر سيئات ورفع عشر درجات',
+    //   description:
+    //       'قال رسول الله ﷺ: «مَنْ قَالَ حِينَ يُصْبِحُ وَحِينَ يُمْسِي: لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ يُحْيِي وَيُمِيتُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ — عَشْرَ مَرَّاتٍ — كَتَبَ اللَّهُ لَهُ بِكُلِّ وَاحِدَةٍ عَشْرَ حَسَنَاتٍ، وَمَحَا عَنْهُ عَشْرَ سَيِّئَاتٍ، وَرَفَعَ لَهُ عَشْرَ دَرَجَاتٍ» — وثبت قولها عشرًا دبر الفجر والمغرب تحديدًا.',
+    //   source: 'رواه أحمد (17333)، وصححه الألباني. وانظر: صحيح الترغيب (469).',
+    //   zikrLevel: ZikrLevel.easy,
+    //   isWithCounter: true,
+    //   sharedCategory: AzkarCategory.postPrayer,
+    // ),
     TimelineReward(
       id: 'post_prayer_tasbih_33',
       title: 'غفران الخطايا مثل زبد البحر',
       description:
-          'قال رسول الله ﷺ: «مَنْ سَبَّحَ اللَّهَ فِي دُبُرِ كُلِّ صَلَاةٍ ثَلَاثًا وَثَلَاثِينَ، وَحَمِدَ اللَّهَ ثَلَاثًا وَثَلَاثِينَ، وَكَبَّرَ اللَّهَ ثَلَاثًا وَثَلَاثِينَ... غُفِرَتْ خَطَايَاهُ».',
+          'قال رسول الله ﷺ: «مَنْ سَبَّحَ اللَّهَ فِي دُبُرِ كُلِّ صَلَاةٍ ثَلَاثًا وَثَلَاثِينَ، وَحَمِدَ اللَّهَ ثَلَاثًا وَثَلَاثِينَ، وَكَبَّرَ اللَّهَ ثَلَاثًا وَثَلَاثِينَ، وَقَالَ تَمَامَ الْمِائَةِ: لَا إِلَهَ إِلَّا اللَّهُ وَحْدَهُ لَا شَرِيكَ لَهُ، لَهُ الْمُلْكُ وَلَهُ الْحَمْدُ وَهُوَ عَلَى كُلِّ شَيْءٍ قَدِيرٌ — غُفِرَتْ خَطَايَاهُ وَإِنْ كَانَتْ مِثْلَ زَبَدِ الْبَحْرِ».',
       source: 'رواه مسلم (597).',
       isWithCounter: true,
       zikrLevel: ZikrLevel.hard,
