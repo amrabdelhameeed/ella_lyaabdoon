@@ -224,7 +224,10 @@ class DataExportImportService {
     try {
       final jsonData = await exportAllData();
       final directory = await getApplicationDocumentsDirectory();
-      final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+      final timestamp = DateFormat(
+        'yyyyMMdd_HHmmss',
+        'en',
+      ).format(DateTime.now());
       final file = File(
         '${directory.path}/ella_lyaabdoon_backup_$timestamp.json',
       );
@@ -304,6 +307,9 @@ class DataExportImportService {
       await _importHistoryData(data['history'] as Map<String, dynamic>?);
       await _importCacheData(data['cache'] as Map<String, dynamic>?);
       await _importLocationData(data['location'] as Map<String, dynamic>?);
+
+      // Reload the history database provider to clear caches and reload Hive boxes
+      await HistoryDBProvider.reload();
 
       // Extract the restored locale so the UI can apply it via EasyLocalization
       // without this service needing a BuildContext.
